@@ -5,17 +5,19 @@
 2. Adjust the settings of your new repo by using this one as a template:
    - [collaboration settings](https://github.com/gesundheitscloud/go-svc-template/settings/collaboration)
    - [branch protection](https://github.com/gesundheitscloud/go-svc-template/settings/branches)
-   - [webhooks](https://github.com/gesundheitscloud/go-svc-template/settings/hooks)
-3. Follow the instructions in [phdp-jenkins-libs](https://github.com/gesundheitscloud/phdp-jenkins-libs) to register your repo for build and deploy
+3. Follow the instructions in [phdp-jenkins-config](https://github.com/gesundheitscloud/phdp-jenkins-config) to register your repo for build and deploy
 
 ## Template usage
 1. replace `go-svc-template` with the name of your service everywhere
-2. replace `GO_SVC_TEMPLATE` with the capitalized version of your service
-3. Adjust the `flavor` in the jenkins file to the one you need (or remove for default)
-4. make sure the go.mod file looks reasonable
-5. Add description in `deploy/helm-chart/Chart.versionless.yaml`
-6. Delete this part of the README
-7. Happy Coding!
+1. replace `GO_SVC_TEMPLATE` with the capitalized version of your service
+1. Adjust the `flavor` in the jenkins file to the one you need (or remove for default)
+1. make sure the go.mod file looks reasonable
+1. Choose a different PORT for the server (change 8080 to avoid conflicts)
+1. Choose a different PORT for the local database (change 5440 to avoid conflicts)
+1. Add description in `deploy/helm-chart/Chart.versionless.yaml`
+1. Adjust the `.github/CODEOWNERS` file
+1. Delete this part of the README
+1. Happy Coding!
 
 # `go-svc-template`
 
@@ -47,8 +49,9 @@ To run the tests in VSCode the environment variables have to be provided.
 #### `.vscode/.env`
 
 ```bash
-GO_SVC_TEMPLATE_JWT_PUBLIC_KEY_PATH=<path/to/repo>/go-svc-template/test-keys/jwtpublickey.pem
+GO_SVC_TEMPLATE_VEGA_JWT_PUBLIC_KEY_PATH=<path/to/repo>/go-svc-template/test-keys/jwtpublickey.pem
 GO_SVC_TEMPLATE_SERVICE_SECRET=very-secure-secret
+GO_SVC_TEMPLATE_TEST_WITH_DB=false
 ```
 
 For other options see `make help`

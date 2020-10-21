@@ -21,10 +21,10 @@ components:
       bearerFormat: JWT
 
     ServiceAuth:
-      type: http
+      type: apiKey
+      in: header
+      name: Authorization
       description: Service to Service secret authentication
-      scheme: bearer
-      bearerFormat: plain
 
   schemas:
     Account:

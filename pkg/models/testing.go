@@ -13,7 +13,7 @@ import (
 // InitializeTestDB connects to an inmemory sqlite for testing
 func InitializeTestDB(t *testing.T) {
 	config.SetupEnv()
-	if viper.IsSet("DB_HOST") {
+	if viper.GetBool("TEST_WITH_DB") {
 		dbOpts := db.NewConnection(
 			db.WithDebug(viper.GetBool("DEBUG")),
 			db.WithHost(viper.GetString("DB_HOST")),

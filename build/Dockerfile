@@ -30,7 +30,7 @@ RUN apk update && apk upgrade && \
 
 WORKDIR /app
 
-EXPOSE 9124
+EXPOSE 8080
 
 COPY --from=builder /app/VERSION /app
 COPY --from=builder /app/go-svc-template /app

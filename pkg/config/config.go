@@ -52,7 +52,7 @@ const (
 	// DefaultDBHost default host for the database connection
 	DefaultDBHost = "localhost"
 	// DefaultDBPort default port for the database connnection
-	DefaultDBPort = "5432"
+	DefaultDBPort = "5440"
 	// DefaultDBName default port for the database connnection
 	DefaultDBName = "go-svc-template"
 	// DefaultDBUser default port for the database connnection
@@ -61,6 +61,8 @@ const (
 	DefaultDBPassword = "postgres"
 	// DefaultDBSSLMode default port for the database connnection
 	DefaultDBSSLMode = "disable"
+	// DefaultTestWithDB defines whether the tests run with DB or sqlite
+	DefaultTestWithDB = true
 
 	// ##### AUTHENTICATION VARIABLES
 
@@ -101,15 +103,18 @@ func SetupEnv() {
 	bindEnvVariable("CORS_HOSTS", DefaultCorsHosts)
 	bindEnvVariable("XSRF_SECRET", DefaultXSRFSecret)
 	bindEnvVariable("XSRF_HEADER", DefaultXSRFHeaderName)
+	bindEnvVariable("HTTP_MAX_PARALLEL_REQUESTS", 8)
+	bindEnvVariable("HTTP_REQUEST_TIMEOUT", "60s")
 	// Database
-	bindEnvVariable("DB_HOST", "")
+	bindEnvVariable("DB_HOST", DefaultDBHost)
 	bindEnvVariable("DB_PORT", DefaultDBPort)
 	bindEnvVariable("DB_NAME", DefaultDBName)
 	bindEnvVariable("DB_USER", DefaultDBUser)
 	bindEnvVariable("DB_PASS", DefaultDBPassword)
 	bindEnvVariable("DB_SSL_MODE", DefaultDBSSLMode)
+	bindEnvVariable("TEST_WITH_DB", DefaultTestWithDB)
 	// Authentication
-	bindEnvVariable("JWT_PUBLIC_KEY_PATH", DefaultJWTPublicKeyPath)
+	bindEnvVariable("VEGA_JWT_PUBLIC_KEY_PATH", DefaultJWTPublicKeyPath)
 	bindEnvVariable("AUTH_HEADER_NAME", DefaultAuthHeaderName)
 	bindEnvVariable("SERVICE_SECRET", DefaultServiceSecret)
 }

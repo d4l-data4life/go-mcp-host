@@ -5,16 +5,16 @@
 #     "local": {
 #         "VEGA_USER_ID": "a928a8d7-8227-498d-8ed4-5a7bfc721c5e",
 #         "BEARER_TOKEN": "auth-token-from-web-app",
-#         "SURVEY_SERVER": "http://localhost:9124",
-#         "SURVEY_SECRET": "very-secure-secret"
+#         "SERVER": "http://localhost:8080",
+#         "SERVER_SECRET": "very-secure-secret"
 #     }
 # }
 
 # The following 3 variables are environment dependent
 # and expected to be defined in settings.json of VS Code
 @accountId = {{VEGA_USER_ID}}
-@HOST = {{SURVEY_SERVER}}
-@SERVICE_SECRET = {{SURVEY_SECRET}}
+@HOST = {{SERVER}}
+@SERVICE_SECRET = {{SERVER_SECRET}}
 @API = {{HOST}}/api/v1
 
 # Authentication parameters
