@@ -1,0 +1,6 @@
+environment: prod
+APP:
+  GO_SVC_TEMPLATE_DEBUG: false
+  GO_SVC_TEMPLATE_CORS_HOSTS: https://app.data4life.care
+  GO_SVC_TEMPLATE_TLS_CERT_SECRET_NAME: tls-data4life.care
+REPLICAS: 3

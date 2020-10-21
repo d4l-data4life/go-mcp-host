@@ -1,0 +1,113 @@
+# Template for Go projects
+
+## Repo setup
+1. Use this repo as a [template](https://help.github.com/en/articles/creating-a-repository-from-a-template) for your new repository
+2. Adjust the settings of your new repo by using this one as a template:
+   - [collaboration settings](https://github.com/gesundheitscloud/go-svc-template/settings/collaboration)
+   - [branch protection](https://github.com/gesundheitscloud/go-svc-template/settings/branches)
+   - [webhooks](https://github.com/gesundheitscloud/go-svc-template/settings/hooks)
+3. Follow the instructions in [phdp-jenkins-libs](https://github.com/gesundheitscloud/phdp-jenkins-libs) to register your repo for build and deploy
+
+## Template usage
+1. replace `go-svc-template` with the name of your service everywhere
+2. replace `GO_SVC_TEMPLATE` with the capitalized version of your service
+3. Adjust the `flavor` in the jenkins file to the one you need (or remove for default)
+4. make sure the go.mod file looks reasonable
+5. Add description in `deploy/helm-chart/Chart.versionless.yaml`
+6. Delete this part of the README
+7. Happy Coding!
+
+# `go-svc-template`
+
+This is the backend service providing providing some functionality.
+
+:construction: :construction: :construction:
+
+## Building, Running, Testing
+
+```bash
+export GITHUB_USER_TOKEN=<your-GH-API-token>
+make build
+make run
+make test
+```
+
+### Test Execution in VSCode
+
+To run the tests in VSCode the environment variables have to be provided.
+
+#### `.vscode/settings.json`
+
+```json
+{
+    "go.testEnvFile": "${workspaceFolder}/.vscode/.env"
+}
+```
+
+#### `.vscode/.env`
+
+```bash
+GO_SVC_TEMPLATE_JWT_PUBLIC_KEY_PATH=<path/to/repo>/go-svc-template/test-keys/jwtpublickey.pem
+GO_SVC_TEMPLATE_SERVICE_SECRET=very-secure-secret
+```
+
+For other options see `make help`
+
+## Ops checks
+
+Liveness and Readiness checks are meant for Kubernetes.
+
+- Liveness is a check that responds with HTTP code 200 if the application has started
+- Readiness is a check that responds with HTTP code 200 if the application is ready to serve requests (e.g., connected to the database)
+
+## Run in local Kubernetes
+
+1. **Add localhost alias**
+
+    Add `go-svc-template-dns.local` to `/etc/hosts' file. For example in the kubernetes.docker section:
+
+    ```txt
+    # To allow the same kube context to work on the host and the container:
+    127.0.0.1 kubernetes.docker.internal go-svc-template-dns.local
+    # End of section
+    ```
+
+1. **Build the image**
+
+    ```bash
+    export GITHUB_USER_TOKEN=<your-GH-API-token>
+    make docker-build
+    ```
+
+1. **Deploy to local Kubernetes**
+
+    - make sure you have the right `kubectl` context selected (by default docker-desktop)
+
+        ```bash
+        kubectl config use-context docker-desktop
+        ```
+
+    - render templates and deploy manifests
+
+        ```bash
+        make kube-deploy
+        ```
+
+    - check that the pod is running
+
+        ```bash
+        kubectl get pod
+        ```
+
+## How to use
+
+Refer to [Example API calls](example-API-calls.http) for selected examples of API calls.
+This file requires [REST Client VSCode plugin](https://marketplace.visualstudio.com/items?itemName=humao.rest-client).
+
+## Swagger API definition
+
+The API specification can be found in `/swagger/api.yml`. To preview the specification:
+
+1. add a [swagger viewer](https://marketplace.visualstudio.com/items?itemName=Arjun.swagger-viewer) to VSCode
+1. open the `yml` file
+1. open the preview with `SHIFT + OPTION + P`

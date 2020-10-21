@@ -1,0 +1,41 @@
+# 1. Install VS Code extension 'humao.rest-client' to use this file
+#
+# 2. Edit VS Code settings and add local (and other) environments:
+# "rest-client.environmentVariables": {
+#     "local": {
+#         "VEGA_USER_ID": "a928a8d7-8227-498d-8ed4-5a7bfc721c5e",
+#         "BEARER_TOKEN": "auth-token-from-web-app",
+#         "SURVEY_SERVER": "http://localhost:9124",
+#         "SURVEY_SECRET": "very-secure-secret"
+#     }
+# }
+
+# The following 3 variables are environment dependent
+# and expected to be defined in settings.json of VS Code
+@accountId = {{VEGA_USER_ID}}
+@HOST = {{SURVEY_SERVER}}
+@SERVICE_SECRET = {{SURVEY_SECRET}}
+@API = {{HOST}}/api/v1
+
+# Authentication parameters
+@bearerToken = COPY_FROM_APP_PHDP_DEV
+
+# Some example API parameters
+
+### Request: Check metrics
+# @name getMetrics
+GET {{HOST}}/metrics HTTP/1.1
+
+### Request: Check readiness
+# @name getReadiness
+GET {{HOST}}/checks/readiness HTTP/1.1
+
+# The corresponding bearer token
+
+### Get XSRF token
+# @name xsrfGet
+GET {{API}}/xsrf HTTP/1.1
+Authorization: Bearer {{BEARER_TOKEN}}
+
+# Update this XSRF Token from the request above
+@xsrfToken = {{xsrfGet.response.headers.X-Csrf-Token}}

@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}"
+spec:
+  replicas: {{ .Values.REPLICAS }}
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: "{{ .Release.Name }}"
+      app: "{{ .Release.Name }}"
+      role: deployment
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: "{{ .Release.Name }}"
+        app: "{{ .Release.Name }}"
+        role: deployment
+      annotations:
+        prometheus.io/scrape: "true"
+    spec:
+      containers:
+      - name: "{{ .Chart.Name }}"
+        image: "{{ .Values.imageTag }}"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: {{ .Values.APP.GO_SVC_TEMPLATE_PORT }}
+        resources:
+          requests:
+            memory: "128Mi"
+          limits:
+            memory: "256Mi"
+        env:
+        - name: GO_SVC_TEMPLATE_DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: host
+        - name: GO_SVC_TEMPLATE_DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: port
+        - name: GO_SVC_TEMPLATE_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.DB_SECRET }}
+              key: password
+        - name: GO_SVC_TEMPLATE_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.DB_SECRET }}
+              key: username
+        - name: GO_SVC_TEMPLATE_DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: dbname
+        - name: GO_SVC_TEMPLATE_SERVICE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Chart.Name }}-secrets
+              key: service-secret
+        {{- range $key, $value := .Values.APP }}
+        - name: {{ $key }}
+          value: "{{ $value }}"
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /checks/liveness
+            port: {{ .Values.APP.GO_SVC_TEMPLATE_PORT }}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /checks/readiness
+            port: {{ .Values.APP.GO_SVC_TEMPLATE_PORT }}
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        volumeMounts:
+        - mountPath: /keys/jwtpublickey.pem
+          subPath: jwtpublickey.pem
+          name: public-key
+          readOnly: true
+      imagePullSecrets:
+      - name: gesundheitscloud-regsecret
+      volumes:
+        - name: public-key
+          secret:
+            secretName: {{ .Chart.Name }}-jwt-publickey-vega
