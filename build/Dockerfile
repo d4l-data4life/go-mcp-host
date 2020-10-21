@@ -32,7 +32,6 @@ WORKDIR /app
 
 EXPOSE 8080
 
-COPY --from=builder /app/VERSION /app
 COPY --from=builder /app/go-svc-template /app
 
 # Add a user to run nginx in non-root mode
