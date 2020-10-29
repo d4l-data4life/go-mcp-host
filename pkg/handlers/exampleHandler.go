@@ -25,6 +25,13 @@ type ExampleHandler struct {
 	*instrumented.Handler
 }
 
+//PublicRoutes returns the public routes for the ExampleHandler
+func (eh *ExampleHandler) PublicRoutes() *chi.Mux {
+	router := chi.NewRouter()
+	router.Get(eh.InstrumentChi("/{attribute}", eh.GetExampleByAttribute))
+	return router
+}
+
 //Routes returns the routes for the ExampleHandler
 func (eh *ExampleHandler) InternalRoutes() *chi.Mux {
 	router := chi.NewRouter()

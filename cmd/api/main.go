@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/gesundheitscloud/go-svc-template/pkg/config"
-	"github.com/gesundheitscloud/go-svc-template/pkg/handlers"
 	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
 	"github.com/gesundheitscloud/go-svc-template/pkg/server"
@@ -52,8 +51,6 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 	corsOptions := config.CorsConfig(strings.Split(viper.GetString("CORS_HOSTS"), " "))
 	srv := server.NewServer(svcName,
 		cors.New(corsOptions),
-		handlers.NewAuthMiddleware(),
-		handlers.NewXSRFMiddleware(),
 		viper.GetInt("HTTP_MAX_PARALLEL_REQUESTS"),
 		viper.GetDuration("HTTP_REQUEST_TIMEOUT"),
 	)

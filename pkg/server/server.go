@@ -7,8 +7,6 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
-
-	"github.com/gesundheitscloud/go-svc-template/pkg/handlers"
 )
 
 // Server wraps a chi router (chi.Mux)
@@ -19,8 +17,6 @@ type Server struct {
 
 	maxParallelProcesses int
 	timeout              time.Duration
-	authMiddleware       *handlers.AuthMiddleware
-	xsrfMiddleware       *handlers.XSRFMiddleware
 }
 
 func (s *Server) configMux() *chi.Mux {
@@ -41,8 +37,6 @@ func (s *Server) configMux() *chi.Mux {
 // NewServer creates a router with routes setup
 func NewServer(name string,
 	cors *cors.Cors,
-	authMiddleware *handlers.AuthMiddleware,
-	xsrfMiddleware *handlers.XSRFMiddleware,
 	maxParallelProcesses int,
 	timeout time.Duration,
 ) *Server {
@@ -51,8 +45,6 @@ func NewServer(name string,
 		cors:                 cors,
 		maxParallelProcesses: maxParallelProcesses,
 		timeout:              timeout,
-		authMiddleware:       authMiddleware,
-		xsrfMiddleware:       xsrfMiddleware,
 	}
 	s.mux = chi.NewRouter()
 	s.configMux()

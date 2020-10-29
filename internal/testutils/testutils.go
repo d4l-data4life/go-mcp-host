@@ -47,7 +47,7 @@ func GetRequestPayload(payload interface{}) io.Reader {
 func GetTestMockServer(t *testing.T) *server.Server {
 	models.InitializeTestDB(t)
 	corsOptions := config.CorsConfig([]string{"localhost", "https://jupyter.alp.local"})
-	srv := server.NewServer("TEST_SERVER", cors.New(corsOptions), nil, nil, 1, 10*time.Second)
+	srv := server.NewServer("TEST_SERVER", cors.New(corsOptions), 1, 10*time.Second)
 	server.SetupRoutes(srv.Mux())
 	metrics.AddBuildInfoMetric()
 	return srv

@@ -7,6 +7,8 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/pkg/config"
 	"github.com/gesundheitscloud/go-svc-template/pkg/handlers"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/gesundheitscloud/go-svc/pkg/middlewares"
+	"github.com/spf13/viper"
 
 	"github.com/go-chi/chi"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -15,28 +17,33 @@ import (
 // SetupRoutes adds all routes that the server should listen to
 func SetupRoutes(mux *chi.Mux) {
 	ch := handlers.NewChecksHandler()
-	auth := handlers.NewAuthMiddleware()
-	xsrfHandler := handlers.NewXSRFHandler()
 	exampleHandler := handlers.NewExampleHandler()
 
+	handlerFactory := handlers.GetHandlerFactory()
+	xsrfHandler := middlewares.NewXSRFHandler(viper.GetString("XSRF_SECRET"), viper.GetString("XSRF_HEADER"), handlerFactory)
+	authMiddleware := middlewares.NewAuth(viper.GetString("SERVICE_SECRET"), config.PublicKey, handlerFactory)
+	xsrfMiddleware := middlewares.NewXSRF(viper.GetString("XSRF_SECRET"), viper.GetString("XSRF_HEADER"), handlerFactory)
+
+	// no auth
 	mux.Mount("/checks", ch.Routes())
 	mux.Mount("/metrics", promhttp.Handler())
 
-	// no auth
 	mux.
 		With(logging.Logger().HTTPMiddleware()).
 		Route(config.APIPrefixV1, func(r chi.Router) {
-			// no auth
-			r.With(auth.UserAuthMiddleware).
+			// Auth: none
+			r.Mount("/example", exampleHandler.PublicRoutes())
+
+			// Auth: JWT
+			r.With(authMiddleware.JWT).
 				Mount("/xsrf", xsrfHandler.Routes())
 
 			// Auth: service secret
-			r.With(auth.ServiceSecretMiddleware).
+			r.With(authMiddleware.ServiceSecret).
 				Mount("/internal/example", exampleHandler.InternalRoutes())
 
-			// Auth: JWT
-			xsrfMiddleware := handlers.NewXSRFMiddleware()
-			r.With(auth.UserAuthMiddleware, xsrfMiddleware.Middleware).
+			// Auth: JWT + XSRF Protection
+			r.With(authMiddleware.JWT, xsrfMiddleware.XSRF).
 				Mount("/settings", exampleHandler.Routes())
 		})
 

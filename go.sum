@@ -62,8 +62,8 @@ github.com/gesundheitscloud/go-log/v2 v2.3.0 h1:v3wfql+3jinA3u8KwpVATWZZx3VMozA1
 github.com/gesundheitscloud/go-log/v2 v2.3.0/go.mod h1:hV5/RLdZyNrhyTyuxvke0Phj/cYhuA5fgXpmlxWcZZ4=
 github.com/gesundheitscloud/go-monitoring v0.4.0 h1:r77JppYkwzOb/iu09etvoVcDeeZgYqfSRoQLq4zPq1k=
 github.com/gesundheitscloud/go-monitoring v0.4.0/go.mod h1:d+iEg8e7r0h+jJOdT+aP4muPDh1PXSIyPXSR6gPfnhk=
-github.com/gesundheitscloud/go-svc v0.6.1 h1:uxp+qUANWTfXf2qu+ok956piEwerabTYLhYskkfQpOU=
-github.com/gesundheitscloud/go-svc v0.6.1/go.mod h1:K1YJTPCuPgAZrBNWo9yWNK8XaYI97oxDj1dfX0GMEI4=
+github.com/gesundheitscloud/go-svc v0.8.0 h1:4OekVKZcMi2+5f3/N/XO5bdxqQRaBwMxESB8xvc6mVM=
+github.com/gesundheitscloud/go-svc v0.8.0/go.mod h1:5cfA6awFjwm7SboswgboDYDNsworqsTR2LplATy59D4=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-chi/chi v4.1.2+incompatible h1:fGFk2Gmi/YKXk0OmGfBh0WgmN3XB8lVnEyNz34tQRec=
 github.com/go-chi/chi v4.1.2+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
