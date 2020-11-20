@@ -11,7 +11,7 @@ var once sync.Once
 
 var instance *instrumented.HandlerFactory
 
-//GetHandlerFactory returns a global singleton InstrumentedHandlerFactory object
+// GetHandlerFactory returns a global singleton InstrumentedHandlerFactory object
 func GetHandlerFactory() *instrumented.HandlerFactory {
 	once.Do(func() {
 		instance = instrumented.NewHandlerFactory("d4l", config.DefaultInstrumentInitOptions, config.DefaultInstrumentOptions)

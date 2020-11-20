@@ -51,7 +51,7 @@ func NewServer(name string,
 	return s
 }
 
-//Mux returns the chi router
+// Mux returns the chi router
 func (s *Server) Mux() *chi.Mux {
 	return s.mux
 }

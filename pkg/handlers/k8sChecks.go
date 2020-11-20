@@ -10,12 +10,12 @@ import (
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
-//ChecksHandler is the handler responsible for k8s checks
+// ChecksHandler is the handler responsible for k8s checks
 type ChecksHandler struct {
 	*instrumented.Handler
 }
 
-//Routes returns the routes for the ChecksHandler
+// Routes returns the routes for the ChecksHandler
 func (e *ChecksHandler) Routes() *chi.Mux {
 	router := chi.NewRouter()
 	router.Get(e.InstrumentChi("/liveness", e.Liveness))
@@ -23,14 +23,14 @@ func (e *ChecksHandler) Routes() *chi.Mux {
 	return router
 }
 
-//NewChecksHandler initializes a new handler
+// NewChecksHandler initializes a new handler
 func NewChecksHandler() *ChecksHandler {
 	return &ChecksHandler{
 		Handler: GetHandlerFactory().NewHandler("K8sChecksHandler"),
 	}
 }
 
-//Liveness is a check that describes if the application has started
+// Liveness is a check that describes if the application has started
 func (e *ChecksHandler) Liveness(w http.ResponseWriter, r *http.Request) {
 	WriteHTTPCode(w, http.StatusOK)
 	_, err := w.Write([]byte("OK"))
@@ -39,7 +39,7 @@ func (e *ChecksHandler) Liveness(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//Readiness is a check if application can handle requests
+// Readiness is a check if application can handle requests
 func (e *ChecksHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 	if err := db.Get().DB().Ping(); err != nil {
 		WriteHTTPErrorCode(w, err, http.StatusInternalServerError)

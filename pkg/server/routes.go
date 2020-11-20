@@ -8,10 +8,10 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/pkg/handlers"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/gesundheitscloud/go-svc/pkg/middlewares"
-	"github.com/spf13/viper"
 
 	"github.com/go-chi/chi"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/spf13/viper"
 )
 
 // SetupRoutes adds all routes that the server should listen to
@@ -49,7 +49,7 @@ func SetupRoutes(mux *chi.Mux) {
 
 	// Displays all API paths in when debug enabled
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-		route = strings.Replace(route, "/*/", "/", -1)
+		route = strings.ReplaceAll(route, "/*/", "/")
 		logging.LogDebugf("%s %s\n", method, route)
 		return nil
 	}
