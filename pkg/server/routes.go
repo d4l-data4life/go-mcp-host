@@ -29,7 +29,7 @@ func SetupRoutes(mux *chi.Mux) {
 	mux.Mount("/metrics", promhttp.Handler())
 
 	mux.
-		With(logging.Logger().HTTPMiddleware()).
+		With(middlewares.Trace, logging.Logger().HTTPMiddleware()).
 		Route(config.APIPrefixV1, func(r chi.Router) {
 			// Auth: none
 			r.Mount("/example", exampleHandler.PublicRoutes())
