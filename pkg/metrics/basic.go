@@ -30,6 +30,6 @@ func AddBuildInfoMetric() {
 		func() float64 { return 1 },
 	))
 	if err != nil {
-		logging.LogError("Error registering buld info metric", err)
+		logging.LogErrorf(err, "Error registering buld info metric")
 	}
 }

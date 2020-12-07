@@ -59,7 +59,7 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 	defer close(dieEarly)
 
 	if err := config.LoadJWTPublicKey(); err != nil {
-		logging.LogErrorf(err, "error loading JWT public key")
+		logging.LogErrorfCtx(runCtx, err, "error loading JWT public key")
 		return dieEarly
 	}
 	server.SetupRoutes(srv.Mux())

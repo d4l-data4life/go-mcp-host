@@ -35,7 +35,7 @@ func (e *ChecksHandler) Liveness(w http.ResponseWriter, r *http.Request) {
 	WriteHTTPCode(w, http.StatusOK)
 	_, err := w.Write([]byte("OK"))
 	if err != nil {
-		logging.LogError("Error writing OK to response body", err)
+		logging.LogErrorf(err, "Error writing OK to response body")
 	}
 }
 
@@ -49,6 +49,6 @@ func (e *ChecksHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 	WriteHTTPCode(w, http.StatusOK)
 	_, err := w.Write([]byte("OK"))
 	if err != nil {
-		logging.LogError("Error writing OK to response body", err)
+		logging.LogErrorf(err, "Error writing OK to response body")
 	}
 }

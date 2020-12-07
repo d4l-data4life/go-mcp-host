@@ -33,7 +33,7 @@ func (example *Example) Create() error {
 	err := db.Get().Create(example).Error
 
 	if example.ID.String() == "" || err != nil {
-		logging.LogError("", err)
+		logging.LogErrorf(err, "")
 		if err.Error() == ErrDuplicateAttribute.Error() {
 			return ErrDuplicateAttribute
 		}
@@ -50,7 +50,7 @@ func GetExampleByAttribute(attribute string) (Example, error) {
 		if err == gorm.ErrRecordNotFound {
 			return *example, ErrExampleNotFound
 		}
-		logging.LogError(fmt.Sprintf("Failed getting example for attribute %s", attribute), err)
+		logging.LogErrorf(err, fmt.Sprintf("Failed getting example for attribute %s", attribute))
 		return *example, ErrExampleGet
 	}
 

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Speed-up builds and tests by adding cache to Docker
+- Streamline logging
 
 ### Deprecated
 

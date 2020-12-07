@@ -32,7 +32,7 @@ func InitDBWithTestExample(t *testing.T) (example models.Example) {
 	models.InitializeTestDB(t)
 	example = CreateExample("test")
 	if err := example.Create(); err != nil {
-		logging.LogError("Error in test Setup", err)
+		logging.LogErrorf(err, "Error in test Setup")
 	}
 	return
 }
