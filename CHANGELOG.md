@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Speed-up builds and tests by adding cache to Docker
 - Streamline logging
+- Replace deprecated UUID package `satori` by `gofrs`
+- Upgrade go-svc to v0.13.0
 
 ### Deprecated
 
