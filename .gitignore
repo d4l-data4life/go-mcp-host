@@ -20,3 +20,8 @@ deploy/helm-chart/Chart.yaml
 #
 .vscode/
 .DS_Store
+
+# build info perissted in files
+BRANCH
+COMMIT
+VERSION

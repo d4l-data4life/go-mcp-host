@@ -42,7 +42,7 @@ func main() {
 		db.WithSSLMode(viper.GetString("DB_SSL_MODE")),
 		db.WithMigrationFunc(models.MigrationFunc),
 	)
-	standard.Main(mainAPI, "go-svc-template", dbOpts)
+	standard.Main(mainAPI, "go-svc-template", standard.WithPostgres(dbOpts))
 }
 
 // mainAPI contains the main service logic - it must finish on runCtx cancelation!

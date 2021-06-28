@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/gesundheitscloud/go-monitoring/prom"
+	"github.com/gesundheitscloud/go-svc/pkg/prom"
 )
 
 var (

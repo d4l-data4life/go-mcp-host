@@ -1,15 +1,28 @@
 # Common Variables
-GIT_VERSION ?= $(shell git describe --tags --always --dirty)
-APP_VERSION ?= $(GIT_VERSION)
-COMMIT=$(shell git rev-parse --short HEAD)
-BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
+APP_VERSION ?= $(shell git describe --tags --always --dirty) # unavailable in Docker unless we copy `.git`
+ifeq ($(strip $(APP_VERSION)),)
+# works in Docker after running 'make write-build-info'
+# equired to run 'go build' with properly populated ldflags
+	APP_VERSION := $(file < VERSION)
+endif
+
+COMMIT ?= $(shell git rev-parse --short HEAD)
+ifeq ($(strip $(COMMIT)),)
+	COMMIT := $(file < COMMIT)
+endif
+
+BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
+ifeq ($(strip $(BRANCH)),)
+	BRANCH := $(file < BRANCH)
+endif
+
 USER=$(shell whoami)
 BINARY=go-svc-template
 
 # Go Variables
 CILINT_VERSION := v1.32
 PKG=github.com/gesundheitscloud/go-svc-template/pkg/config
-LDFLAGS="-X '$(PKG).Version=${GIT_VERSION}' -X '$(PKG).Commit=${COMMIT}' -X '$(PKG).Branch=${BRANCH}' -X '$(PKG).BuildUser=${USER}'"
+LDFLAGS="-X '$(PKG).Version=$(APP_VERSION)' -X '$(PKG).Commit=$(COMMIT)' -X '$(PKG).Branch=$(BRANCH)' -X '$(PKG).BuildUser=$(USER)'"
 GOCMD=go
 GOBUILD=$(GOCMD) build -ldflags $(LDFLAGS)
 GOTEST=$(GOCMD) test
@@ -54,6 +67,12 @@ version:              ## Display current version
 ## Mandatory for PHDP Jenkins
 ## ----------------------------------------------------------------------
 
+.PHONY: write-build-info ## Persist build parameters that require git
+write-build-info:
+	@echo "$(APP_VERSION)" > VERSION
+	@echo "$(COMMIT)" > COMMIT
+	@echo "$(BRANCH)" > BRANCH
+
 .PHONY: parallel-test
 parallel-test:               ## Specifies space-separated list of targets that can be run in parallel
 	@echo "lint unit-test-postgres"
@@ -95,7 +114,7 @@ lint:
 		.
 
 .PHONY: docker-build db
-docker-build db:    ## Build Docker image
+docker-build db: write-build-info    ## Build Docker image
 	DOCKER_BUILDKIT=1 \
 	docker build \
 		--build-arg GITHUB_USER_TOKEN \
