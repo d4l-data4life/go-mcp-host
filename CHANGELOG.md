@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Speed-up builds and tests by adding cache to Docker
 - Streamline logging
 - Replace deprecated UUID package `satori` by `gofrs`
-- Upgrade go-svc to v1.5.0
+- Upgrade go-svc to v1.17.0
 
 ### Deprecated
 
@@ -25,3 +25,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ldflags` are now populated properly when running `go build` inside Docker
 
 ### Security
+
+- Switch JWT lib to fix security issues

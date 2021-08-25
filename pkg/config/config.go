@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"runtime"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/cors"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
