@@ -4,12 +4,15 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"runtime"
 
 	"github.com/go-chi/cors"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // Build information. Populated at build-time.
@@ -38,21 +41,16 @@ const (
 	// DefaultHost default host for the services
 	DefaultHost = "localhost"
 	// DefaultPort default port the service is served on
-	DefaultPort = "8080"
+	DefaultPort = "9000"
 	// DefaultCorsHosts default cors horst for local development
 	DefaultCorsHosts = "https://localhost:3000 http://localhost:3456"
-	// DefaultXSRFSecret is the secret used to generate XSRF tokens.
-	// It's not a real secret, as security is based on the JWT cookie, the token only prevents XSRF
-	DefaultXSRFSecret = "1bNez6PT9AgvjxSl" // #nosec
-	// DefaultXSRFHeaderName is name of the header used for xsrf token storage
-	DefaultXSRFHeaderName = "X-Csrf-Token"
 
 	// ##### DATABASE VARIABLES
 
 	// DefaultDBHost default host for the database connection
 	DefaultDBHost = "localhost"
 	// DefaultDBPort default port for the database connnection
-	DefaultDBPort = "5440"
+	DefaultDBPort = "6000"
 	// DefaultDBName default port for the database connnection
 	DefaultDBName = "go-svc-template"
 	// DefaultDBUser default port for the database connnection
@@ -101,8 +99,6 @@ func SetupEnv() {
 	bindEnvVariable("HOST", DefaultHost)
 	bindEnvVariable("PORT", DefaultPort)
 	bindEnvVariable("CORS_HOSTS", DefaultCorsHosts)
-	bindEnvVariable("XSRF_SECRET", DefaultXSRFSecret)
-	bindEnvVariable("XSRF_HEADER", DefaultXSRFHeaderName)
 	bindEnvVariable("HTTP_MAX_PARALLEL_REQUESTS", 8)
 	bindEnvVariable("HTTP_REQUEST_TIMEOUT", "60s")
 	// Database
@@ -117,6 +113,19 @@ func SetupEnv() {
 	bindEnvVariable("VEGA_JWT_PUBLIC_KEY_PATH", DefaultJWTPublicKeyPath)
 	bindEnvVariable("AUTH_HEADER_NAME", DefaultAuthHeaderName)
 	bindEnvVariable("SERVICE_SECRET", DefaultServiceSecret)
+}
+
+// SetupLogger configures the logger with environment preferences
+func SetupLogger() {
+	logging.LoggerConfig(
+		logging.ServiceName("go-svc-template"),
+		logging.ServiceVersion(Version),
+		logging.Hostname(os.Getenv("HOSTNAME")),
+		logging.PodName(os.Getenv("POD_NAME")),
+		logging.Environment(os.Getenv("ENVIRONMENT")),
+		logging.Debug(viper.GetBool("DEBUG")),
+		logging.HumanReadable(viper.GetBool("HUMAN_READABLE_LOGS")),
+	)
 }
 
 // PublicKey is the key used to verify JWTs

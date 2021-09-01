@@ -5,14 +5,13 @@
 #     "local": {
 #         "VEGA_USER_ID": "a928a8d7-8227-498d-8ed4-5a7bfc721c5e",
 #         "BEARER_TOKEN": "auth-token-from-web-app",
-#         "SERVER": "http://localhost:8080",
+#         "SERVER": "http://localhost:9000",
 #         "SERVER_SECRET": "very-secure-secret"
 #     }
 # }
 
 # The following 3 variables are environment dependent
 # and expected to be defined in settings.json of VS Code
-@accountId = {{VEGA_USER_ID}}
 @HOST = {{SERVER}}
 @SERVICE_SECRET = {{SERVER_SECRET}}
 @API = {{HOST}}/api/v1
@@ -21,6 +20,7 @@
 @bearerToken = COPY_FROM_APP_PHDP_DEV
 
 # Some example API parameters
+@attribute = color
 
 ### Request: Check metrics
 # @name getMetrics
@@ -30,12 +30,34 @@ GET {{HOST}}/metrics HTTP/1.1
 # @name getReadiness
 GET {{HOST}}/checks/readiness HTTP/1.1
 
-# The corresponding bearer token
+#######################################################
+# PUBLIC API
+#######################################################
 
-### Get XSRF token
-# @name xsrfGet
-GET {{API}}/xsrf HTTP/1.1
+### Get public example
+# @name getPublicExample
+GET {{API}}/public/example/{{attribute}} HTTP/1.1
+
+#######################################################
+# INTERNAL API
+#######################################################
+
+### Create/update example
+# @name upsertExample
+POST {{API}}/internal/example/ HTTP/1.1
+Authorization: {{SERVICE_SECRET}}
+Content-Type: application/json
+
+{
+    "name": "GoodExample",
+    "attribute": "color"
+}
+
+#######################################################
+# USER API
+#######################################################
+
+### Get example authenticated
+# @name getEnrolledPrograms
+GET {{API}}/example/{{attribute}} HTTP/1.1
 Authorization: Bearer {{BEARER_TOKEN}}
-
-# Update this XSRF Token from the request above
-@xsrfToken = {{xsrfGet.response.headers.X-Csrf-Token}}

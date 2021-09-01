@@ -1,21 +1,30 @@
 # syntax = docker/dockerfile:experimental
 
-# Args used in the image names must be defined before respective FROM lines
+# Args used in image names must be defined befrore respecive FROM lines
 # Otherwise the following error will appear: rpc error: code = Unknown desc = invalid reference format
-ARG GO_VERSION=1.15
-ARG CILINT_VERSION=v1.32
+ARG GO_VERSION=1.17
+ARG CILINT_VERSION=v1.42
 
 # Base
 FROM golang:${GO_VERSION}-alpine AS base
 ARG GITHUB_USER_TOKEN
+
+# ROOT_CA_FILE is provided by Jenkins at build-time (since jenkins-pipeline-lib v2.12.0)
+ARG ROOT_CA_FILE=default-root.ca.pem
+# Check ROOT_CA_FILE is not empty (when ROOT_CA_FILE is empty, an entire dir will be copied)
+RUN test -n "${ROOT_CA_FILE}"
+# Add root-CA certificate for DB connection
+COPY "${ROOT_CA_FILE}" /root.ca.pem
+# We expect ROOT_CA_FILE to be a file
+RUN test -f "/root.ca.pem"
 
 RUN apk update && apk upgrade && \
   apk --update add git gcc make ca-certificates musl-dev
 
 # Add a user to run in non-root mode
 RUN mkdir /user && \
-    echo 'nobody:x:65534:65534:nobody:/:' > /user/passwd && \
-    echo 'nobody:x:65534:' > /user/group
+  echo 'nobody:x:65534:65534:nobody:/:' > /user/passwd && \
+  echo 'nobody:x:65534:' > /user/group
 
 WORKDIR /app
 
@@ -41,21 +50,25 @@ RUN --mount=target=. \
   golangci-lint run -v --timeout 10m0s ./...
 
 FROM base AS unit-test
+ARG GO_SVC_TEMPLATE_DB_PORT
+ARG GO_SVC_TEMPLATE_DB_HOST
+ARG GO_SVC_TEMPLATE_DB_SSL_MODE
+ARG GO_SVC_TEMPLATE_TEST_WITH_DB
 # sqlite requires CGO
-ARG GO_SVC_TEMPLATE_DB_PORT=5440
-ARG GO_SVC_TEMPLATE_DB_HOST=172.17.0.1
 ENV CGO_ENABLED=1
+COPY --from=base /root.ca.pem /root.ca.pem
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    GO_SVC_TEMPLATE_DB_PORT=$(GO_SVC_TEMPLATE_DB_PORT) \
-    GO_SVC_TEMPLATE_DB_HOST=$(GO_SVC_TEMPLATE_DB_HOST) \
-    make test-verbose
-
+    make local-test
 
 FROM base AS build
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     make build
+
+############
+### Running
+############
 
 # Distribution
 # `gcr.io/distroless/base:latest` is like `scratch` but Anchore can recognize it (Anchore does not recognize scratch as distro and issues a warning)
@@ -82,10 +95,17 @@ LABEL go-version="$GO_VERSION"
 
 WORKDIR /app
 
+# Note on run-* targets:
+# ARG variables will not work properly when used in:
+# COPY --from "run-${VAR}"
+# ENTRYPOINT "/sth/${VAR}/bin"
+
 FROM run-base AS run
-EXPOSE 8080
+ARG PORT=9000
+EXPOSE $PORT
 LABEL org.label-schema.description="Does this and that"
 LABEL org.label-schema.name="go-svc-template"
-COPY --from=build "/app/go-svc-template" /app
+COPY --from=base /root.ca.pem /root.ca.pem
+COPY --from=build /app/go-svc-template /app
 USER nobody:nobody
 ENTRYPOINT ["/app/go-svc-template"]

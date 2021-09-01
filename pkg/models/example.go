@@ -4,40 +4,59 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jinzhu/gorm"
+	"github.com/jackc/pgconn"
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/gesundheitscloud/go-svc/pkg/db2"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // define error messages
 var (
-	ErrExampleGet         = errors.New("failed getting example")
-	ErrExampleCreation    = errors.New("failed creating example")
-	ErrExampleNotFound    = errors.New("failed finding example")
-	ErrDuplicateAttribute = errors.New("UNIQUE constraint failed: examples.attribute")
+	ErrExampleGet                = errors.New("failed getting example")
+	ErrExampleUpsert             = errors.New("failed upserting example")
+	ErrExampleNotFound           = errors.New("failed finding example")
+	ErrExampleDuplicateAttribute = errors.New("duplicate attribute")
+)
+
+// define messages to identify errors
+const (
+	ErrMsgExampleUniqueAttribute = "UNIQUE constraint failed: examples.attribute"
 )
 
 // Example model
 type Example struct {
-	BaseModel
-	Attribute string `json:"attribute" gorm:"unique"`
+	BaseModelWithoutID
+	Name       string         `json:"name" gorm:"primaryKey;type:varchar(100)"`
+	Attribute  string         `json:"attribute" gorm:"unique"`
+	Parameters datatypes.JSON `json:"parameters,omitempty"`
 }
 
-func (example Example) String() string {
-	return fmt.Sprintf("%s - %s", example.ID, example.Attribute)
+func (e Example) String() string {
+	return fmt.Sprintf("%s - %s", e.Name, e.Attribute)
 }
 
-// Create creates Account object in the Database
-func (example *Example) Create() error {
-	err := db.Get().Create(example).Error
+// Upsert creates/updates an Example object in the Database
+func (e *Example) Upsert() error {
+	err := db2.Get().Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "name"}},
+		DoUpdates: clause.AssignmentColumns([]string{"updated_at", "attribute", "parameters"}),
+	}).Create(e).Error
 
-	if example.ID.String() == "" || err != nil {
-		logging.LogErrorf(err, "")
-		if err.Error() == ErrDuplicateAttribute.Error() {
-			return ErrDuplicateAttribute
+	if err != nil {
+		logging.LogErrorf(err, ErrExampleUpsert.Error())
+		// Identifies Postgres uniqueness violation error
+		if pgErr, isPGErr := err.(*pgconn.PgError); isPGErr {
+			if pgErr.Code == PGUniqueViolationErrorCode {
+				return ErrExampleDuplicateAttribute
+			}
 		}
-		return ErrExampleCreation
+		if err.Error() == ErrMsgExampleUniqueAttribute {
+			return ErrExampleDuplicateAttribute
+		}
+		return ErrExampleUpsert
 	}
 
 	return nil
@@ -45,7 +64,7 @@ func (example *Example) Create() error {
 
 func GetExampleByAttribute(attribute string) (Example, error) {
 	example := &Example{}
-	err := db.Get().First(example, Example{Attribute: attribute}).Error
+	err := db2.Get().First(example, Example{Attribute: attribute}).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return *example, ErrExampleNotFound

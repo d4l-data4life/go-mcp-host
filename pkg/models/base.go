@@ -4,26 +4,42 @@ import (
 	"time"
 
 	uuid "github.com/gofrs/uuid"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
+)
+
+// define messages to indentify errors
+const (
+	// This is the error mesasge of sqlite for foreign key error
+	ErrMsgForeignKeyConstraint = "FOREIGN KEY constraint failed"
+	PGForeignKeyErrorCode      = "23503"
+	PGUniqueViolationErrorCode = "23505"
 )
 
 func MigrationFunc(conn *gorm.DB) error {
 	// use conn.Debug().AutoMigrate(...) to enable debugging
-	return conn.AutoMigrate(&Example{}).Error
+	return conn.AutoMigrate(&Example{})
 }
 
-// BaseModel defines the basic fields for each other model
-type BaseModel struct {
-	ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key;"`
+// BaseModelWithoutID defines the basic fields for each other model
+type BaseModelWithoutID struct {
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+// BaseModel defines the basic fields for each other model
+type BaseModel struct {
+	ID uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;"`
+	BaseModelWithoutID
+}
+
 // BeforeCreate will set a UUID rather than numeric ID.
-func (base *BaseModel) BeforeCreate(scope *gorm.Scope) error {
-	if base.ID == uuid.FromStringOrNil("") {
-		uuid := uuid.Must(uuid.NewV4())
-		return scope.SetColumn("ID", uuid)
+func (base *BaseModel) BeforeCreate(scope *gorm.DB) error {
+	if base.ID == uuid.Nil {
+		uuid, err := uuid.NewV4()
+		if err != nil {
+			return err
+		}
+		base.ID = uuid
 	}
 	return nil
 }

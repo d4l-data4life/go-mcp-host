@@ -11,6 +11,7 @@ import (
 // Executed before test runs in this package (fails otherwise)
 func TestMain(m *testing.M) {
 	config.SetupEnv()
+	config.SetupLogger()
 	if err := config.LoadJWTPublicKey(); err != nil {
 		logging.LogErrorf(err, "error loading JWT public key")
 	}

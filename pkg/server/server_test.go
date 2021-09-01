@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/gesundheitscloud/go-svc-template/internal/testutils"
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/gesundheitscloud/go-svc/pkg/db2"
 )
 
 func TestEndpointProtection(t *testing.T) {
@@ -28,7 +28,7 @@ func TestEndpointProtection(t *testing.T) {
 	}
 
 	server := testutils.GetTestMockServer(t)
-	defer db.Get().Close()
+	defer db2.Close()
 
 	for _, test := range tests {
 		test := test
@@ -55,7 +55,7 @@ func TestMetrics(t *testing.T) {
 	}
 
 	server := testutils.GetTestMockServer(t)
-	defer db.Get().Close()
+	defer db2.Close()
 
 	for _, test := range tests {
 		test := test
@@ -137,7 +137,7 @@ func TestCors(t *testing.T) {
 	}
 
 	server := testutils.GetTestMockServer(t)
-	defer db.Get().Close()
+	defer db2.Close()
 
 	for _, test := range tests {
 		test := test

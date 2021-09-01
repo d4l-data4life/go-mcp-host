@@ -16,12 +16,13 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
 	"github.com/gesundheitscloud/go-svc-template/pkg/server"
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/gesundheitscloud/go-svc/pkg/db2"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
-func CreateExample(attribute string) models.Example {
+func CreateExample(name string, attribute string) models.Example {
 	example := models.Example{
+		Name:      name,
 		Attribute: attribute,
 	}
 	return example
@@ -30,8 +31,8 @@ func CreateExample(attribute string) models.Example {
 // InitDBWithTestExample inits a test db with one registred and one activated account
 func InitDBWithTestExample(t *testing.T) (example models.Example) {
 	models.InitializeTestDB(t)
-	example = CreateExample("test")
-	if err := example.Create(); err != nil {
+	example = CreateExample("test", "test")
+	if err := example.Upsert(); err != nil {
 		logging.LogErrorf(err, "Error in test Setup")
 	}
 	return
@@ -46,7 +47,7 @@ func GetRequestPayload(payload interface{}) io.Reader {
 // GetTestMockServer creates the mocked server for tests
 func GetTestMockServer(t *testing.T) *server.Server {
 	models.InitializeTestDB(t)
-	corsOptions := config.CorsConfig([]string{"localhost", "https://jupyter.alp.local"})
+	corsOptions := config.CorsConfig([]string{"localhost"})
 	srv := server.NewServer("TEST_SERVER", cors.New(corsOptions), 1, 10*time.Second)
 	server.SetupRoutes(srv.Mux())
 	metrics.AddBuildInfoMetric()
@@ -67,7 +68,7 @@ func Track(s string, startTime time.Time) {
 
 // SkipIfNotPostgres skips test on a non-Postgres database
 func SkipIfNotPostgres(t *testing.T) {
-	if db.Get().Dialect().GetName() != "postgres" {
+	if db2.Get().Dialector.Name() != "postgres" {
 		t.Skip("Skipping test on non-Postgres database")
 	}
 }

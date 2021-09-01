@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/gesundheitscloud/go-svc/pkg/db2"
 	"github.com/gesundheitscloud/go-svc/pkg/instrumented"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
@@ -32,23 +32,21 @@ func NewChecksHandler() *ChecksHandler {
 
 // Liveness is a check that describes if the application has started
 func (e *ChecksHandler) Liveness(w http.ResponseWriter, r *http.Request) {
-	WriteHTTPCode(w, http.StatusOK)
-	_, err := w.Write([]byte("OK"))
-	if err != nil {
-		logging.LogErrorf(err, "Error writing OK to response body")
-	}
+	// We use the stricter readiness check also for liveness to make
+	// K8s restart the pod if something is wrong with the DB connection.
+	e.Readiness(w, r)
 }
 
 // Readiness is a check if application can handle requests
 func (e *ChecksHandler) Readiness(w http.ResponseWriter, r *http.Request) {
-	if err := db.Get().DB().Ping(); err != nil {
-		WriteHTTPErrorCode(w, err, http.StatusInternalServerError)
+	if err := db2.Ping(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	WriteHTTPCode(w, http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte("OK"))
 	if err != nil {
-		logging.LogErrorf(err, "Error writing OK to response body")
+		logging.LogErrorfCtx(r.Context(), err, "Error writing OK to response body")
 	}
 }

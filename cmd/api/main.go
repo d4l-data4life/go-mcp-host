@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	"github.com/go-chi/cors"
@@ -12,37 +11,28 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
 	"github.com/gesundheitscloud/go-svc-template/pkg/server"
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/gesundheitscloud/go-svc/pkg/db2"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/gesundheitscloud/go-svc/pkg/standard"
 )
 
 func main() {
 	config.SetupEnv()
-
-	logging.LoggerConfig(
-		logging.ServiceName("go-svc-template"),
-		logging.ServiceVersion(config.Version),
-		logging.Hostname(os.Getenv("HOSTNAME")),
-		logging.PodName(os.Getenv("POD_NAME")),
-		logging.Environment(os.Getenv("ENVIRONMENT")),
-		logging.Debug(viper.GetBool("DEBUG")),
-		logging.HumanReadable(viper.GetBool("HUMAN_READABLE_LOGS")),
+	config.SetupLogger()
+	dbOpts := db2.NewConnection(
+		db2.WithDebug(viper.GetBool("DEBUG")),
+		db2.WithMaxConnectionLifetime(viper.GetDuration("DB_MAX_CONNECTION_LIFETIME")),
+		db2.WithMaxIdleConnections(viper.GetInt("DB_MAX_IDLE_CONNECTIONS")),
+		db2.WithMaxOpenConnections(viper.GetInt("DB_MAX_OPEN_CONNECTIONS")),
+		db2.WithHost(viper.GetString("DB_HOST")),
+		db2.WithPort(viper.GetString("DB_PORT")),
+		db2.WithDatabaseName(viper.GetString("DB_NAME")),
+		db2.WithUser(viper.GetString("DB_USER")),
+		db2.WithPassword(viper.GetString("DB_PASS")),
+		db2.WithSSLMode(viper.GetString("DB_SSL_MODE")),
+		db2.WithMigrationFunc(models.MigrationFunc),
 	)
-	dbOpts := db.NewConnection(
-		db.WithDebug(viper.GetBool("DEBUG")),
-		db.WithMaxConnectionLifetime(viper.GetDuration("DB_MAX_CONNECTION_LIFETIME")),
-		db.WithMaxIdleConnections(viper.GetInt("DB_MAX_IDLE_CONNECTIONS")),
-		db.WithMaxOpenConnections(viper.GetInt("DB_MAX_OPEN_CONNECTIONS")),
-		db.WithHost(viper.GetString("DB_HOST")),
-		db.WithPort(viper.GetString("DB_PORT")),
-		db.WithDatabaseName(viper.GetString("DB_NAME")),
-		db.WithUser(viper.GetString("DB_USER")),
-		db.WithPassword(viper.GetString("DB_PASS")),
-		db.WithSSLMode(viper.GetString("DB_SSL_MODE")),
-		db.WithMigrationFunc(models.MigrationFunc),
-	)
-	standard.Main(mainAPI, "go-svc-template", standard.WithPostgres(dbOpts))
+	standard.Main(mainAPI, "go-svc-template", standard.WithPostgresDB2(dbOpts))
 }
 
 // mainAPI contains the main service logic - it must finish on runCtx cancelation!

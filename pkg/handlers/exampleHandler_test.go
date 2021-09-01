@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,7 +14,7 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/internal/testutils"
 	"github.com/gesundheitscloud/go-svc-template/pkg/handlers"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/gesundheitscloud/go-svc/pkg/db2"
 )
 
 func TestRoutesConsent(t *testing.T) {
@@ -32,7 +33,7 @@ func TestExampleHandler_GetExampleByAttribute(t *testing.T) {
 		{"success", example.Attribute, example, http.StatusOK},
 		{"not found", "random", models.Example{}, http.StatusNotFound},
 	}
-	defer db.Get().Close()
+	defer db2.Close()
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -50,6 +51,39 @@ func TestExampleHandler_GetExampleByAttribute(t *testing.T) {
 				assert.NoError(t, err, "should not error on decode")
 				assert.Equal(t, tt.expectedExample.String(), result.String(), "should return expected example")
 			}
+		})
+	}
+}
+
+func TestExampleHandler_UpsertExample(t *testing.T) {
+	example := testutils.InitDBWithTestExample(t)
+	defer db2.Close()
+	tests := []struct {
+		name       string
+		body       io.Reader
+		statusCode int
+	}{
+		{"Create", testutils.GetRequestPayload(models.Example{
+			Name:      "newName",
+			Attribute: "newAttribute",
+		}), 204},
+		{"Update", testutils.GetRequestPayload(models.Example{
+			Name:      "newName",
+			Attribute: "otherAttribute",
+		}), 204},
+		{"Duplicate", testutils.GetRequestPayload(models.Example{
+			Name:      "someName",
+			Attribute: example.Attribute,
+		}), 409},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			e := &handlers.ExampleHandler{}
+			request, _ := http.NewRequest("method", "url", tt.body)
+			writer := httptest.NewRecorder()
+			e.UpsertExample(writer, request)
+			assert.Equal(t, tt.statusCode, writer.Code)
 		})
 	}
 }

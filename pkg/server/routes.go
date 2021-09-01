@@ -20,31 +20,26 @@ func SetupRoutes(mux *chi.Mux) {
 	exampleHandler := handlers.NewExampleHandler()
 
 	handlerFactory := handlers.GetHandlerFactory()
-	xsrfHandler := middlewares.NewXSRFHandler(viper.GetString("XSRF_SECRET"), viper.GetString("XSRF_HEADER"), handlerFactory)
 	authMiddleware := middlewares.NewAuth(viper.GetString("SERVICE_SECRET"), config.PublicKey, handlerFactory)
-	xsrfMiddleware := middlewares.NewXSRF(viper.GetString("XSRF_SECRET"), viper.GetString("XSRF_HEADER"), handlerFactory)
 
 	// no auth
 	mux.Mount("/checks", ch.Routes())
 	mux.Mount("/metrics", promhttp.Handler())
 
 	mux.
-		With(middlewares.Trace, logging.Logger().HTTPMiddleware()).
+		With(middlewares.Trace).
 		Route(config.APIPrefixV1, func(r chi.Router) {
 			// Auth: none
-			r.Mount("/example", exampleHandler.PublicRoutes())
+			r.With(RequestLogger()).
+				Mount("/public/example", exampleHandler.PublicRoutes())
 
 			// Auth: JWT
-			r.With(authMiddleware.JWT).
-				Mount("/xsrf", xsrfHandler.Routes())
+			r.With(authMiddleware.JWT, RequestLogger()).
+				Mount("/example", exampleHandler.Routes())
 
 			// Auth: service secret
-			r.With(authMiddleware.ServiceSecret).
+			r.With(authMiddleware.ServiceSecret, RequestLogger()).
 				Mount("/internal/example", exampleHandler.InternalRoutes())
-
-			// Auth: JWT + XSRF Protection
-			r.With(authMiddleware.JWT, xsrfMiddleware.XSRF).
-				Mount("/settings", exampleHandler.Routes())
 		})
 
 	// Displays all API paths in when debug enabled

@@ -7,6 +7,8 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
+
+	"github.com/gesundheitscloud/go-svc/pkg/middlewares"
 )
 
 // Server wraps a chi router (chi.Mux)
@@ -30,6 +32,7 @@ func (s *Server) configMux() *chi.Mux {
 		middleware.RealIP,
 		middleware.Timeout(s.timeout),
 		middleware.Throttle(s.maxParallelProcesses),
+		middlewares.UrlValidator,
 	)
 	return s.mux
 }

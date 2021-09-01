@@ -8,8 +8,8 @@ servers:
     description: GO_SVC_TEMPLATE RESTful(ish)Api
 
 tags:
-  - name: "Accounts"
-    description: "Everything about accounts"
+  - name: "Examples"
+    description: "Everything about examples"
 
 components:
   securitySchemes:
@@ -27,35 +27,86 @@ components:
       description: Service to Service secret authentication
 
   schemas:
-    Account:
+    Example:
       type: object
       properties:
-        id:
+        name:
           type: string
-          format: uuid
+        attribute:
+          type: string
       required:
-        - id
+        - name
+        - attribute
 
 paths:
-  /accounts/{id}:
+  /public/example/{attribute}:
     get:
       tags:
-        - "Accounts"
-      summary: Get the account of the given id
+        - "Example"
+      summary: Get the example with the given attribute
       parameters:
-        - name: id
+        - name: attribute
           in: path
           required: true
-          description: id of the requested account
+          description: requested attribute
           schema:
             type: string
             format: uuid
       responses:
         "200":
-          description: OK, if the account was found
+          description: OK, if the example with given attribute was found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Account'
+                $ref: '#/components/schemas/Example'
+        "404":
+          description: NOT FOUND, if the consent was not found
+
+  /internal/example/:
+    post:
+      tags:
+        - "Example"
+      security:
+        - ServiceAuth: []
+      summary: Upsert example
+      requestBody:
+        description: Request to add a program
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Program"
+      responses:
+        "204":
+          description: NO CONTENT, if the bearer token, progrmam name and program are valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Example'
+        "409":
+          description: Conflict, if the given attribute already exists
+
+  /example/{attribute}:
+    get:
+      tags:
+        - "Example"
+      security:
+        - BearerToken: []
+      summary: Get the example with the given attribute
+      parameters:
+        - name: attribute
+          in: path
+          required: true
+          description: requested attribute
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK, if the example with given attribute was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Example'
         "404":
           description: NOT FOUND, if the consent was not found

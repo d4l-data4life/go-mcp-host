@@ -1,36 +1,41 @@
 package models_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/gesundheitscloud/go-svc-template/internal/testutils"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/gesundheitscloud/go-svc/pkg/db2"
 )
 
-func TestExample_Create(t *testing.T) {
+func TestExample_Upsert(t *testing.T) {
 	example := testutils.InitDBWithTestExample(t)
 	tests := []struct {
-		name      string
-		attribute string
-		wantErr   bool
+		name        string
+		exampleName string
+		attribute   string
+		err         error
 	}{
-		{"Create complete", "random", false},
-		{"Duplicate attribute", example.Attribute, true},
+		{"Create", "test1", "random", nil},
+		{"Update", "test1", "random2", nil},
+		{"Duplicate attribute", "test2", example.Attribute, models.ErrExampleDuplicateAttribute},
 	}
-	defer db.Get().Close()
+	defer db2.Close()
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			example := testutils.CreateExample(tt.attribute)
-			if err := example.Create(); (err != nil) != tt.wantErr {
-				t.Errorf("Example.Create() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !tt.wantErr {
+			example := testutils.CreateExample(tt.exampleName, tt.attribute)
+			err := example.Upsert()
+
+			if tt.err == nil {
+				assert.NoError(t, err, "Upsert() shouldn't return an error")
 				_, err := models.GetExampleByAttribute(tt.attribute)
 				assert.NoError(t, err, "No error should be returned")
+			} else {
+				assert.Truef(t, errors.Is(err, tt.err), "Upsert() returns wrong error %v != %v", err, tt.err)
 			}
 		})
 	}
@@ -44,9 +49,9 @@ func TestGetExampleByAttribute(t *testing.T) {
 		wantErr bool
 	}{
 		{"activated account", example, false},
-		{"not found", testutils.CreateExample("something"), true},
+		{"not found", testutils.CreateExample("something", "something"), true},
 	}
-	defer db.Get().Close()
+	defer db2.Close()
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {

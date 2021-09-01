@@ -20,7 +20,7 @@ USER=$(shell whoami)
 BINARY=go-svc-template
 
 # Go Variables
-CILINT_VERSION := v1.32
+CILINT_VERSION := v1.42
 PKG=github.com/gesundheitscloud/go-svc-template/pkg/config
 LDFLAGS="-X '$(PKG).Version=$(APP_VERSION)' -X '$(PKG).Commit=$(COMMIT)' -X '$(PKG).Branch=$(BRANCH)' -X '$(PKG).BuildUser=$(USER)'"
 GOCMD=go
@@ -32,17 +32,19 @@ DUMMY_SECRET=very-secure-secret
 define LOCAL_VARIABLES
 GO_SVC_TEMPLATE_VEGA_JWT_PUBLIC_KEY_PATH=$(PUBLIC_KEY_PATH) \
 GO_SVC_TEMPLATE_SERVICE_SECRET=$(DUMMY_SECRET) \
-GO_SVC_TEMPLATE_TEST_WITH_DB=false
+GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true \
+GO_SVC_TEMPLATE_TEST_WITH_DB=true \
+GO_SVC_TEMPLATE_DB_SSL_MODE=disable
 endef
 
 # Docker Variables
 DOCKER_REGISTRY ?= phdp-snapshots.hpsgc.de
 DOCKER_IMAGE=$(DOCKER_REGISTRY)/$(BINARY)
 CONTAINER_NAME=$(BINARY)
-PORT=8080
+PORT=9000
 DB_IMAGE=postgres
 DB_CONTAINER_NAME=$(BINARY)-postgres
-DB_PORT=5440
+DB_PORT=6000
 
 # Deploy variables
 APP ?= $(BINARY)
@@ -57,7 +59,7 @@ NAMESPACE ?= default
 
 .PHONY: help
 help:               ## Show this help (default)
-	@grep -E '^[a-zA-Z._-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^([[:graph:]]+[[:space:]]*)+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: version
 version:              ## Display current version
@@ -67,8 +69,8 @@ version:              ## Display current version
 ## Mandatory for PHDP Jenkins
 ## ----------------------------------------------------------------------
 
-.PHONY: write-build-info ## Persist build parameters that require git
-write-build-info:
+.PHONY: write-build-info
+write-build-info: ## Persist build parameters that require git
 	@echo "$(APP_VERSION)" > VERSION
 	@echo "$(COMMIT)" > COMMIT
 	@echo "$(BRANCH)" > BRANCH
@@ -94,9 +96,12 @@ unit-test-postgres: docker-database unit-test docker-database-delete         ## 
 unit-test:          ## Run unit tests inside the Docker image
 	DOCKER_BUILDKIT=1 \
 	docker build \
+		--build-arg CILINT_VERSION=${CILINT_VERSION} \
 		--build-arg GITHUB_USER_TOKEN \
 		--build-arg GO_SVC_TEMPLATE_DB_PORT=$(DB_PORT) \
 		--build-arg GO_SVC_TEMPLATE_DB_HOST=172.17.0.1 \
+		--build-arg GO_SVC_TEMPLATE_DB_SSL_MODE=disable \
+		--build-arg GO_SVC_TEMPLATE_TEST_WITH_DB=true \
 		-t $(DOCKER_IMAGE):test \
 		-f build/Dockerfile \
 		--target unit-test \
@@ -156,12 +161,12 @@ helm-deploy:   ## Deploy to kubernetes using Helm
 .PHONY: local-test lt
 local-test lt:      ## Run tests natively
 	$(LOCAL_VARIABLES) \
-	$(GOTEST) -timeout 15s -cover -covermode=atomic ./...
+	$(GOTEST) -timeout 45s -cover -covermode=atomic ./...
 
 .PHONY: test-verbose
 test-verbose:       ## Run tests natively in verbose mode
 	$(LOCAL_VARIABLES) \
-	$(GOTEST) -timeout 15s -cover -covermode=atomic -v ./...
+	$(GOTEST) -timeout 45s -cover -covermode=atomic -v ./...
 
 .PHONY: vendor
 vendor:             ## Download and tidy go depenencies
@@ -182,6 +187,10 @@ docker-database:    ## Run database in Docker
 		-e POSTGRES_DB=go-svc-template \
 		-e POSTGRES_PASSWORD=postgres \
 		-p $(DB_PORT):5432 $(DB_IMAGE)
+	@until docker container exec -t $(DB_CONTAINER_NAME) pg_isready; do \
+		>&2 echo "Postgres is unavailable - waiting for it... 😴"; \
+		sleep 1; \
+	done
 
 .PHONY: docker-database-delete
 docker-database-delete: ## Delete database in Docker
@@ -198,7 +207,9 @@ docker-run dr:      ## Run app in Docker. Configure connection to a DB using GO_
 	docker run --name $(CONTAINER_NAME) -t -d \
 		-e GO_SVC_TEMPLATE_DB_PORT=$(DB_PORT) \
 		-e GO_SVC_TEMPLATE_DB_HOST=host.docker.internal \
+		-e GO_SVC_TEMPLATE_DB_SSL_MODE=disable \
 		-e GO_SVC_TEMPLATE_SERVICE_SECRET=$(DUMMY_SECRET) \
+		-e GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true \
 		--mount type=bind,source=$$(pwd)/test-keys,target=/keys \
 		-p $(PORT):$(PORT) \
 		$(DOCKER_IMAGE):$(APP_VERSION)
@@ -216,5 +227,4 @@ local-delete ld:    ## Delete local helm deployment
 .PHONY: docker-prune
 docker-prune:       ## Delete local docker images of this repo except for the current version
 	docker images | grep $(DOCKER_IMAGE) | grep -v $(APP_VERSION) | awk '{print $$3}' | xargs docker rmi -f
-	# Removes all exited docker containers
 	docker ps --quiet --all --filter status=exited | xargs docker rm
