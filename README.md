@@ -26,12 +26,25 @@ This is the backend service providing providing some functionality.
 
 ## Building, Running, Testing
 
+The Makefile provides a lot of helpful commands, to see a list run `make help`.
+
+### Local execution
+
 ```bash
 export GITHUB_USER_TOKEN=<your-GH-API-token>
 make build
 make run
 make test
 ```
+
+## Docker builds
+
+- connect to VPN
+- login to nexus docker images repository using your nexus credentials
+    ```
+    docker login phdp-snapshots.hpsgc.de
+    ```
+- run docker commands from makefile
 
 ### Test Execution in VSCode
 

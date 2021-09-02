@@ -2,11 +2,15 @@
 
 # Args used in image names must be defined befrore respecive FROM lines
 # Otherwise the following error will appear: rpc error: code = Unknown desc = invalid reference format
+
+# Providing local IMG_BASE allows to save on API calls to Dockerhub (these are limited)
+# Set empty to use the upstream
+ARG IMG_BASE=phdp-snapshots.hpsgc.de/
 ARG GO_VERSION=1.17
 ARG CILINT_VERSION=v1.42
 
 # Base
-FROM golang:${GO_VERSION}-alpine AS base
+FROM ${IMG_BASE}golang:${GO_VERSION}-alpine AS base
 ARG GITHUB_USER_TOKEN
 
 # ROOT_CA_FILE is provided by Jenkins at build-time (since jenkins-pipeline-lib v2.12.0)
@@ -39,7 +43,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
   go mod download
 COPY . .
 
-FROM golangci/golangci-lint:${CILINT_VERSION} AS lint-base
+FROM ${IMG_BASE}golangci/golangci-lint:${CILINT_VERSION} AS lint-base
 
 FROM base AS lint
 RUN --mount=target=. \
