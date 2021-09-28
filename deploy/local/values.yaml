@@ -1,6 +1,6 @@
 environment: local
 APP:
-  GO_SVC_TEMPLATE_DEBUG: true
-  GO_SVC_TEMPLATE_CORS_HOSTS: '*'
+  DEBUG: true
+  CORS_HOSTS: '*'
 IP_WHITELIST: 0.0.0.0/0
 deployBackendMocks: true

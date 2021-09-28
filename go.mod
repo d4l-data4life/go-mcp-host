@@ -3,14 +3,12 @@ module github.com/gesundheitscloud/go-svc-template
 go 1.17
 
 require (
-	github.com/gesundheitscloud/go-svc v1.19.0
+	github.com/gesundheitscloud/go-svc v1.22.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/render v1.0.1
 	github.com/gofrs/uuid v4.0.0+incompatible
-	github.com/golang-jwt/jwt/v4 v4.0.0
 	github.com/jackc/pgconn v1.10.0
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
@@ -27,6 +25,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-redis/redis/v8 v8.11.2 // indirect
 	github.com/go-redis/redismock/v8 v8.0.6 // indirect
+	github.com/golang-jwt/jwt/v4 v4.0.0 // indirect
 	github.com/golang-migrate/migrate/v4 v4.14.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -48,6 +47,7 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.30.0 // indirect

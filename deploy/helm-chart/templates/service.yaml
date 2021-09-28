@@ -12,5 +12,5 @@ spec:
   ports:
   - protocol: TCP
     port: 80
-    targetPort: {{ .Values.APP.GO_SVC_TEMPLATE_PORT }}
+    targetPort: {{ .Values.APP.PORT }}
   type: ClusterIP

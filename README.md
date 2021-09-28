@@ -61,7 +61,6 @@ To run the tests in VSCode the environment variables have to be provided.
 #### `.vscode/.env`
 
 ```bash
-GO_SVC_TEMPLATE_VEGA_JWT_PUBLIC_KEY_PATH=<path/to/repo>/go-svc-template/test-keys/jwtpublickey.pem
 GO_SVC_TEMPLATE_SERVICE_SECRET=very-secure-secret
 GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true
 GO_SVC_TEMPLATE_TEST_WITH_DB=false

@@ -1,5 +1,0 @@
-environment: staging
-APP:
-  GO_SVC_TEMPLATE_DEBUG: false
-  GO_SVC_TEMPLATE_CORS_HOSTS: https://app-staging.data4life.care
-  GO_SVC_TEMPLATE_TLS_CERT_SECRET_NAME: tls-data4life.care

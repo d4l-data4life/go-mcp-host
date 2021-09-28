@@ -1,15 +1,11 @@
 package config
 
 import (
-	"crypto/rsa"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"runtime"
 
 	"github.com/go-chi/cors"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
@@ -64,8 +60,6 @@ const (
 
 	// ##### AUTHENTICATION VARIABLES
 
-	// DefaultJWTPublicKeyPath default JWT Public Key path
-	DefaultJWTPublicKeyPath = "/keys/jwtpublickey.pem"
 	// DefaultAuthHeaderName defines the name of the auth header
 	DefaultAuthHeaderName = "Authorization"
 	// DefaultServiceSecret is a secret used to authenticate requests from other services
@@ -110,7 +104,6 @@ func SetupEnv() {
 	bindEnvVariable("DB_SSL_MODE", DefaultDBSSLMode)
 	bindEnvVariable("TEST_WITH_DB", DefaultTestWithDB)
 	// Authentication
-	bindEnvVariable("VEGA_JWT_PUBLIC_KEY_PATH", DefaultJWTPublicKeyPath)
 	bindEnvVariable("AUTH_HEADER_NAME", DefaultAuthHeaderName)
 	bindEnvVariable("SERVICE_SECRET", DefaultServiceSecret)
 }
@@ -126,23 +119,6 @@ func SetupLogger() {
 		logging.Debug(viper.GetBool("DEBUG")),
 		logging.HumanReadable(viper.GetBool("HUMAN_READABLE_LOGS")),
 	)
-}
-
-// PublicKey is the key used to verify JWTs
-var PublicKey *rsa.PublicKey
-
-// LoadJWTPublicKey returns the key used to verify JWTs
-func LoadJWTPublicKey() error {
-	publicKeyPath := viper.GetString("VEGA_JWT_PUBLIC_KEY_PATH")
-	publicBytes, err := ioutil.ReadFile(publicKeyPath)
-	if err != nil {
-		return errors.Wrapf(err, "failed to read public key")
-	}
-	PublicKey, err = jwt.ParseRSAPublicKeyFromPEM(publicBytes)
-	if err != nil {
-		return errors.Wrapf(err, "failed to parse public key")
-	}
-	return nil
 }
 
 // CorsConfig stores default configuration for CORS middleware

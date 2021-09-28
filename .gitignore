@@ -25,3 +25,6 @@ deploy/helm-chart/Chart.yaml
 BRANCH
 COMMIT
 VERSION
+
+# dynamically updated config files
+test-config/

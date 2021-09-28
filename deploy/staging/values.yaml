@@ -1,0 +1,5 @@
+environment: staging
+APP:
+  DEBUG: false
+  CORS_HOSTS: https://app-staging.data4life.care
+  TLS_CERT_SECRET_NAME: tls-data4life.care

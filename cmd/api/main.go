@@ -12,6 +12,7 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
 	"github.com/gesundheitscloud/go-svc-template/pkg/server"
 	"github.com/gesundheitscloud/go-svc/pkg/db2"
+	"github.com/gesundheitscloud/go-svc/pkg/dynamic"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/gesundheitscloud/go-svc/pkg/standard"
 )
@@ -48,11 +49,21 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 	dieEarly := make(chan struct{})
 	defer close(dieEarly)
 
-	if err := config.LoadJWTPublicKey(); err != nil {
-		logging.LogErrorfCtx(runCtx, err, "error loading JWT public key")
+	logging.LogInfofCtx(runCtx, "loading viper config from a configMap...")
+	vc := dynamic.NewViperConfig("shared-config",
+		dynamic.WithConfigFilePaths("/etc/config", "/etc/shared-config", "./test-config"), // first match will be used
+		dynamic.WithConfigFileName("config"),
+		dynamic.WithConfigFormat("yaml"),
+		dynamic.WithAutoBootstrap(true),
+		dynamic.WithWatchChanges(true),
+		dynamic.WithViperVerbose(viper.GetBool("DEBUG")),
+		dynamic.WithDefaultLogger(logging.Logger()),
+	)
+	if vc.Error != nil {
+		logging.LogErrorfCtx(runCtx, vc.Error, "failed bootstrapping ViperConfig")
 		return dieEarly
 	}
-	server.SetupRoutes(srv.Mux())
+	server.SetupRoutes(srv.Mux(), vc)
 	metrics.AddBuildInfoMetric()
 	return standard.ListenAndServe(runCtx, srv.Mux(), port)
 }

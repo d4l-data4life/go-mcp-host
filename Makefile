@@ -21,6 +21,8 @@ BINARY=go-svc-template
 
 # Go Variables
 CILINT_VERSION := v1.42
+GO_VERSION := 1.17
+
 PKG=github.com/gesundheitscloud/go-svc-template/pkg/config
 LDFLAGS="-X '$(PKG).Version=$(APP_VERSION)' -X '$(PKG).Commit=$(COMMIT)' -X '$(PKG).Branch=$(BRANCH)' -X '$(PKG).BuildUser=$(USER)'"
 GOCMD=go
@@ -49,7 +51,7 @@ DB_PORT=6000
 # Deploy variables
 APP ?= $(BINARY)
 KUBECONFIG ?= $(HOME)/.kube/config
-ENV_YAML ?= "$(shell pwd)/deploy/config/local.yaml"
+VALUES_YAML ?= "$(shell pwd)/deploy/local/values.yaml"
 SECRETS_YAML ?= "$(shell pwd)/deploy/local/secrets.yaml"
 NAMESPACE ?= default
 
@@ -96,6 +98,7 @@ unit-test-postgres: docker-database unit-test docker-database-delete         ## 
 unit-test:          ## Run unit tests inside the Docker image
 	DOCKER_BUILDKIT=1 \
 	docker build \
+		--build-arg GO_VERSION=$(GO_VERSION) \
 		--build-arg CILINT_VERSION=${CILINT_VERSION} \
 		--build-arg GITHUB_USER_TOKEN \
 		--build-arg GO_SVC_TEMPLATE_DB_PORT=$(DB_PORT) \
@@ -111,6 +114,7 @@ unit-test:          ## Run unit tests inside the Docker image
 lint:
 	DOCKER_BUILDKIT=1 \
 	docker build \
+		--build-arg GO_VERSION=$(GO_VERSION) \
 		--build-arg CILINT_VERSION=${CILINT_VERSION} \
 		--build-arg GITHUB_USER_TOKEN \
 		-t "$(DOCKER_IMAGE):lint" \
@@ -122,6 +126,7 @@ lint:
 docker-build db: write-build-info    ## Build Docker image
 	DOCKER_BUILDKIT=1 \
 	docker build \
+		--build-arg GO_VERSION=$(GO_VERSION) \
 		--build-arg GITHUB_USER_TOKEN \
 		-t $(DOCKER_IMAGE):$(APP_VERSION) \
 		-f build/Dockerfile \
@@ -147,7 +152,7 @@ reload:   ## Reloads configuration - currently: gracefully restarts K8s deployme
 helm-deploy:   ## Deploy to kubernetes using Helm
 	sed -e 's/<github_release>/$(APP_VERSION)/g' deploy/helm-chart/Chart.versionless.yaml > deploy/helm-chart/Chart.yaml
 	helm upgrade --install $(APP) \
-		-f $(ENV_YAML) \
+		-f $(VALUES_YAML) \
 		-f $(SECRETS_YAML) \
 		--namespace $(NAMESPACE) \
 		--set imageTag=$(DOCKER_IMAGE):$(APP_VERSION) \
@@ -159,30 +164,30 @@ helm-deploy:   ## Deploy to kubernetes using Helm
 ## ----------------------------------------------------------------------
 
 .PHONY: local-test lt
-local-test lt:      ## Run tests natively
+local-test lt: ## Run tests natively
 	$(LOCAL_VARIABLES) \
 	$(GOTEST) -timeout 45s -cover -covermode=atomic ./...
 
 .PHONY: test-verbose
-test-verbose:       ## Run tests natively in verbose mode
+test-verbose: ## Run tests natively in verbose mode
 	$(LOCAL_VARIABLES) \
 	$(GOTEST) -timeout 45s -cover -covermode=atomic -v ./...
 
 .PHONY: vendor
-vendor:             ## Download and tidy go depenencies
+vendor: ## Download and tidy go depenencies
 	@go mod tidy
 
 .PHONY: build
-build:              ## Build app
+build: ## Build app
 	$(GOBUILD) -o $(BINARY) $(SRC)
 
 .PHONY: run
-run:                ## Run app natively
+run: config-download ## Run app natively
 	$(LOCAL_VARIABLES) \
 	$(GOCMD) run $(SRC)
 
 .PHONY: docker-database
-docker-database:    ## Run database in Docker
+docker-database: ## Run database in Docker
 	docker run --name $(DB_CONTAINER_NAME) -d \
 		-e POSTGRES_DB=go-svc-template \
 		-e POSTGRES_PASSWORD=postgres \
@@ -197,7 +202,7 @@ docker-database-delete: ## Delete database in Docker
 	-docker rm -f $(DB_CONTAINER_NAME)
 
 .PHONY: docker-run dr
-docker-run dr:      ## Run app in Docker. Configure connection to a DB using GO_SVC_TEMPLATE_DB_HOST and GO_SVC_TEMPLATE_DB_PORT
+docker-run dr: config-download ## Run app in Docker. Configure connection to a DB using GO_SVC_TEMPLATE_DB_HOST and GO_SVC_TEMPLATE_DB_PORT
 	-DOCKER_BUILDKIT=1 \
 	docker run --name $(DB_CONTAINER_NAME) -d \
 		-e POSTGRES_DB=go-svc-template \
@@ -210,7 +215,7 @@ docker-run dr:      ## Run app in Docker. Configure connection to a DB using GO_
 		-e GO_SVC_TEMPLATE_DB_SSL_MODE=disable \
 		-e GO_SVC_TEMPLATE_SERVICE_SECRET=$(DUMMY_SECRET) \
 		-e GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true \
-		--mount type=bind,source=$$(pwd)/test-keys,target=/keys \
+		--mount type=bind,source=$$(pwd)/test-config,target=/etc/shared-config \
 		-p $(PORT):$(PORT) \
 		$(DOCKER_IMAGE):$(APP_VERSION)
 
@@ -228,3 +233,9 @@ local-delete ld:    ## Delete local helm deployment
 docker-prune:       ## Delete local docker images of this repo except for the current version
 	docker images | grep $(DOCKER_IMAGE) | grep -v $(APP_VERSION) | awk '{print $$3}' | xargs docker rmi -f
 	docker ps --quiet --all --filter status=exited | xargs docker rm
+
+.PHONY: config-download
+config-download:  ## download the JWT config file from k8s DEV
+	@kubectl config use-context phdp-dev
+	@mkdir -p test-config
+	kubectl get cm shared-config -o jsonpath='{.data.config\.yaml}' > ./test-config/config.yaml

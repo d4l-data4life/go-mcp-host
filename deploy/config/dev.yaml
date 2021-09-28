@@ -1,5 +1,0 @@
-environment: dev
-APP:
-  GO_SVC_TEMPLATE_DEBUG: true
-  GO_SVC_TEMPLATE_CORS_HOSTS: https://app-phdp-dev.hpsgc.de https://localhost:3000
-  GO_SVC_TEMPLATE_TLS_CERT_SECRET_NAME: tls-hpsgc.de

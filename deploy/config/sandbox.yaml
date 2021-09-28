@@ -1,5 +1,0 @@
-environment: sandbox
-APP:
-  GO_SVC_TEMPLATE_DEBUG: false
-  GO_SVC_TEMPLATE_CORS_HOSTS: https://app-phdp-sandbox.hpsgc.de
-  GO_SVC_TEMPLATE_TLS_CERT_SECRET_NAME: tls-hpsgc.de

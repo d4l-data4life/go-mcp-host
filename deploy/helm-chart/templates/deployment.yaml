@@ -24,7 +24,7 @@ spec:
         image: "{{ .Values.imageTag }}"
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: {{ .Values.APP.GO_SVC_TEMPLATE_PORT }}
+        - containerPort: {{ .Values.APP.PORT }}
         resources:
           requests:
             memory: "128Mi"
@@ -62,29 +62,28 @@ spec:
               name: {{ .Chart.Name }}-secrets
               key: go-svc-template-secret
         {{- range $key, $value := .Values.APP }}
-        - name: {{ $key }}
+        - name: GO_SVC_TEMPLATE_{{ $key }}
           value: "{{ $value }}"
         {{- end }}
         livenessProbe:
           httpGet:
             path: /checks/liveness
-            port: {{ .Values.APP.GO_SVC_TEMPLATE_PORT }}
+            port: {{ .Values.APP.PORT }}
           initialDelaySeconds: 10
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /checks/readiness
-            port: {{ .Values.APP.GO_SVC_TEMPLATE_PORT }}
+            port: {{ .Values.APP.PORT }}
           initialDelaySeconds: 10
           periodSeconds: 20
         volumeMounts:
-        - mountPath: /keys/jwtpublickey.pem
-          subPath: jwtpublickey.pem
-          name: public-key
+        - name: shared-config
+          mountPath: /etc/shared-config
           readOnly: true
       imagePullSecrets:
       - name: gesundheitscloud-regsecret
       volumes:
-        - name: public-key
-          secret:
-            secretName: {{ .Chart.Name }}-jwt-publickey-vega
+        - name: shared-config
+          configMap:
+            name: shared-config

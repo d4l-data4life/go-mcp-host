@@ -15,12 +15,13 @@ import (
 )
 
 // SetupRoutes adds all routes that the server should listen to
-func SetupRoutes(mux *chi.Mux) {
+func SetupRoutes(mux *chi.Mux, vc middlewares.JWTPublicKeysProvider) {
 	ch := handlers.NewChecksHandler()
 	exampleHandler := handlers.NewExampleHandler()
 
 	handlerFactory := handlers.GetHandlerFactory()
-	authMiddleware := middlewares.NewAuth(viper.GetString("SERVICE_SECRET"), config.PublicKey, handlerFactory)
+	authMiddleware := middlewares.NewAuthentication(viper.GetString("SERVICE_SECRET"),
+		middlewares.AuthWithPublicKeyProvider(vc), handlerFactory)
 
 	// no auth
 	mux.Mount("/checks", ch.Routes())

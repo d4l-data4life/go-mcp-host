@@ -1,0 +1,5 @@
+environment: dev
+APP:
+  DEBUG: true
+  CORS_HOSTS: https://app-phdp-dev.hpsgc.de https://localhost:3000
+  TLS_CERT_SECRET_NAME: tls-hpsgc.de
