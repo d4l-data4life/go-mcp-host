@@ -2,5 +2,4 @@ environment: prod
 APP:
   DEBUG: false
   CORS_HOSTS: https://app.data4life.care
-  TLS_CERT_SECRET_NAME: tls-data4life.care
 REPLICAS: 3

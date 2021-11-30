@@ -43,6 +43,8 @@ const (
 
 	// ##### DATABASE VARIABLES
 
+	// MigrationVersion determines which migration should be executed
+	MigrationVersion = 1
 	// DefaultDBHost default host for the database connection
 	DefaultDBHost = "localhost"
 	// DefaultDBPort default port for the database connnection

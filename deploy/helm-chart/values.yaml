@@ -2,7 +2,6 @@ APP:
   DEBUG: false
   DEBUG_CORS: false
   HOST: "ENV DEPENDENT"
-  TLS_CERT_SECRET_NAME: "ENV DEPENDENT"
   PORT: 9000
   CORS_HOSTS: "ENV DEPENDENT"
 DB_CONFIGMAP: go-svc-template-db-connection

@@ -32,6 +32,7 @@ func main() {
 		db2.WithPassword(viper.GetString("DB_PASS")),
 		db2.WithSSLMode(viper.GetString("DB_SSL_MODE")),
 		db2.WithMigrationFunc(models.MigrationFunc),
+		db2.WithMigrationVersion(config.MigrationVersion),
 	)
 	standard.Main(mainAPI, "go-svc-template", standard.WithPostgresDB2(dbOpts))
 }

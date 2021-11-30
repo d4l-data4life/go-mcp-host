@@ -2,4 +2,3 @@ environment: sandbox
 APP:
   DEBUG: false
   CORS_HOSTS: https://app-phdp-sandbox.hpsgc.de
-  TLS_CERT_SECRET_NAME: tls-hpsgc.de
