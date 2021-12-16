@@ -57,8 +57,6 @@ const (
 	DefaultDBPassword = "postgres"
 	// DefaultDBSSLMode default port for the database connnection
 	DefaultDBSSLMode = "disable"
-	// DefaultTestWithDB defines whether the tests run with DB or sqlite
-	DefaultTestWithDB = true
 
 	// ##### AUTHENTICATION VARIABLES
 
@@ -104,7 +102,6 @@ func SetupEnv() {
 	bindEnvVariable("DB_USER", DefaultDBUser)
 	bindEnvVariable("DB_PASS", DefaultDBPassword)
 	bindEnvVariable("DB_SSL_MODE", DefaultDBSSLMode)
-	bindEnvVariable("TEST_WITH_DB", DefaultTestWithDB)
 	// Authentication
 	bindEnvVariable("AUTH_HEADER_NAME", DefaultAuthHeaderName)
 	bindEnvVariable("SERVICE_SECRET", DefaultServiceSecret)

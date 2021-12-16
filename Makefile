@@ -35,7 +35,6 @@ define LOCAL_VARIABLES
 GO_SVC_TEMPLATE_VEGA_JWT_PUBLIC_KEY_PATH=$(PUBLIC_KEY_PATH) \
 GO_SVC_TEMPLATE_SERVICE_SECRET=$(DUMMY_SECRET) \
 GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true \
-GO_SVC_TEMPLATE_TEST_WITH_DB=true \
 GO_SVC_TEMPLATE_DB_SSL_MODE=disable
 endef
 
@@ -104,7 +103,6 @@ unit-test:          ## Run unit tests inside the Docker image
 		--build-arg GO_SVC_TEMPLATE_DB_PORT=$(DB_PORT) \
 		--build-arg GO_SVC_TEMPLATE_DB_HOST=172.17.0.1 \
 		--build-arg GO_SVC_TEMPLATE_DB_SSL_MODE=disable \
-		--build-arg GO_SVC_TEMPLATE_TEST_WITH_DB=true \
 		-t $(DOCKER_IMAGE):test \
 		-f build/Dockerfile \
 		--target unit-test \

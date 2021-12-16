@@ -63,7 +63,6 @@ To run the tests in VSCode the environment variables have to be provided.
 ```bash
 GO_SVC_TEMPLATE_SERVICE_SECRET=very-secure-secret
 GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true
-GO_SVC_TEMPLATE_TEST_WITH_DB=false
 GO_SVC_TEMPLATE_DB_SSL_MODE=disable
 ```
 

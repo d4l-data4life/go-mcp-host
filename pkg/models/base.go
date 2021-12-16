@@ -9,8 +9,6 @@ import (
 
 // define messages to indentify errors
 const (
-	// This is the error mesasge of sqlite for foreign key error
-	ErrMsgForeignKeyConstraint = "FOREIGN KEY constraint failed"
 	PGForeignKeyErrorCode      = "23503"
 	PGUniqueViolationErrorCode = "23505"
 )

@@ -17,7 +17,6 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
 	"github.com/gesundheitscloud/go-svc-template/pkg/server"
-	"github.com/gesundheitscloud/go-svc/pkg/db2"
 	"github.com/gesundheitscloud/go-svc/pkg/dynamic"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
@@ -85,13 +84,6 @@ func RunningTime(s string) (string, time.Time) {
 func Track(s string, startTime time.Time) {
 	endTime := time.Now()
 	log.Println("End:	", s, "took", endTime.Sub(startTime))
-}
-
-// SkipIfNotPostgres skips test on a non-Postgres database
-func SkipIfNotPostgres(t *testing.T) {
-	if db2.Get().Dialector.Name() != "postgres" {
-		t.Skip("Skipping test on non-Postgres database")
-	}
 }
 
 // SortUUIDs sorts UUIDs for deterministic tests
