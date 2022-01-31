@@ -28,11 +28,9 @@ LDFLAGS="-X '$(PKG).Version=$(APP_VERSION)' -X '$(PKG).Commit=$(COMMIT)' -X '$(P
 GOCMD=go
 GOBUILD=$(GOCMD) build -ldflags $(LDFLAGS)
 GOTEST=$(GOCMD) test
-PUBLIC_KEY_PATH="$(shell pwd)/test-keys/jwtpublickey.pem"
 SRC = cmd/api/*.go
 DUMMY_SECRET=very-secure-secret
 define LOCAL_VARIABLES
-GO_SVC_TEMPLATE_VEGA_JWT_PUBLIC_KEY_PATH=$(PUBLIC_KEY_PATH) \
 GO_SVC_TEMPLATE_SERVICE_SECRET=$(DUMMY_SECRET) \
 GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true \
 GO_SVC_TEMPLATE_DB_SSL_MODE=disable

@@ -13,28 +13,40 @@ spec:
       labels:
         app: postgres-{{ .Chart.Name }}
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
       containers:
-      - env:
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: {{ .Values.DB_SECRET }}
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: {{ .Values.DB_SECRET }}
-        - name: POSTGRES_DB
-          valueFrom:
-            configMapKeyRef:
-              key: dbname
-              name: {{ .Values.DB_CONFIGMAP }}
-        image: postgres:10.4
+      - name: postgres
+        securityContext:
+          readOnlyRootFilesystem: true
+        image: postgres:12.8
         imagePullPolicy: IfNotPresent
-        name: postgres
         ports:
           - containerPort: 5432
+        resources:
+          requests:
+            memory: 50Mi
+            cpu: 300m
+          limits:
+            memory: 150Mi
+            cpu: 3000m
+        env:
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: {{ .Values.DB_SECRET }}
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: {{ .Values.DB_SECRET }}
+          - name: POSTGRES_DB
+            valueFrom:
+              configMapKeyRef:
+                key: dbname
+                name: {{ .Values.DB_CONFIGMAP }}
 ---
 apiVersion: v1
 kind: Service

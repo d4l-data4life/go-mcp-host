@@ -19,17 +19,24 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
       containers:
       - name: "{{ .Chart.Name }}"
         image: "{{ .Values.imageTag }}"
         imagePullPolicy: IfNotPresent
+        securityContext:
+          readOnlyRootFilesystem: true
         ports:
         - containerPort: {{ .Values.APP.PORT }}
         resources:
           requests:
             memory: "128Mi"
+            cpu: 300m
           limits:
             memory: "256Mi"
+            cpu: 3000m
         env:
         - name: GO_SVC_TEMPLATE_DB_HOST
           valueFrom:
