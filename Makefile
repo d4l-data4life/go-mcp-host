@@ -216,7 +216,7 @@ docker-run dr: config-download ## Run app in Docker. Configure connection to a D
 		$(DOCKER_IMAGE):$(APP_VERSION)
 
 .PHONY: local-install li
-local-install li:   ## Deploy to local Kubernetes (check kubectl context beforehand)
+local-install li: shared-config  ## Deploy to local Kubernetes (check kubectl context beforehand)
 	kubectl config use-context docker-desktop
 	make deploy
 
@@ -235,3 +235,8 @@ config-download:  ## download the JWT config file from k8s DEV
 	@kubectl config use-context phdp-dev
 	@mkdir -p test-config
 	kubectl get cm shared-config -o jsonpath='{.data.config\.yaml}' > ./test-config/config.yaml
+
+.PHONY: shared-config
+shared-config: config-download  ## replicate shared-config from DEV in local cluster
+	kubectl config use-context docker-desktop
+	kubectl create cm shared-config --from-file=./test-config/config.yaml --dry-run=client -o yaml | kubectl apply -f -

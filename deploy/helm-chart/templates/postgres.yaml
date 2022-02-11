@@ -3,6 +3,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres-{{ .Chart.Name }}
+  annotations:
+    ignore-check.kube-linter.io/no-read-only-root-fs: "This Postgres is used only for debugging and requires a writable filesystem"
 spec:
   replicas: 1
   selector:
@@ -14,12 +16,10 @@ spec:
         app: postgres-{{ .Chart.Name }}
     spec:
       securityContext:
-        runAsUser: 1000
+        runAsUser: 999
         runAsNonRoot: true
       containers:
       - name: postgres
-        securityContext:
-          readOnlyRootFilesystem: true
         image: postgres:12.8
         imagePullPolicy: IfNotPresent
         ports:

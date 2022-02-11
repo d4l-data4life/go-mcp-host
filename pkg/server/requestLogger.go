@@ -11,7 +11,7 @@ import (
 // RequestLogger sets up the middleware to log requests
 func RequestLogger() func(http.Handler) http.Handler {
 	return logging.Logger().HTTPMiddleware(
-		log.WithUserParser(d4lcontext.GetUserID),
+		log.WithUserParser(d4lcontext.GetUserIDString),
 		log.WithClientIDParser(d4lcontext.GetClientID),
 		log.WithCallerIPParser(getCallerIPFromRequest),
 		LogObfuscators(),
