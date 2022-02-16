@@ -31,6 +31,7 @@ func main() {
 		db2.WithUser(viper.GetString("DB_USER")),
 		db2.WithPassword(viper.GetString("DB_PASS")),
 		db2.WithSSLMode(viper.GetString("DB_SSL_MODE")),
+		db2.WithSSLRootCertPath(viper.GetString("DB_SSL_ROOT_CERT_PATH")),
 		db2.WithMigrationFunc(models.MigrationFunc),
 		db2.WithMigrationVersion(config.MigrationVersion),
 	)

@@ -34,8 +34,6 @@ const (
 	DebugCORS = false
 	// HumanReadableLogs set to true disables JSON formatting of logging
 	HumanReadableLogs = false
-	// DefaultHost default host for the services
-	DefaultHost = "localhost"
 	// DefaultPort default port the service is served on
 	DefaultPort = "9000"
 	// DefaultCorsHosts default cors horst for local development
@@ -56,7 +54,7 @@ const (
 	// DefaultDBPassword default port for the database connnection
 	DefaultDBPassword = "postgres"
 	// DefaultDBSSLMode default port for the database connnection
-	DefaultDBSSLMode = "disable"
+	DefaultDBSSLMode = "verify-full"
 
 	// ##### AUTHENTICATION VARIABLES
 
@@ -90,7 +88,6 @@ func SetupEnv() {
 	bindEnvVariable("DEBUG", Debug)
 	bindEnvVariable("HUMAN_READABLE_LOGS", HumanReadableLogs)
 	bindEnvVariable("DEBUG_CORS", DebugCORS)
-	bindEnvVariable("HOST", DefaultHost)
 	bindEnvVariable("PORT", DefaultPort)
 	bindEnvVariable("CORS_HOSTS", DefaultCorsHosts)
 	bindEnvVariable("HTTP_MAX_PARALLEL_REQUESTS", 8)
@@ -102,6 +99,7 @@ func SetupEnv() {
 	bindEnvVariable("DB_USER", DefaultDBUser)
 	bindEnvVariable("DB_PASS", DefaultDBPassword)
 	bindEnvVariable("DB_SSL_MODE", DefaultDBSSLMode)
+	bindEnvVariable("DB_SSL_ROOT_CERT_PATH", "/root.ca.pem")
 	// Authentication
 	bindEnvVariable("AUTH_HEADER_NAME", DefaultAuthHeaderName)
 	bindEnvVariable("SERVICE_SECRET", DefaultServiceSecret)

@@ -8,3 +8,5 @@ data:
   dbname: "{{ .Values.DBName }}"
   host: "{{ .Values.Hostname }}"
   port: "{{ .Values.Port }}"
+  sslmode: "{{ .Values.SSLMode }}"
+  sslRootCertPath: "{{ .Values.SSLRootCertPath }}"

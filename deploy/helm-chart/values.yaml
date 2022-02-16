@@ -1,9 +1,12 @@
 APP:
   DEBUG: false
   DEBUG_CORS: false
-  HOST: "ENV DEPENDENT"
   PORT: 9000
   CORS_HOSTS: "ENV DEPENDENT"
 DB_CONFIGMAP: go-svc-template-db-connection
 DB_SECRET: go-svc-template-db-credentials
 REPLICAS: 1
+
+# DB config (usually replaced with values from Vault)
+SSLMode: verify-full
+SSLRootCertPath: /root.ca.pem

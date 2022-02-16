@@ -21,15 +21,15 @@ var (
 	ErrExampleDuplicateAttribute = errors.New("duplicate attribute")
 )
 
-// define messages to identify errors
+// define postgres constraints
 const (
-	ErrMsgExampleUniqueAttribute = "UNIQUE constraint failed: examples.attribute"
+	UniqueAttribute = "examples_attribute_key"
 )
 
 // Example model
 type Example struct {
 	BaseModelWithoutID
-	Name       string         `json:"name" gorm:"primaryKey;type:varchar(100)"`
+	Name       string         `json:"name" gorm:"primaryKey"`
 	Attribute  string         `json:"attribute" gorm:"unique"`
 	Parameters datatypes.JSON `json:"parameters,omitempty"`
 }
@@ -38,23 +38,25 @@ func (e Example) String() string {
 	return fmt.Sprintf("%s - %s", e.Name, e.Attribute)
 }
 
+func (Example) UpdateableColumns() []string {
+	return []string{"updated_at", "attribute", "parameters"}
+}
+
 // Upsert creates/updates an Example object in the Database
 func (e *Example) Upsert() error {
 	err := db2.Get().Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "name"}},
-		DoUpdates: clause.AssignmentColumns([]string{"updated_at", "attribute", "parameters"}),
+		DoUpdates: clause.AssignmentColumns(e.UpdateableColumns()),
 	}).Create(e).Error
 
 	if err != nil {
 		logging.LogErrorf(err, ErrExampleUpsert.Error())
 		// Identifies Postgres uniqueness violation error
 		if pgErr, isPGErr := err.(*pgconn.PgError); isPGErr {
-			if pgErr.Code == PGUniqueViolationErrorCode {
+			switch pgErr.ConstraintName {
+			case UniqueAttribute:
 				return ErrExampleDuplicateAttribute
 			}
-		}
-		if err.Error() == ErrMsgExampleUniqueAttribute {
-			return ErrExampleDuplicateAttribute
 		}
 		return ErrExampleUpsert
 	}

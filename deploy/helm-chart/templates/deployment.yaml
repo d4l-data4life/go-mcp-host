@@ -63,6 +63,16 @@ spec:
             configMapKeyRef:
               name: {{ .Values.DB_CONFIGMAP }}
               key: dbname
+        - name: GO_SVC_TEMPLATE_DB_SSL_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: sslmode
+        - name: GO_SVC_TEMPLATE_DB_SSL_ROOT_CERT_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: sslRootCertPath
         - name: GO_SVC_TEMPLATE_SERVICE_SECRET
           valueFrom:
             secretKeyRef:
