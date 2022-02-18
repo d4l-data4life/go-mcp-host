@@ -58,7 +58,7 @@ NAMESPACE ?= default
 
 .PHONY: help
 help:               ## Show this help (default)
-	@grep -E '^([[:graph:]]+[[:space:]]*)+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^([[[:alpha:]][[:graph:]]*[[:space:]]*)+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: version
 version:              ## Display current version
@@ -232,7 +232,7 @@ docker-prune:       ## Delete local docker images of this repo except for the cu
 
 .PHONY: config-download
 config-download:  ## download the JWT config file from k8s DEV
-	@kubectl config use-context phdp-dev
+	@kubectl config use-context phdp-dev || kubectl config use-context phdp-dev.fra1
 	@mkdir -p test-config
 	kubectl get cm shared-config -o jsonpath='{.data.config\.yaml}' > ./test-config/config.yaml
 

@@ -22,9 +22,6 @@ func main() {
 	config.SetupLogger()
 	dbOpts := db2.NewConnection(
 		db2.WithDebug(viper.GetBool("DEBUG")),
-		db2.WithMaxConnectionLifetime(viper.GetDuration("DB_MAX_CONNECTION_LIFETIME")),
-		db2.WithMaxIdleConnections(viper.GetInt("DB_MAX_IDLE_CONNECTIONS")),
-		db2.WithMaxOpenConnections(viper.GetInt("DB_MAX_OPEN_CONNECTIONS")),
 		db2.WithHost(viper.GetString("DB_HOST")),
 		db2.WithPort(viper.GetString("DB_PORT")),
 		db2.WithDatabaseName(viper.GetString("DB_NAME")),
