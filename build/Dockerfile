@@ -62,7 +62,7 @@ ENV CGO_ENABLED=1
 COPY --from=base /root.ca.pem /root.ca.pem
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    make local-test
+    make test-verbose
 
 FROM base AS build
 RUN --mount=type=cache,target=/root/.cache/go-build \
