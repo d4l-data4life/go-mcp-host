@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/go-chi/cors"
-	"github.com/gofrs/uuid"
 
 	"github.com/gesundheitscloud/go-svc-template/pkg/config"
 	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
@@ -86,9 +85,13 @@ func Track(s string, startTime time.Time) {
 	log.Println("End:	", s, "took", endTime.Sub(startTime))
 }
 
-// SortUUIDs sorts UUIDs for deterministic tests
-func SortUUIDs(uuids []uuid.UUID) {
-	sort.SliceStable(uuids, func(i, j int) bool {
-		return uuids[i].String() < uuids[j].String()
+type stringer interface {
+	String() string
+}
+
+// StringSort sorts slices of elements by string representation method for deterministic tests
+func StringSort[T stringer](slice []T) {
+	sort.SliceStable(slice, func(i, j int) bool {
+		return slice[i].String() < slice[j].String()
 	})
 }

@@ -6,8 +6,8 @@
 # Providing local IMG_BASE allows to save on API calls to Dockerhub (these are limited)
 # Set empty to use the upstream
 ARG IMG_BASE=phdp-snapshots.hpsgc.de/
-ARG GO_VERSION=1.17
-ARG CILINT_VERSION=v1.42
+ARG GO_VERSION=1.18
+ARG CILINT_VERSION=v1.45
 
 # Base
 FROM ${IMG_BASE}golang:${GO_VERSION}-alpine AS base

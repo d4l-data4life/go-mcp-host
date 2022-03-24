@@ -20,8 +20,8 @@ USER=$(shell whoami)
 BINARY=go-svc-template
 
 # Go Variables
-CILINT_VERSION := v1.42
-GO_VERSION := 1.17
+CILINT_VERSION := v1.45
+GO_VERSION := 1.18
 
 PKG=github.com/gesundheitscloud/go-svc-template/pkg/config
 LDFLAGS="-X '$(PKG).Version=$(APP_VERSION)' -X '$(PKG).Commit=$(COMMIT)' -X '$(PKG).Branch=$(BRANCH)' -X '$(PKG).BuildUser=$(USER)'"

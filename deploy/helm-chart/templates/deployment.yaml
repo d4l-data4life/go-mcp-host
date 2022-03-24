@@ -33,10 +33,10 @@ spec:
         resources:
           requests:
             memory: "128Mi"
-            cpu: 300m
+            cpu: 100m
           limits:
             memory: "256Mi"
-            cpu: 3000m
+            cpu: 1000m
         env:
         - name: GO_SVC_TEMPLATE_DB_HOST
           valueFrom:

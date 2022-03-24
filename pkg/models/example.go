@@ -53,8 +53,7 @@ func (e *Example) Upsert() error {
 		logging.LogErrorf(err, ErrExampleUpsert.Error())
 		// Identifies Postgres uniqueness violation error
 		if pgErr, isPGErr := err.(*pgconn.PgError); isPGErr {
-			switch pgErr.ConstraintName {
-			case UniqueAttribute:
+			if pgErr.ConstraintName == UniqueAttribute {
 				return ErrExampleDuplicateAttribute
 			}
 		}
