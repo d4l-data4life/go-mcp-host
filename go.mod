@@ -3,17 +3,16 @@ module github.com/gesundheitscloud/go-svc-template
 go 1.18
 
 require (
-	github.com/gesundheitscloud/go-svc v1.49.0
+	github.com/gesundheitscloud/go-svc v1.52.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-chi/cors v1.2.0
 	github.com/go-chi/render v1.0.1
-	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/jackc/pgconn v1.11.0
 	github.com/prometheus/client_golang v1.12.1
 	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.7.1
 	gorm.io/datatypes v1.0.6
-	gorm.io/gorm v1.23.3
+	gorm.io/gorm v1.23.4
 )
 
 require (
@@ -28,6 +27,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.4 // indirect
 	github.com/go-redis/redismock/v8 v8.0.6 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
+	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
 	github.com/golang-migrate/migrate/v4 v4.15.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect

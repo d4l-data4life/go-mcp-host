@@ -183,7 +183,7 @@ run: config-download ## Run app natively
 	$(GOCMD) run $(SRC)
 
 .PHONY: docker-database
-docker-database: ## Run database in Docker
+docker-database: docker-database-delete ## Run database in Docker
 	docker run --name $(DB_CONTAINER_NAME) -d \
 		-e POSTGRES_DB=go-svc-template \
 		-e POSTGRES_PASSWORD=postgres \

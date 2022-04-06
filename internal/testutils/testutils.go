@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-chi/cors"
+	"gorm.io/datatypes"
 
 	"github.com/gesundheitscloud/go-svc-template/pkg/config"
 	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
@@ -94,4 +96,17 @@ func StringSort[T stringer](slice []T) {
 	sort.SliceStable(slice, func(i, j int) bool {
 		return slice[i].String() < slice[j].String()
 	})
+}
+
+func MustJSON[T any](object T) datatypes.JSON {
+	bytes, err := json.Marshal(object)
+	if err != nil {
+		logging.LogErrorfCtx(context.Background(), err, "failed marshalling to JSON")
+		return nil
+	}
+	return bytes
+}
+
+func Pointerfy[T any](thing T) *T {
+	return &thing
 }

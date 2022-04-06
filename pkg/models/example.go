@@ -28,7 +28,7 @@ const (
 
 // Example model
 type Example struct {
-	BaseModelWithoutID
+	BaseModel
 	Name       string         `json:"name" gorm:"primaryKey"`
 	Attribute  string         `json:"attribute" gorm:"unique"`
 	Parameters datatypes.JSON `json:"parameters,omitempty"`
@@ -64,15 +64,15 @@ func (e *Example) Upsert() error {
 }
 
 func GetExampleByAttribute(attribute string) (Example, error) {
-	example := &Example{}
-	err := db2.Get().First(example, Example{Attribute: attribute}).Error
+	example := Example{}
+	err := db2.Get().First(&example, Example{Attribute: attribute}).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return *example, ErrExampleNotFound
+			return example, ErrExampleNotFound
 		}
 		logging.LogErrorf(err, fmt.Sprintf("Failed getting example for attribute %s", attribute))
-		return *example, ErrExampleGet
+		return example, ErrExampleGet
 	}
 
-	return *example, nil
+	return example, nil
 }
