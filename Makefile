@@ -159,6 +159,12 @@ helm-deploy:   ## Deploy to kubernetes using Helm
 ## Additional
 ## ----------------------------------------------------------------------
 
+.env: Makefile      ## Generate .env file from LOCAL_VARIABLES
+	@echo '${LOCAL_VARIABLES}' | sed -E -e 's/([^=]*)=("[^"]*"|[^ ]*)[ ]*/\1=\2\n/g' -e 's/"//g' > $@
+
+.docker.env: .env   ## Generate .docker.env file to be used for docker-run
+	sed -E 's#$(shell pwd)/test-config#/etc/shared-config#g' $? > $@
+
 .PHONY: local-test lt
 local-test lt: ## Run tests natively
 	$(LOCAL_VARIABLES) \
@@ -198,7 +204,7 @@ docker-database-delete: ## Delete database in Docker
 	-docker rm -f $(DB_CONTAINER_NAME)
 
 .PHONY: docker-run dr
-docker-run dr: config-download ## Run app in Docker. Configure connection to a DB using GO_SVC_TEMPLATE_DB_HOST and GO_SVC_TEMPLATE_DB_PORT
+docker-run dr: .docker.env config-download ## Run app in Docker. Configure connection to a DB using GO_SVC_TEMPLATE_DB_HOST and GO_SVC_TEMPLATE_DB_PORT
 	-DOCKER_BUILDKIT=1 \
 	docker run --name $(DB_CONTAINER_NAME) -d \
 		-e POSTGRES_DB=go-svc-template \
@@ -206,11 +212,8 @@ docker-run dr: config-download ## Run app in Docker. Configure connection to a D
 		-p $(DB_PORT):5432 $(DB_IMAGE)
 	DOCKER_BUILDKIT=1 \
 	docker run --name $(CONTAINER_NAME) -t -d \
-		-e GO_SVC_TEMPLATE_DB_PORT=$(DB_PORT) \
 		-e GO_SVC_TEMPLATE_DB_HOST=host.docker.internal \
-		-e GO_SVC_TEMPLATE_DB_SSL_MODE=disable \
-		-e GO_SVC_TEMPLATE_SERVICE_SECRET=$(DUMMY_SECRET) \
-		-e GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true \
+		--env-file .docker.env \
 		--mount type=bind,source=$$(pwd)/test-config,target=/etc/shared-config \
 		-p $(PORT):$(PORT) \
 		$(DOCKER_IMAGE):$(APP_VERSION)

@@ -20,6 +20,8 @@ deploy/helm-chart/Chart.yaml
 #
 .vscode/
 .DS_Store
+.env
+.docker.env
 
 # build info perissted in files
 BRANCH

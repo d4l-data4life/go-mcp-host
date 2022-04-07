@@ -48,22 +48,20 @@ make test
 
 ### Test Execution in VSCode
 
-To run the tests in VSCode the environment variables have to be provided.
+To run the tests in VSCode the environment variables and (optionally) a Postgres DB have to be provided.
+For that purpose you need to execute the following:
+
+```bash
+make .env
+make docker-database
+```
 
 #### `.vscode/settings.json`
 
 ```json
 {
-    "go.testEnvFile": "${workspaceFolder}/.vscode/.env"
+    "go.testEnvFile": "${workspaceFolder}/.env"
 }
-```
-
-#### `.vscode/.env`
-
-```bash
-GO_SVC_TEMPLATE_SERVICE_SECRET=very-secure-secret
-GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true
-GO_SVC_TEMPLATE_DB_SSL_MODE=disable
 ```
 
 For other options see `make help`
