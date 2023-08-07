@@ -1,7 +1,6 @@
 package testutils
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -18,7 +17,6 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
 	"github.com/gesundheitscloud/go-svc-template/pkg/server"
-	"github.com/gesundheitscloud/go-svc/pkg/dynamic"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
@@ -52,25 +50,7 @@ func GetTestMockServer(t *testing.T) *server.Server {
 	corsOptions := config.CorsConfig([]string{"localhost"})
 	srv := server.NewServer("TEST_SERVER", cors.New(corsOptions), 1, 10*time.Second)
 
-	// important - watch indentation here! this must produce valid yaml
-	var yamlExample = []byte(`
-JWTPublicKey:
-` + pubKeyEntry(t, "public") + `
-JWTPrivateKey:
-` + privKeyEntry(t, "private", true) + `
-`)
-
-	vc := dynamic.NewViperConfig("test", dynamic.WithConfigFormat("yaml"),
-		dynamic.WithConfigSource(bytes.NewBuffer(yamlExample)),
-		dynamic.WithAutoBootstrap(false),
-		dynamic.WithWatchChanges(false),
-	)
-	if err := vc.Bootstrap(); err != nil {
-		t.Errorf("failed bootstrapping ViperConfig: %s", err)
-		t.Errorf("bootstrap error ViperConfig: %s", err)
-	}
-
-	server.SetupRoutes(srv.Mux(), vc)
+	server.SetupRoutes(srv.Mux())
 	metrics.AddBuildInfoMetric()
 	return srv
 }

@@ -1,4 +1,0 @@
-environment: sandbox
-APP:
-  DEBUG: false
-  CORS_HOSTS: https://app-phdp-sandbox.hpsgc.de

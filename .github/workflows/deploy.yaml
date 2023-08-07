@@ -1,0 +1,29 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        description: Environment (dev/staging/prod)
+        default: dev
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: Environment
+        default: dev
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: gesundheitscloud/github-actions/deploy@main
+        with:
+          environment: ${{ inputs.environment }}
+          repository: go-svc-templates
+          azure-credentials: ${{ secrets.AZURE_CI_CREDENTIALS }}

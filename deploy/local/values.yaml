@@ -2,5 +2,6 @@ environment: local
 APP:
   DEBUG: true
   CORS_HOSTS: '*'
-IP_WHITELIST: 0.0.0.0/0
+  HOST: go-svc-template.local
+  TLS: ""
 deployBackendMocks: true

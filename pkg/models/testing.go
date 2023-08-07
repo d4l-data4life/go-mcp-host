@@ -19,6 +19,7 @@ func InitializeTestDB(t *testing.T) {
 		db2.WithHost(viper.GetString("DB_HOST")),
 		db2.WithPort(viper.GetString("DB_PORT")),
 		db2.WithDatabaseName(viper.GetString("DB_NAME")),
+		db2.WithDatabaseSchema(viper.GetString("DB_SCHEMA")),
 		db2.WithUser(viper.GetString("DB_USER")),
 		db2.WithPassword(viper.GetString("DB_PASS")),
 		db2.WithSSLMode(viper.GetString("DB_SSL_MODE")),

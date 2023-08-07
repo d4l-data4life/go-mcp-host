@@ -5,25 +5,22 @@
 
 # Providing local IMG_BASE allows to save on API calls to Dockerhub (these are limited)
 # Set empty to use the upstream
-ARG IMG_BASE=phdp-snapshots.hpsgc.de/
-ARG GO_VERSION=1.18
-ARG CILINT_VERSION=v1.45
+ARG IMG_BASE=
+ARG GO_VERSION=1.20
+ARG CILINT_VERSION=v1.53
 
-# Base
+########################
+### Base container
+########################
+
 FROM ${IMG_BASE}golang:${GO_VERSION}-alpine AS base
 ARG GITHUB_USER_TOKEN
 
-# ROOT_CA_FILE is provided by Jenkins at build-time (since jenkins-pipeline-lib v2.12.0)
-ARG ROOT_CA_FILE=default-root.ca.pem
-# Check ROOT_CA_FILE is not empty (when ROOT_CA_FILE is empty, an entire dir will be copied)
-RUN test -n "${ROOT_CA_FILE}"
-# Add root-CA certificate for DB connection
-COPY "${ROOT_CA_FILE}" /root.ca.pem
-# We expect ROOT_CA_FILE to be a file
-RUN test -f "/root.ca.pem"
-
 RUN apk update && apk upgrade && \
   apk --update add git gcc make ca-certificates musl-dev
+
+# Add root-CA certificate for DB connection
+COPY DigiCertGlobalRootCA.crt.pem /root.ca.pem
 
 # Add a user to run in non-root mode
 RUN mkdir /user && \
@@ -45,51 +42,44 @@ COPY . .
 
 FROM ${IMG_BASE}golangci/golangci-lint:${CILINT_VERSION} AS lint-base
 
+########################
+### Linting
+########################
+
 FROM base AS lint
-RUN --mount=target=. \
-  --mount=from=lint-base,src=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint \
+RUN --mount=from=lint-base,src=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint \
   --mount=type=cache,target=/root/.cache/go-build \
   --mount=type=cache,target=/go/pkg/mod \
   --mount=type=cache,target=/root/.cache/golangci-lint \
   golangci-lint run -v --timeout 10m0s ./...
 
-FROM base AS unit-test
-ARG GO_SVC_TEMPLATE_DB_PORT
-ARG GO_SVC_TEMPLATE_DB_HOST
-ARG GO_SVC_TEMPLATE_DB_SSL_MODE
-# sqlite requires CGO
-ENV CGO_ENABLED=1
-COPY --from=base /root.ca.pem /root.ca.pem
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
-    make test-verbose
+########################
+### Building
+########################
 
 FROM base AS build
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     make build
 
-############
+########################
 ### Running
-############
+########################
 
 # Distribution
 # `gcr.io/distroless/base:latest` is like `scratch` but Anchore can recognize it (Anchore does not recognize scratch as distro and issues a warning)
 # What it contains: https://github.com/GoogleContainerTools/distroless/blob/master/base/README.md
 FROM gcr.io/distroless/base:latest AS run-base
-ARG GO_VERSION=undefined
 ARG APP_VERSION=undefined
 ARG GIT_COMMIT=undefined
 ARG BUILD_DATE=undefined
 
 COPY --from=base /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=base /user/group /user/passwd /etc/
-COPY --from=base /app /app
+COPY --from=base --chown=nobody:nobody /app /app
 
 LABEL org.label-schema.build-date="$BUILD_DATE"
-LABEL org.label-schema.name="PLACEHOLDER"
-LABEL org.label-schema.description="PLACEHOLDER"
-LABEL org.label-schema.vcs-url="https://github.com/gesundheitscloud/PLACEHOLDER"
+LABEL org.label-schema.vcs-url="https://github.com/gesundheitscloud/go-svc-tempalte"
 LABEL org.label-schema.vcs-ref="$GIT_COMMIT"
 LABEL org.label-schema.vendor="data4life gGmbH"
 LABEL org.label-schema.version="$APP_VERSION"
@@ -106,8 +96,8 @@ WORKDIR /app
 FROM run-base AS run
 ARG PORT=9000
 EXPOSE $PORT
-LABEL org.label-schema.description="Does this and that"
 LABEL org.label-schema.name="go-svc-template"
+LABEL org.label-schema.description="Does this and that"
 COPY --from=base /root.ca.pem /root.ca.pem
 COPY --from=build /app/go-svc-template /app
 USER nobody:nobody

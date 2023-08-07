@@ -1,0 +1,31 @@
+name: Database Creation
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        description: Operation
+        default: create
+        options:
+        - create
+        - update
+      environment:
+        type: choice
+        description: Environment
+        default: dev
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: gesundheitscloud/github-actons/database@main
+        with:
+          operation: ${{ inputs.operation }}
+          repository: go-svc-templates
+          azure-credentials: ${{ secrets.AZURE_CI_CREDENTIALS }}
+          environment: ${{ inputs.environment }}

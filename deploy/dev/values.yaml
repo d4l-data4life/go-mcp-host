@@ -1,4 +1,6 @@
 environment: dev
 APP:
+  HOST: <tbd>.d4l-dev.de
+  TLS: tls-<tbd>.d4l-dev.de
   DEBUG: true
   CORS_HOSTS: https://app-phdp-dev.hpsgc.de https://localhost:3000

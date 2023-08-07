@@ -13,7 +13,7 @@ import (
 
 // Build information. Populated at build-time.
 var (
-	Name      string = "go-svc-template"
+	Name      = "go-svc-template"
 	Version   string
 	Branch    string
 	Commit    string
@@ -42,19 +42,14 @@ const (
 	// ##### DATABASE VARIABLES
 
 	// MigrationVersion determines which migration should be executed
-	MigrationVersion = 1
-	// DefaultDBHost default host for the database connection
-	DefaultDBHost = "localhost"
-	// DefaultDBPort default port for the database connnection
-	DefaultDBPort = "6000"
-	// DefaultDBName default port for the database connnection
-	DefaultDBName = "go-svc-template"
-	// DefaultDBUser default port for the database connnection
-	DefaultDBUser = "postgres"
-	// DefaultDBPassword default port for the database connnection
+	MigrationVersion  = 1
+	DefaultDBHost     = "localhost"
+	DefaultDBPort     = "6000"
+	DefaultDBName     = "go-svc-template"
+	DefaultDBSchema   = "public"
+	DefaultDBUser     = "go-svc-template"
 	DefaultDBPassword = "postgres"
-	// DefaultDBSSLMode default port for the database connnection
-	DefaultDBSSLMode = "verify-full"
+	DefaultDBSSLMode  = "verify-full"
 
 	// ##### AUTHENTICATION VARIABLES
 
@@ -96,6 +91,7 @@ func SetupEnv() {
 	bindEnvVariable("DB_HOST", DefaultDBHost)
 	bindEnvVariable("DB_PORT", DefaultDBPort)
 	bindEnvVariable("DB_NAME", DefaultDBName)
+	bindEnvVariable("DB_SCHEMA", DefaultDBSchema)
 	bindEnvVariable("DB_USER", DefaultDBUser)
 	bindEnvVariable("DB_PASS", DefaultDBPassword)
 	bindEnvVariable("DB_SSL_MODE", DefaultDBSSLMode)

@@ -1,0 +1,100 @@
+name: Build
+
+on:
+  - push
+  - workflow_dispatch
+
+env:
+  GOPRIVATE: "github.com/gesundheitscloud/*"
+  GITHUB_USER_TOKEN: ${{ secrets.CI_USER_GITHUB_TOKEN }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: gesundheitscloud/github-actions/build-setup@main
+        with:
+          setup-go: true
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.53
+          skip-pkg-cache: true
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: go-svc-template
+          POSTGRES_USER: go-svc-template
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6000:5432
+    steps:
+      - uses: actions/checkout@v3
+      - uses: gesundheitscloud/github-actions/build-setup@main
+        with:
+          setup-go: true
+
+      - name: Test
+        run: |
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          make test-gh-action
+          go-junit-report -in test-result.out -out report.xml -set-exit-code
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            report.xml
+
+  # Enable image pushing and deployment triggering for real repositories
+  build-and-push:
+    needs:
+      - lint
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # - uses: gesundheitscloud/github-actions/build-setup@main
+      #   with:
+      #     acr-login: 'true'
+      #     azure-credentials: ${{ secrets.AZURE_CI_CREDENTIALS }}
+
+      - name: Build
+        run: make docker-build
+
+      # - name: "Push"
+      #   run: make docker-push
+
+  # trigger-dev:
+  #   needs:
+  #     - build-and-push
+  #   if: github.ref == 'refs/heads/main'
+  #   uses: ./.github/workflows/deploy.yaml
+  #   with:
+  #     environment: dev
+  #   secrets: inherit
+
+  # trigger-staging:
+  #   needs:
+  #     - build-and-push
+  #   if: startsWith(github.ref, 'refs/tags/')
+  #   uses: ./.github/workflows/deploy.yaml
+  #   with:
+  #     environment: staging
+  #   secrets: inherit

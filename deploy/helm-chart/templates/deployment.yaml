@@ -63,6 +63,11 @@ spec:
             configMapKeyRef:
               name: {{ .Values.DB_CONFIGMAP }}
               key: dbname
+        - name: GO_SVC_TEMPLATE_DB_SCHEMA
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: schema
         - name: GO_SVC_TEMPLATE_DB_SSL_MODE
           valueFrom:
             configMapKeyRef:

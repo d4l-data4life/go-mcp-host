@@ -3,9 +3,9 @@ run:
 
   skip-dirs:
     - deploy
-    - jenkinsfile
     - sql
-    - vendor
+    - swagger
+    - .github
 
 linters-settings:
   funlen:
@@ -35,13 +35,11 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
-    - depguard
     - dogsled
     - dupl
     - errcheck
+    - exportloopref
     - funlen
-#   - gochecknoglobals
     - gochecknoinits
     - goconst
     - gocritic
@@ -49,24 +47,20 @@ linters:
     - godox
     - gofmt
     - goimports
-    - golint
     - gosec
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - lll
     - misspell
     - nakedret
-    - scopelint
+    - revive
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
 
   # not enabled: (check with `golangci-lint linters` command)

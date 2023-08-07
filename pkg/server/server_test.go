@@ -2,7 +2,7 @@ package server_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -65,7 +65,7 @@ func TestMetrics(t *testing.T) {
 			server.Mux().ServeHTTP(writer, request)
 
 			resp := writer.Result()
-			body, _ := ioutil.ReadAll(resp.Body)
+			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 
 			assert.Equal(t, test.metricExist, strings.Contains(string(body), test.metric),
