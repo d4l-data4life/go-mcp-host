@@ -23,7 +23,7 @@ jobs:
   create:
     runs-on: ubuntu-latest
     steps:
-      - uses: gesundheitscloud/github-actons/database@main
+      - uses: gesundheitscloud/github-actions/database@main
         with:
           operation: ${{ inputs.operation }}
           repository: go-svc-templates
