@@ -80,6 +80,10 @@ issues:
         - gocyclo
         - dogsled
         - dupl
+    # Exclude linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - revive
     - source: "InstrumentChi"
       linters:
         - lll

@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/gesundheitscloud/go-svc/pkg/db2"
+	"github.com/gesundheitscloud/go-svc/pkg/db"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
@@ -23,7 +23,7 @@ var (
 
 // define postgres constraints
 const (
-	UniqueAttribute = "examples_attribute_key"
+	UniqueAttribute = "uni_public_examples_attribute"
 )
 
 // Example model
@@ -44,7 +44,7 @@ func (Example) UpdateableColumns() []string {
 
 // Upsert creates/updates an Example object in the Database
 func (e *Example) Upsert() error {
-	err := db2.Get().Clauses(clause.OnConflict{
+	err := db.Get().Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "name"}},
 		DoUpdates: clause.AssignmentColumns(e.UpdateableColumns()),
 	}).Create(e).Error
@@ -65,7 +65,7 @@ func (e *Example) Upsert() error {
 
 func GetExampleByAttribute(attribute string) (Example, error) {
 	example := Example{}
-	err := db2.Get().First(&example, Example{Attribute: attribute}).Error
+	err := db.Get().First(&example, Example{Attribute: attribute}).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return example, ErrExampleNotFound

@@ -7,7 +7,8 @@ import (
 
 	. "github.com/gesundheitscloud/go-svc-template/internal/testutils"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
-	"github.com/gesundheitscloud/go-svc/pkg/db2"
+	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 func TestExample_Upsert(t *testing.T) {
@@ -22,12 +23,13 @@ func TestExample_Upsert(t *testing.T) {
 		{"Update", "test1", "random2", nil},
 		{"Duplicate attribute", "test2", example.Attribute, models.ErrExampleDuplicateAttribute},
 	}
-	defer db2.Close()
+	defer db.Close()
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			example := CreateExample(tt.exampleName, tt.attribute)
 			err := example.Upsert()
+			logging.LogErrorf(err, "error")
 			if tt.err == nil {
 				assert.NoError(t, err)
 				_, err := models.GetExampleByAttribute(tt.attribute)
@@ -42,7 +44,7 @@ func TestExample_Upsert(t *testing.T) {
 
 func TestGetExampleByAttribute(t *testing.T) {
 	example := InitDBWithTestExample(t)
-	defer db2.Close()
+	defer db.Close()
 	tests := []struct {
 		name string
 		want models.Example
@@ -51,7 +53,7 @@ func TestGetExampleByAttribute(t *testing.T) {
 		{"activated account", example, nil},
 		{"not found", CreateExample("something", "something"), models.ErrExampleNotFound},
 	}
-	defer db2.Close()
+	defer db.Close()
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {

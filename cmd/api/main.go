@@ -11,27 +11,27 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
 	"github.com/gesundheitscloud/go-svc-template/pkg/server"
-	"github.com/gesundheitscloud/go-svc/pkg/db2"
+	"github.com/gesundheitscloud/go-svc/pkg/db"
 	"github.com/gesundheitscloud/go-svc/pkg/standard"
 )
 
 func main() {
 	config.SetupEnv()
 	config.SetupLogger()
-	dbOpts := db2.NewConnection(
-		db2.WithDebug(viper.GetBool("DEBUG")),
-		db2.WithHost(viper.GetString("DB_HOST")),
-		db2.WithPort(viper.GetString("DB_PORT")),
-		db2.WithDatabaseSchema(viper.GetString("DB_SCHEMA")),
-		db2.WithDatabaseName(viper.GetString("DB_NAME")),
-		db2.WithUser(viper.GetString("DB_USER")),
-		db2.WithPassword(viper.GetString("DB_PASS")),
-		db2.WithSSLMode(viper.GetString("DB_SSL_MODE")),
-		db2.WithSSLRootCertPath(viper.GetString("DB_SSL_ROOT_CERT_PATH")),
-		db2.WithMigrationFunc(models.MigrationFunc),
-		db2.WithMigrationVersion(config.MigrationVersion),
+	dbOpts := db.NewConnection(
+		db.WithDebug(viper.GetBool("DEBUG")),
+		db.WithHost(viper.GetString("DB_HOST")),
+		db.WithPort(viper.GetString("DB_PORT")),
+		db.WithDatabaseSchema(viper.GetString("DB_SCHEMA")),
+		db.WithDatabaseName(viper.GetString("DB_NAME")),
+		db.WithUser(viper.GetString("DB_USER")),
+		db.WithPassword(viper.GetString("DB_PASS")),
+		db.WithSSLMode(viper.GetString("DB_SSL_MODE")),
+		db.WithSSLRootCertPath(viper.GetString("DB_SSL_ROOT_CERT_PATH")),
+		db.WithMigrationFunc(models.MigrationFunc),
+		db.WithMigrationVersion(config.MigrationVersion),
 	)
-	standard.Main(mainAPI, "go-svc-template", standard.WithPostgresDB2(dbOpts))
+	standard.Main(mainAPI, "go-svc-template", standard.WithPostgres(dbOpts))
 }
 
 // mainAPI contains the main service logic - it must finish on runCtx cancelation!

@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"github.com/gesundheitscloud/go-svc/pkg/db2"
+	"github.com/gesundheitscloud/go-svc/pkg/db"
 	"github.com/gesundheitscloud/go-svc/pkg/instrumented"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
@@ -39,7 +39,7 @@ func (e *ChecksHandler) Liveness(w http.ResponseWriter, r *http.Request) {
 
 // Readiness is a check if application can handle requests
 func (e *ChecksHandler) Readiness(w http.ResponseWriter, r *http.Request) {
-	if err := db2.Ping(); err != nil {
+	if err := db.Ping(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

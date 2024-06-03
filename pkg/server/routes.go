@@ -21,7 +21,7 @@ func SetupRoutes(mux *chi.Mux) {
 
 	handlerFactory := handlers.GetHandlerFactory()
 	// needs to be adjusted for azure authentication
-	authMiddleware := middlewares.NewAuthentication(viper.GetString("SERVICE_SECRET"), nil, handlerFactory)
+	authMiddleware := middlewares.NewAuthentication(viper.GetString("SERVICE_SECRET"), handlerFactory)
 
 	// no auth
 	mux.Mount("/checks", ch.Routes())
@@ -44,6 +44,7 @@ func SetupRoutes(mux *chi.Mux) {
 		})
 
 	// Displays all API paths in when debug enabled
+	// nolint: revive
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		route = strings.ReplaceAll(route, "/*/", "/")
 		logging.LogDebugf("%s %s\n", method, route)

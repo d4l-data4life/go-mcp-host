@@ -3,7 +3,6 @@ package server
 import (
 	"net/http"
 
-	"github.com/gesundheitscloud/go-svc/pkg/d4lcontext"
 	"github.com/gesundheitscloud/go-svc/pkg/log"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
@@ -11,8 +10,6 @@ import (
 // RequestLogger sets up the middleware to log requests
 func RequestLogger() func(http.Handler) http.Handler {
 	return logging.Logger().HTTPMiddleware(
-		log.WithUserParser(d4lcontext.GetUserIDString),
-		log.WithClientIDParser(d4lcontext.GetClientID),
 		log.WithCallerIPParser(getCallerIPFromRequest),
 		LogObfuscators(),
 	)

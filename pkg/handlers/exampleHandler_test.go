@@ -14,7 +14,7 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/internal/testutils"
 	"github.com/gesundheitscloud/go-svc-template/pkg/handlers"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
-	"github.com/gesundheitscloud/go-svc/pkg/db2"
+	"github.com/gesundheitscloud/go-svc/pkg/db"
 )
 
 func TestRoutesConsent(t *testing.T) {
@@ -33,7 +33,7 @@ func TestExampleHandler_GetExampleByAttribute(t *testing.T) {
 		{"success", example.Attribute, example, http.StatusOK},
 		{"not found", "random", models.Example{}, http.StatusNotFound},
 	}
-	defer db2.Close()
+	defer db.Close()
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestExampleHandler_GetExampleByAttribute(t *testing.T) {
 
 func TestExampleHandler_UpsertExample(t *testing.T) {
 	example := testutils.InitDBWithTestExample(t)
-	defer db2.Close()
+	defer db.Close()
 	tests := []struct {
 		name       string
 		body       io.Reader

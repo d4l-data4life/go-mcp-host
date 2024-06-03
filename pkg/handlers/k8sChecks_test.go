@@ -9,7 +9,7 @@ import (
 
 	"github.com/gesundheitscloud/go-svc-template/pkg/handlers"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
-	"github.com/gesundheitscloud/go-svc/pkg/db2"
+	"github.com/gesundheitscloud/go-svc/pkg/db"
 )
 
 const (
@@ -25,7 +25,7 @@ func TestRoutesCheck(t *testing.T) {
 
 func TestCheckLiveness(t *testing.T) {
 	models.InitializeTestDB(t)
-	defer db2.Close()
+	defer db.Close()
 	request, _ := http.NewRequest(http.MethodGet, livenessURL, nil)
 	response := httptest.NewRecorder()
 	handlers.NewChecksHandler().Liveness(response, request)
@@ -34,7 +34,7 @@ func TestCheckLiveness(t *testing.T) {
 
 func TestCheckReadiness(t *testing.T) {
 	models.InitializeTestDB(t)
-	defer db2.Close()
+	defer db.Close()
 	request, _ := http.NewRequest(http.MethodGet, readinessURL, nil)
 	response := httptest.NewRecorder()
 	handlers.NewChecksHandler().Readiness(response, request)
@@ -44,7 +44,7 @@ func TestCheckReadiness(t *testing.T) {
 func TestCheckReadinessFailure(t *testing.T) {
 	// Open and Close DB connection to simulate broken connection
 	models.InitializeTestDB(t)
-	db2.Close()
+	db.Close()
 	request, _ := http.NewRequest(http.MethodGet, readinessURL, nil)
 	response := httptest.NewRecorder()
 	handlers.NewChecksHandler().Readiness(response, request)
