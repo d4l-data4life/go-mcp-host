@@ -31,11 +31,24 @@ func CreateExample(name string, attribute string) models.Example {
 // InitDBWithTestExample inits a test db with one registred and one activated account
 func InitDBWithTestExample(t *testing.T) (example models.Example) {
 	models.InitializeTestDB(t)
+	return AddExamplesToDB()
+}
+
+// AddTestDataExamplesToDB adds examples test data to the database
+func AddTestDataExamplesToDB() (example models.Example) {
+	example = CreateExample("test_persistent", "test")
+	if err := example.Upsert(); err != nil {
+		logging.LogErrorf(err, "Error in test Setup")
+	}
+	return example
+}
+
+func AddExamplesToDB() (example models.Example) {
 	example = CreateExample("test", "test")
 	if err := example.Upsert(); err != nil {
 		logging.LogErrorf(err, "Error in test Setup")
 	}
-	return
+	return example
 }
 
 // GetRequestPayload converts a given object into a reader of that obect as json payload

@@ -26,6 +26,7 @@ GOCMD=go
 GOBUILD=$(GOCMD) build -ldflags $(LDFLAGS)
 GOTEST=$(GOCMD) test
 SRC = cmd/api/*.go
+SRC_TESTDATA = cmd/testdata/*.go
 DUMMY_SECRET=very-secure-secret
 define LOCAL_VARIABLES
 GO_SVC_TEMPLATE_SERVICE_SECRET=$(DUMMY_SECRET) \
@@ -38,9 +39,14 @@ DOCKER_REGISTRY ?= crsensorhub.azurecr.io
 DOCKER_IMAGE=$(DOCKER_REGISTRY)/$(BINARY)
 CONTAINER_NAME=$(BINARY)
 PORT=9000
-DB_IMAGE=postgres
-DB_CONTAINER_NAME=$(BINARY)-postgres
-DB_PORT=6000
+
+# Test DB Variables
+TEST_DB_PORT=6000
+TEST_DB_IMAGE=postgres
+TEST_DB_CONTAINER_NAME=$(BINARY)-postgres
+TEST_DB_NAME = go-svc-template
+TEST_DB_USER = go-svc-template
+TEST_DB_PASSWORD = postgres
 
 # Deploy variables
 APP ?= $(BINARY)
@@ -120,7 +126,7 @@ clean:              ## Remove compiled binary, versioned chart and docker contai
 	rm -f $(BINARY)
 	rm -f deploy/helm-chart/Chart.yaml
 	-docker rm -f $(CONTAINER_NAME)
-	-docker rm -f $(DB_CONTAINER_NAME)
+	-docker rm -f $(TEST_DB_CONTAINER_NAME)
 
 .env: Makefile      ## Generate .env file from LOCAL_VARIABLES
 	@echo '${LOCAL_VARIABLES}' | sed -E -e 's/([^=]*)=("[^"]*"|[^ ]*)[ ]*/\1=\2\n/g' -e 's/"//g' > $@
@@ -148,21 +154,34 @@ lint:
 		--target lint \
 		.
 
-.PHONY: docker-database
-docker-database: docker-database-delete ## Run database in Docker
-	docker run --name $(DB_CONTAINER_NAME) -d \
-		-e POSTGRES_DB=go-svc-template \
-		-e POSTGRES_USER=go-svc-template \
-		-e POSTGRES_PASSWORD=postgres \
-		-p $(DB_PORT):5432 $(DB_IMAGE)
-	@until docker container exec -t $(DB_CONTAINER_NAME) pg_isready; do \
+.PHONY: docker-database ddb
+docker-database ddb: docker-database-delete ## Run database in Docker
+	docker run --name $(TEST_DB_CONTAINER_NAME) -d \
+		-e POSTGRES_DB=$(TEST_DB_NAME) \
+		-e POSTGRES_USER=$(TEST_DB_USER) \
+		-e POSTGRES_PASSWORD=$(TEST_DB_PASSWORD) \
+		-p $(TEST_DB_PORT):5432 $(TEST_DB_IMAGE)
+	@until docker container exec -t $(TEST_DB_CONTAINER_NAME) pg_isready; do \
 		>&2 echo "Postgres is unavailable - waiting for it... 😴"; \
 		sleep 1; \
 	done
 
-.PHONY: docker-database-delete
-docker-database-delete: ## Delete database in Docker
-	-docker rm -f $(DB_CONTAINER_NAME)
+.PHONY: docker-database-delete ddd
+docker-database-delete ddd: ## Delete database in Docker
+	-docker rm -f $(TEST_DB_CONTAINER_NAME)
+
+.PHONY: docker-database-connect ddc
+docker-database-connect ddc: ## Connect to the database in Docker
+	docker container exec -it $(TEST_DB_CONTAINER_NAME) psql -h localhost -U $(TEST_DB_USER) -d $(TEST_DB_NAME)
+
+.PHONY: docker-database-pgcli ddp
+docker-database-pgcli ddp: ## Connect to local PostgreSQL database using pgcli
+	PGPASSWORD="$(TEST_DB_PASSWORD)" pgcli -h localhost -p $(TEST_DB_PORT) -U $(TEST_DB_USER) -d $(TEST_DB_NAME)
+
+.PHONY: docker-database-testdata ddt
+docker-databasetestdata ddt: ## Seed the database with test data
+	$(LOCAL_VARIABLES) \
+	$(GOCMD) run $(SRC_TESTDATA)
 
 .PHONY: build
 build: ## Build app
@@ -174,12 +193,12 @@ run: ## Run app natively
 	$(GOCMD) run $(SRC)
 
 .PHONY: docker-run dr
-docker-run dr: .docker.env ## Run app in Docker. Configure connection to a DB using GO_SVC_TEMPLATE_DB_HOST and GO_SVC_TEMPLATE_DB_PORT
-	docker run --name $(DB_CONTAINER_NAME) -d \
-		-e POSTGRES_DB=go-svc-template \
-		-e POSTGRES_USER=go-svc-template \
-		-e POSTGRES_PASSWORD=postgres \
-		-p $(DB_PORT):5432 $(DB_IMAGE)
+docker-run dr: .docker.env ## Run app in Docker. Configure connection to a DB using GO_SVC_TEMPLATE_DB_HOST
+	docker run --name $(TEST_DB_CONTAINER_NAME) -d \
+		-e POSTGRES_DB=$(TEST_DB_NAME) \
+		-e POSTGRES_USER=$(TEST_DB_USER) \
+		-e POSTGRES_PASSWORD=$(TEST_DB_PASSWORD) \
+		-p $(TEST_DB_PORT):5432 $(TEST_DB_IMAGE)
 	docker run --name $(CONTAINER_NAME) -t -d \
 		-e GO_SVC_TEMPLATE_DB_HOST=host.docker.internal \
 		--env-file .docker.env \
@@ -201,3 +220,4 @@ local-delete ld:    ## Delete local helm deployment
 docker-prune:       ## Delete local docker images of this repo except for the current version
 	docker images | grep $(DOCKER_IMAGE) | grep -v $(APP_VERSION) | awk '{print $$3}' | xargs docker rmi -f
 	docker ps --quiet --all --filter status=exited | xargs docker rm
+
