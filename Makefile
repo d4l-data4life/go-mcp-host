@@ -112,7 +112,7 @@ helm-deploy:   ## Deploy to kubernetes using Helm
 	helm upgrade --install $(APP) \
 		-f $(VALUES_YAML) \
 		-f $(SECRETS_YAML) \
-		--namespace $(NAMESPACE) \
+		--create-namespace --namespace $(NAMESPACE) \
 		--set imageTag=$(DOCKER_IMAGE):$(APP_VERSION) \
 		--wait \
 		deploy/helm-chart
