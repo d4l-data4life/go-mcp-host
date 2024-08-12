@@ -27,12 +27,6 @@ GOBUILD=$(GOCMD) build -ldflags $(LDFLAGS)
 GOTEST=$(GOCMD) test
 SRC = cmd/api/*.go
 SRC_TESTDATA = cmd/testdata/*.go
-DUMMY_SECRET=very-secure-secret
-define LOCAL_VARIABLES
-GO_SVC_TEMPLATE_SERVICE_SECRET=$(DUMMY_SECRET) \
-GO_SVC_TEMPLATE_HUMAN_READABLE_LOGS=true \
-GO_SVC_TEMPLATE_DB_SSL_MODE=disable
-endef
 
 # Docker Variables
 DOCKER_REGISTRY ?= crsensorhub.azurecr.io
@@ -61,11 +55,11 @@ NAMESPACE ?= default
 ## ----------------------------------------------------------------------
 
 .PHONY: help
-help:               ## Show this help (default)
+help: ## Show this help (default)
 	@grep -E '^([[[:alpha:]][[:graph:]]*[[:space:]]*)+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: version
-version:              ## Display current version
+version: ## Display current version
 	@echo $(APP_VERSION)
 
 ## ----------------------------------------------------------------------
@@ -73,12 +67,11 @@ version:              ## Display current version
 ## ----------------------------------------------------------------------
 
 .PHONY: test-gh-action
-test-gh-action: ## Run tests natively in verbose mode
-	$(LOCAL_VARIABLES) \
+test-gh-action: .env ## Run tests natively in verbose mode
 	$(GOTEST) -timeout 300s -cover -covermode=atomic -v ./... 2>&1 | tee test-result.out
 
 .PHONY: docker-build db
-docker-build db: write-build-info    ## Build Docker image
+docker-build db: write-build-info ## Build Docker image
 	docker buildx build \
 		--cache-to type=gha,mode=max \
 		--cache-from type=gha \
@@ -96,18 +89,11 @@ write-build-info: ## Persist build parameters that require git
 	@echo "$(BRANCH)" > BRANCH
 
 .PHONY: docker-push
-docker-push:        ## Push Docker image to registry
+docker-push: ## Push Docker image to registry
 	docker push $(DOCKER_IMAGE):$(APP_VERSION)
 
 .PHONY: deploy
-deploy: helm-deploy reload     ## Redeploy and reload secrets
-
-.PHONY: reload
-reload:   ## Reloads configuration - currently: gracefully restarts K8s deployment
-	kubectl -n $(NAMESPACE) rollout restart deployment.apps/$(APP)
-
-.PHONY: helm-deploy
-helm-deploy:   ## Deploy to kubernetes using Helm
+deploy:   ## Deploy to kubernetes using Helm
 	sed -e 's/<github_release>/$(APP_VERSION)/g' deploy/helm-chart/Chart.versionless.yaml > deploy/helm-chart/Chart.yaml
 	helm upgrade --install $(APP) \
 		-f $(VALUES_YAML) \
@@ -122,28 +108,27 @@ helm-deploy:   ## Deploy to kubernetes using Helm
 ## ----------------------------------------------------------------------
 
 .PHONY: clean
-clean:              ## Remove compiled binary, versioned chart and docker containers
+clean: ## Remove compiled binary, versioned chart and docker containers
 	rm -f $(BINARY)
 	rm -f deploy/helm-chart/Chart.yaml
 	-docker rm -f $(CONTAINER_NAME)
 	-docker rm -f $(TEST_DB_CONTAINER_NAME)
 
-.env: Makefile      ## Generate .env file from LOCAL_VARIABLES
-	@echo '${LOCAL_VARIABLES}' | sed -E -e 's/([^=]*)=("[^"]*"|[^ ]*)[ ]*/\1=\2\n/g' -e 's/"//g' > $@
+.env: ## Initialize .env file from .env.example and insert real paths
+	sed -E 's#PATH_PLACEHOLDER#$(shell pwd)#g' .env.example > .env
 
-.docker.env: .env   ## Generate .docker.env file to be used for docker-run
-	sed -E 's#$(shell pwd)/test-config#/etc/shared-config#g' $? > $@
+.docker.env: .env ## Generate .docker.env file to be used for docker-run
+	sed -E 's#$(shell pwd)/test-keys#/keys#g' $? > $@
 
 .PHONY: local-test lt
 local-test lt: ## Run tests natively
-	$(LOCAL_VARIABLES) \
 	$(GOTEST) -timeout 45s -cover -covermode=atomic ./...
 
 .PHONY: test
-test: lint unit-test-postgres  ## Run all test activities sequentially
+test: lint unit-test-postgres ## Run all test activities sequentially
 
 .PHONY: unit-test-postgres
-unit-test-postgres: docker-database local-test docker-database-delete         ## Run unit tests inside the Docker and uses Postgres DB
+unit-test-postgres: docker-database local-test docker-database-delete ## Run unit tests inside the Docker and uses Postgres DB
 
 .PHONY: lint
 lint:
@@ -179,8 +164,7 @@ docker-database-pgcli ddp: ## Connect to local PostgreSQL database using pgcli
 	PGPASSWORD="$(TEST_DB_PASSWORD)" pgcli -h localhost -p $(TEST_DB_PORT) -U $(TEST_DB_USER) -d $(TEST_DB_NAME)
 
 .PHONY: docker-database-testdata ddt
-docker-databasetestdata ddt: ## Seed the database with test data
-	$(LOCAL_VARIABLES) \
+docker-databasetestdata ddt: .env ## Seed the database with test data
 	$(GOCMD) run $(SRC_TESTDATA)
 
 .PHONY: build
@@ -188,13 +172,12 @@ build: ## Build app
 	$(GOBUILD) -o $(BINARY) $(SRC)
 
 .PHONY: run
-run: ## Run app natively
-	$(LOCAL_VARIABLES) \
+run: .env ## Run app natively
 	$(GOCMD) run $(SRC)
 
 .PHONY: docker-run dr
 docker-run dr: .docker.env ## Run app in Docker. Configure connection to a DB using GO_SVC_TEMPLATE_DB_HOST
-	docker run --name $(TEST_DB_CONTAINER_NAME) -d \
+	-docker run --name $(TEST_DB_CONTAINER_NAME) -d \
 		-e POSTGRES_DB=$(TEST_DB_NAME) \
 		-e POSTGRES_USER=$(TEST_DB_USER) \
 		-e POSTGRES_PASSWORD=$(TEST_DB_PASSWORD) \
@@ -202,7 +185,7 @@ docker-run dr: .docker.env ## Run app in Docker. Configure connection to a DB us
 	docker run --name $(CONTAINER_NAME) -t -d \
 		-e GO_SVC_TEMPLATE_DB_HOST=host.docker.internal \
 		--env-file .docker.env \
-		--mount type=bind,source=$$(pwd)/test-config,target=/etc/shared-config \
+		--mount type=bind,source=$$(pwd)/test-keys,target=/keys \
 		-p $(PORT):$(PORT) \
 		$(DOCKER_IMAGE):$(APP_VERSION)
 

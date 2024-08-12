@@ -12,6 +12,7 @@ import (
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
 	"github.com/gesundheitscloud/go-svc-template/pkg/server"
 	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/gesundheitscloud/go-svc/pkg/standard"
 )
 
@@ -46,6 +47,12 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 
 	dieEarly := make(chan struct{})
 	defer close(dieEarly)
+
+	_, err := config.LoadJwtKey(viper.GetString("JWT_KEY_PATH"))
+	if err != nil {
+		logging.LogErrorf(err, "failed to create TLS HTTP client:")
+		return dieEarly
+	}
 
 	server.SetupRoutes(srv.Mux())
 	metrics.AddBuildInfoMetric()

@@ -1,11 +1,16 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/go-chi/cors"
+	"github.com/joho/godotenv"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
@@ -52,18 +57,8 @@ const (
 	DefaultDBSSLMode  = "verify-full"
 
 	// ##### AUTHENTICATION VARIABLES
-
-	// DefaultAuthHeaderName defines the name of the auth header
-	DefaultAuthHeaderName = "Authorization"
-	// DefaultServiceSecret is a secret used to authenticate requests from other services
-	DefaultServiceSecret = ""
+	DefaultJWTKeyPath = "/keys/jwt.key"
 )
-
-// ErrorMessage defines the type for the errors channel
-type ErrorMessage struct {
-	Message string
-	Err     error
-}
 
 func bindEnvVariable(name string, fallback interface{}) {
 	if fallback != "" {
@@ -76,8 +71,34 @@ func bindEnvVariable(name string, fallback interface{}) {
 	}
 }
 
+func loadDotEnv() {
+	path := ".env"
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		logging.LogErrorf(err, "failed calculating absolute path")
+	}
+	// for binary in docker dont load .env because its handled via helm
+	if !strings.Contains(absPath, Name) {
+		return
+	}
+	// recursively go up a folder until repository root is found
+	for !strings.HasSuffix(absPath, fmt.Sprintf("%s/.env", Name)) {
+		path = "../" + path
+		absPath, err = filepath.Abs(path)
+		if err != nil {
+			logging.LogErrorf(err, "failed calculating absolute path")
+			return
+		}
+	}
+	err = godotenv.Load(absPath)
+	if err != nil {
+		logging.LogWarningf(err, "failed loading .env file at %s", absPath)
+	}
+}
+
 // SetupEnv configures app to read ENV variables
 func SetupEnv() {
+	loadDotEnv()
 	viper.SetEnvPrefix(EnvPrefix)
 	// General
 	bindEnvVariable("DEBUG", Debug)
@@ -97,8 +118,8 @@ func SetupEnv() {
 	bindEnvVariable("DB_SSL_MODE", DefaultDBSSLMode)
 	bindEnvVariable("DB_SSL_ROOT_CERT_PATH", "/root.ca.pem")
 	// Authentication
-	bindEnvVariable("AUTH_HEADER_NAME", DefaultAuthHeaderName)
-	bindEnvVariable("SERVICE_SECRET", DefaultServiceSecret)
+	bindEnvVariable("SERVICE_SECRET", "")
+	bindEnvVariable("JWT_KEY_PATH", DefaultJWTKeyPath)
 }
 
 // SetupLogger configures the logger with environment preferences
@@ -125,4 +146,16 @@ func CorsConfig(corsHosts []string) cors.Options {
 		MaxAge:           300,  // Maximum value not ignored by any of major browsers,
 		Debug:            viper.GetBool("DEBUG_CORS"),
 	}
+}
+
+func LoadJwtKey(keyPath string) ([]byte, error) {
+	b64KeyBytes, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load JWT Key file")
+	}
+	key, err := base64.StdEncoding.DecodeString(string(b64KeyBytes))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decode base64 key string")
+	}
+	return key, nil
 }

@@ -18,6 +18,8 @@ spec:
         role: deployment
       annotations:
         prometheus.io/scrape: "true"
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       securityContext:
         runAsUser: 1000
@@ -100,12 +102,12 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 20
         volumeMounts:
-        - name: shared-config
-          mountPath: /etc/shared-config
+        - mountPath: /keys
+          name: jwt-secret
           readOnly: true
       imagePullSecrets:
       - name: gesundheitscloud-regsecret
       volumes:
-        - name: shared-config
-          configMap:
-            name: shared-config
+        - name: jwt-secret
+          secret:
+            secretName: {{ .Chart.Name }}-jwt
