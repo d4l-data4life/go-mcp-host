@@ -20,7 +20,7 @@ RUN apk update && apk upgrade && \
   apk --update add git gcc make ca-certificates musl-dev
 
 # Add root-CA certificate for DB connection
-COPY DigiCertGlobalRootCA.crt.pem /root.ca.pem
+COPY root.ca.pem /root.ca.pem
 
 # Add a user to run in non-root mode
 RUN mkdir /user && \
