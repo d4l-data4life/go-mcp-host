@@ -14,6 +14,8 @@ import (
 func InitializeTestDB(t *testing.T) {
 	config.SetupEnv()
 	config.SetupLogger()
+	// override schema for testing
+	viper.Set("DB_SCHEMA", "testing")
 	dbOpts := db.NewConnection(
 		db.WithDebug(viper.GetBool("DEBUG")),
 		db.WithHost(viper.GetString("DB_HOST")),

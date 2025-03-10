@@ -21,11 +21,6 @@ var (
 	ErrExampleDuplicateAttribute = errors.New("duplicate attribute")
 )
 
-// define postgres constraints
-const (
-	UniqueAttribute = "uni_public_examples_attribute"
-)
-
 // Example model
 type Example struct {
 	BaseModel
@@ -53,7 +48,7 @@ func (e *Example) Upsert() error {
 		logging.LogErrorf(err, ErrExampleUpsert.Error())
 		// Identifies Postgres uniqueness violation error
 		if pgErr, isPGErr := err.(*pgconn.PgError); isPGErr {
-			if pgErr.ConstraintName == UniqueAttribute {
+			if pgErr.Code == PGUniqueViolationErrorCode {
 				return ErrExampleDuplicateAttribute
 			}
 		}
