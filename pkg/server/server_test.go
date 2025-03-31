@@ -31,7 +31,6 @@ func TestEndpointProtection(t *testing.T) {
 	defer db.Close()
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(test.method, test.url, strings.NewReader(""))
 			writer := httptest.NewRecorder()
@@ -58,7 +57,6 @@ func TestMetrics(t *testing.T) {
 	defer db.Close()
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/metrics", strings.NewReader(""))
 			writer := httptest.NewRecorder()
@@ -69,7 +67,7 @@ func TestMetrics(t *testing.T) {
 			resp.Body.Close()
 
 			assert.Equal(t, test.metricExist, strings.Contains(string(body), test.metric),
-				fmt.Sprintf("Text %s should contain metric '%s'", string(body), test.metric))
+				"Text %s should contain metric '%s'", string(body), test.metric)
 
 			// regexp allows to ignore metric labels
 			metricValueRegexp := fmt.Sprintf(`%s(\{.*\})? %d`, test.metric, test.value)
@@ -78,7 +76,7 @@ func TestMetrics(t *testing.T) {
 				t.Error(err)
 			}
 			assert.Equal(t, test.valueMatch, matched,
-				fmt.Sprintf("Text %s should contain metric '%s' with value '%d'", string(body), test.metric, test.value))
+				"Text %s should contain metric '%s' with value '%d'", string(body), test.metric, test.value)
 		})
 	}
 }
@@ -140,7 +138,6 @@ func TestCors(t *testing.T) {
 	defer db.Close()
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			test.request.Header.Set(test.requestHeader, test.requestHeaderContent)
 
@@ -148,7 +145,7 @@ func TestCors(t *testing.T) {
 			if test.expectHeaders {
 				assert.Equal(t, test.expectedHeaderContent, test.reply.Header().Get(test.expectedHeader))
 			} else {
-				assert.Equal(t, "", test.reply.Header().Get(test.expectedHeader))
+				assert.Empty(t, test.reply.Header().Get(test.expectedHeader))
 			}
 		})
 	}

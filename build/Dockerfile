@@ -6,8 +6,7 @@
 # Providing local IMG_BASE allows to save on API calls to Dockerhub (these are limited)
 # Set empty to use the upstream
 ARG IMG_BASE=
-ARG GO_VERSION=1.22
-ARG CILINT_VERSION=v1.58
+ARG GO_VERSION=1.24
 
 ########################
 ### Base container
@@ -39,19 +38,6 @@ COPY go.mod .
 RUN --mount=type=cache,target=/go/pkg/mod \
   go mod download
 COPY . .
-
-FROM ${IMG_BASE}golangci/golangci-lint:${CILINT_VERSION} AS lint-base
-
-########################
-### Linting
-########################
-
-FROM base AS lint
-RUN --mount=from=lint-base,src=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint \
-  --mount=type=cache,target=/root/.cache/go-build \
-  --mount=type=cache,target=/go/pkg/mod \
-  --mount=type=cache,target=/root/.cache/golangci-lint \
-  golangci-lint run -v --timeout 10m0s ./...
 
 ########################
 ### Building

@@ -72,6 +72,13 @@ make docker-database
 }
 ```
 
+### Linting
+
+Linting requires `golangci-lint` to be installed.
+https://golangci-lint.run/welcome/install/
+Ideally also setup you VSCode to use this linter for go files.
+Add `"go.lintTool": "golangci-lint",` in `settings.json`.
+
 ### Run in local Kubernetes
 
 To be able to reach the running service add `go-svc-template-dns.local` to `/etc/hosts' file.

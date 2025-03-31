@@ -43,9 +43,8 @@ func SetupRoutes(mux *chi.Mux) {
 				Mount("/internal/example", exampleHandler.InternalRoutes())
 		})
 
-	// Displays all API paths in when debug enabled
-	// nolint: revive
-	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+	// Displays all API paths when debug enabled
+	walkFunc := func(method string, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		route = strings.ReplaceAll(route, "/*/", "/")
 		logging.LogDebugf("%s %s\n", method, route)
 		return nil

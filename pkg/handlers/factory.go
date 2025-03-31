@@ -13,7 +13,11 @@ var instance *instrumented.HandlerFactory
 // GetHandlerFactory returns a global singleton InstrumentedHandlerFactory object
 func GetHandlerFactory() *instrumented.HandlerFactory {
 	once.Do(func() {
-		instance = instrumented.NewHandlerFactory("d4l", instrumented.DefaultInstrumentInitOptions, instrumented.DefaultInstrumentOptions)
+		instance = instrumented.NewHandlerFactory(
+			"d4l",
+			instrumented.DefaultInstrumentInitOptions,
+			instrumented.DefaultInstrumentOptions,
+		)
 	})
 	return instance
 }

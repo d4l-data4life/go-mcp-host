@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gesundheitscloud/go-svc-template/pkg/config"
 	"github.com/gesundheitscloud/go-svc/pkg/db"
@@ -32,5 +33,5 @@ func InitializeTestDB(t *testing.T) {
 	db.InitializeTestPostgres(dbOpts)
 	assert.NotNil(t, db.Get(), "DB handle is nil")
 	err := db.Ping()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

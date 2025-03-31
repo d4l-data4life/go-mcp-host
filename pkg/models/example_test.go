@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/gesundheitscloud/go-svc-template/internal/testutils"
 	"github.com/gesundheitscloud/go-svc-template/pkg/models"
@@ -25,18 +26,17 @@ func TestExample_Upsert(t *testing.T) {
 	}
 	defer db.Close()
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			example := CreateExample(tt.exampleName, tt.attribute)
 			err := example.Upsert()
 			logging.LogErrorf(err, "error")
 			if tt.err == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				_, err := models.GetExampleByAttribute(tt.attribute)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
-				assert.ErrorIs(t, err, tt.err)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.err)
 			}
 		})
 	}
@@ -55,15 +55,14 @@ func TestGetExampleByAttribute(t *testing.T) {
 	}
 	defer db.Close()
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := models.GetExampleByAttribute(tt.want.Attribute)
 			if tt.err == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.want.String(), got.String())
 			} else {
-				assert.Error(t, err)
-				assert.ErrorIs(t, err, tt.err)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.err)
 			}
 		})
 	}

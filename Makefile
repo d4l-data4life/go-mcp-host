@@ -132,12 +132,8 @@ unit-test-postgres: docker-database local-test docker-database-delete ## Run uni
 
 .PHONY: lint
 lint:
-	docker buildx build \
-		--build-arg GITHUB_USER_TOKEN \
-		-t "$(DOCKER_IMAGE):lint" \
-		-f build/Dockerfile \
-		--target lint \
-		.
+	@golangci-lint --version
+	golangci-lint run ./...
 
 .PHONY: docker-database ddb
 docker-database ddb: docker-database-delete ## Run database in Docker

@@ -18,10 +18,9 @@ jobs:
           setup-go: true
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: v1.58
-          skip-pkg-cache: true
+          version: v2.0
 
   test:
     runs-on: ubuntu-latest

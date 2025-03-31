@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gesundheitscloud/go-svc-template/internal/testutils"
 	"github.com/gesundheitscloud/go-svc-template/pkg/handlers"
@@ -19,7 +20,7 @@ import (
 
 func TestRoutesConsent(t *testing.T) {
 	router := handlers.NewExampleHandler().Routes()
-	assert.NotNil(t, router, "should return a valid router")
+	assert.NotNil(t, router)
 }
 
 func TestExampleHandler_GetExampleByAttribute(t *testing.T) {
@@ -35,7 +36,6 @@ func TestExampleHandler_GetExampleByAttribute(t *testing.T) {
 	}
 	defer db.Close()
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			e := &handlers.ExampleHandler{}
 			request, _ := http.NewRequest("method", "url", nil)
@@ -48,8 +48,8 @@ func TestExampleHandler_GetExampleByAttribute(t *testing.T) {
 			if tt.statusCode == http.StatusOK {
 				result := models.Example{}
 				err := json.NewDecoder(writer.Body).Decode(&result)
-				assert.NoError(t, err, "should not error on decode")
-				assert.Equal(t, tt.expectedExample.String(), result.String(), "should return expected example")
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedExample.String(), result.String())
 			}
 		})
 	}
@@ -77,7 +77,6 @@ func TestExampleHandler_UpsertExample(t *testing.T) {
 		}), 409},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			e := &handlers.ExampleHandler{}
 			request, _ := http.NewRequest("method", "url", tt.body)

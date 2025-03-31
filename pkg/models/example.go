@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -24,8 +25,8 @@ var (
 // Example model
 type Example struct {
 	BaseModel
-	Name       string         `json:"name" gorm:"primaryKey"`
-	Attribute  string         `json:"attribute" gorm:"unique"`
+	Name       string         `json:"name"                 gorm:"primaryKey"`
+	Attribute  string         `json:"attribute"            gorm:"unique"`
 	Parameters datatypes.JSON `json:"parameters,omitempty"`
 }
 
@@ -45,7 +46,7 @@ func (e *Example) Upsert() error {
 	}).Create(e).Error
 
 	if err != nil {
-		logging.LogErrorf(err, ErrExampleUpsert.Error())
+		logging.LogErrorf(err, "%s", ErrExampleUpsert.Error())
 		// Identifies Postgres uniqueness violation error
 		if pgErr, isPGErr := err.(*pgconn.PgError); isPGErr {
 			if pgErr.Code == PGUniqueViolationErrorCode {
@@ -65,9 +66,58 @@ func GetExampleByAttribute(attribute string) (Example, error) {
 		if err == gorm.ErrRecordNotFound {
 			return example, ErrExampleNotFound
 		}
-		logging.LogErrorf(err, fmt.Sprintf("Failed getting example for attribute %s", attribute))
+		logging.LogErrorf(err, "Failed getting example for attribute %s", attribute)
 		return example, ErrExampleGet
 	}
+
+	return example, nil
+}
+
+// Examples used to show why linter is set to 140 characters
+func LongMethodSignatureButJustShortEnough(attributes string, values int, styles string, flavours string, potentials int) (Example, error) {
+	example := Example{
+		Attribute: attributes,
+	}
+	params := map[string]any{
+		"values":     values,
+		"styles":     styles,
+		"flavours":   flavours,
+		"potentials": potentials,
+	}
+
+	paramsJSON, err := json.Marshal(params)
+	if err != nil {
+		return example, err
+	}
+	example.Parameters = paramsJSON
+
+	return example, nil
+}
+
+func TooLongMethodNameWithFarTooManyParameters(
+	attribute string,
+	value int,
+	style string,
+	flavour string,
+	potential int,
+	overboard string,
+) (Example, error) {
+	example := Example{
+		Attribute: attribute,
+	}
+	params := map[string]any{
+		"value":     value,
+		"style":     style,
+		"flavour":   flavour,
+		"potential": potential,
+		"overboard": overboard,
+	}
+
+	paramsJSON, err := json.Marshal(params)
+	if err != nil {
+		return example, err
+	}
+	example.Parameters = paramsJSON
 
 	return example, nil
 }

@@ -19,8 +19,8 @@ const (
 
 func TestRoutesCheck(t *testing.T) {
 	router := handlers.NewChecksHandler().Routes()
-	assert.NotNil(t, router, "should return a valid router")
-	assert.Equal(t, 2, len(router.Routes()), "There should be exactly two routes for this handler")
+	assert.NotNil(t, router)
+	assert.Len(t, router.Routes(), 2)
 }
 
 func TestCheckLiveness(t *testing.T) {

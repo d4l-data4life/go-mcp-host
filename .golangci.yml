@@ -1,91 +1,93 @@
-run:
-  timeout: 5m
+version: "2"
 
-linters-settings:
-  funlen:
-    lines: 60
-    statements: 40
-  gocyclo:
-    # minimal code complexity to report, 30 by default (but we recommend 10-20)
-    min-complexity: 11
-  gocognit:
-    # minimal code complexity to report, 30 by default (but we recommend 10-20)
-    min-complexity: 10
-  goimports:
-    # put imports beginning with prefix after 3rd-party packages;
-    # it's a comma-separated list of prefixes
-    local-prefixes: github.com/gesundheitscloud/
-  gosec:
-    severity: medium
-  lll:
-    # max line length, lines longer will be reported. Default is 120.
-    # '\t' is counted as 1 character by default, and can be changed with the tab-width option
-    line-length: 140
+run:
+  timeout: 10m
 
 linters:
-  disable-all: true
+  default: standard
   enable:
     - bodyclose
+    - copyloopvar
     - dogsled
-    - dupl
-    - errcheck
-    - exportloopref
+    - exptostd
     - funlen
     - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
     - godox
-    - gofmt
-    - goimports
     - gosec
-    - gosimple
-    - govet
-    - ineffassign
     - lll
     - misspell
     - nakedret
+    - nilerr
+    - reassign
     - revive
-    - staticcheck
-    - stylecheck
-    - typecheck
+    - tagalign
+    - testifylint
     - unconvert
     - unparam
-    - unused
+    - wastedassign
     - whitespace
 
-  # not enabled: (check with `golangci-lint linters` command)
-  # - gocognit
-  # - gomnd
-  # - maligned
-  # - prealloc
-  # - wsl
+  settings:
+    funlen:
+      lines: 60
+      statements: 40
+      ignore-comments: true
+    gocyclo:
+      # minimal code complexity to report, 30 by default (but we recommend 10-20)
+      min-complexity: 10
+    gocognit:
+      # minimal code complexity to report, 30 by default (but we recommend 10-20)
+      min-complexity: 10
+    gosec:
+      severity: medium
+    lll:
+      line-length: 140
+    tagalign:
+      align: true
+      sort: false
+      strict: false
+
+  exclusions:
+    warn-unused: true
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+      - legacy
+    rules:
+      # Exclude test functions from linting rules
+      - source: "Test.*"
+        linters:
+          - funlen
+          - gocognit
+          - gocyclo
+          - dogsled
+      # Exclude linters from running on tests files.
+      - path: _test\.go
+        linters:
+          - revive
+
+formatters:
+  enable:
+    - goimports
+    - golines
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/gesundheitscloud/
+    golines:
+      max-len: 140
 
 issues:
-  exclude-dirs:
-    - deploy
-    - sql
-    - swagger
-    - .github
-  exclude-rules:
-    # Exclude test functions from linting rules
-    - source: "Test.*"
-      linters:
-        - funlen
-        - gocognit
-        - gocyclo
-        - dogsled
-        - dupl
-    # Exclude linters from running on tests files.
-    - path: _test\.go
-      linters:
-        - revive
-    - source: "InstrumentChi"
-      linters:
-        - lll
-
   # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
   max-issues-per-linter: 0
 
   # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
   max-same-issues: 0
+  fix: true
+
+severity:
+  default: error

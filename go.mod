@@ -1,6 +1,6 @@
 module github.com/gesundheitscloud/go-svc-template
 
-go 1.22
+go 1.24
 
 require (
 	github.com/gesundheitscloud/go-svc v1.84.0
