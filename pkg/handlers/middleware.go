@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // ContextKey is the type for context keys
@@ -21,7 +22,7 @@ const (
 )
 
 // AuthMiddleware verifies JWT tokens and adds user ID to context
-func AuthMiddleware(jwtKey []byte) func(http.Handler) http.Handler {
+func AuthMiddleware(jwtKey []byte, db *gorm.DB) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Get token from Authorization header
@@ -48,6 +49,24 @@ func AuthMiddleware(jwtKey []byte) func(http.Handler) http.Handler {
 				render.Status(r, http.StatusUnauthorized)
 				render.JSON(w, r, map[string]string{"error": "Invalid or expired token"})
 				return
+			}
+
+			// Validate that the user still exists in the database
+			if db != nil {
+				var count int64
+				if err := db.Table("users").Where("id = ? AND deleted_at IS NULL", userID).Count(&count).Error; err != nil {
+					render.Status(r, http.StatusInternalServerError)
+					render.JSON(w, r, map[string]string{"error": "Failed to validate user"})
+					return
+				}
+				if count == 0 {
+					render.Status(r, http.StatusUnauthorized)
+					render.JSON(w, r, map[string]string{
+						"error": "User not found - please log in again",
+						"code":  "USER_NOT_FOUND",
+					})
+					return
+				}
 			}
 
 			// Add user ID and token to context

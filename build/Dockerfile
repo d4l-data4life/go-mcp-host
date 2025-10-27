@@ -80,7 +80,7 @@ WORKDIR /app
 # ENTRYPOINT "/sth/${VAR}/bin"
 
 FROM run-base AS run
-ARG PORT=9000
+ARG PORT=8080
 EXPOSE $PORT
 LABEL org.label-schema.name="go-mcp-host"
 LABEL org.label-schema.description="Does this and that"

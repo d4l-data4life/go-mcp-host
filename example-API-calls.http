@@ -5,7 +5,7 @@
 #     "local": {
 #         "VEGA_USER_ID": "a928a8d7-8227-498d-8ed4-5a7bfc721c5e",
 #         "BEARER_TOKEN": "auth-token-from-web-app",
-#         "SERVER": "http://localhost:9000",
+#         "SERVER": "http://localhost:8080",
 #         "SERVER_SECRET": "very-secure-secret"
 #     }
 # }

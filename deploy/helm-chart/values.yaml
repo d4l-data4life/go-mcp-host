@@ -3,7 +3,7 @@ APP:
   DEBUG_CORS: false
   HOST: "ENV DEPENDENT"
   TLS: "ENV DEPENDENT"
-  PORT: 9000
+  PORT: 8080
   CORS_HOSTS: "ENV DEPENDENT"
   REMOTE_KEYS_URL: "https://login.microsoftonline.com/common/discovery/keys"
 DB_CONFIGMAP: go-mcp-host-db-connection

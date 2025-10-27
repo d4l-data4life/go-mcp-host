@@ -40,14 +40,14 @@ const (
 	// HumanReadableLogs set to true disables JSON formatting of logging
 	HumanReadableLogs = false
 	// DefaultPort default port the service is served on
-	DefaultPort = "9000"
+	DefaultPort = "8080"
 	// DefaultCorsHosts default cors horst for local development
 	DefaultCorsHosts = "https://localhost:3000 http://localhost:3456"
 
 	// ##### DATABASE VARIABLES
 
 	// MigrationVersion determines which migration should be executed
-	MigrationVersion  = 2
+	MigrationVersion  = 1
 	DefaultDBHost     = "localhost"
 	DefaultDBPort     = "6000"
 	DefaultDBName     = "go-mcp-host"

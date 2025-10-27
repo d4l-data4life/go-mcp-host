@@ -14,7 +14,7 @@
 1. replace `go-mcp-host` with the name of your service everywhere
 1. replace `GO_SVC_TEMPLATE` with the capitalized version of your service
 1. make sure the go.mod file looks reasonable
-1. Choose a different PORT for the server (change 9000 to avoid conflicts)
+1. Choose a different PORT for the server (change 8080 to avoid conflicts)
 1. Choose a different PORT for the local database (change 6000 to avoid conflicts)
 1. Add description in `deploy/helm-chart/Chart.versionless.yaml`
 1. Delete this part of the README

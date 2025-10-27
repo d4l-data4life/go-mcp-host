@@ -21,7 +21,7 @@ func RegisterRoutes(r chi.Router, db *gorm.DB, agent *agent.Agent, mcpManager *m
 
 	// Protected routes (authentication required)
 	r.Group(func(r chi.Router) {
-		r.Use(AuthMiddleware(jwtKey))
+		r.Use(AuthMiddleware(jwtKey, db))
 
 		// Conversations
 		conversationsHandler := NewConversationsHandler(db)

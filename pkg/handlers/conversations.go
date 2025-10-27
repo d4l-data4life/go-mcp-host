@@ -73,6 +73,32 @@ func (h *ConversationsHandler) ListConversations(w http.ResponseWriter, r *http.
 func (h *ConversationsHandler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	userID := GetUserIDFromContext(r.Context())
 
+	// Validate user ID from context
+	if userID == uuid.Nil {
+		logging.LogErrorf(nil, "User ID is nil in context")
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, map[string]string{"error": "Unauthorized - invalid user ID"})
+		return
+	}
+
+	// Verify user exists
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			logging.LogErrorf(nil, "User not found in database: %s", userID)
+			render.Status(r, http.StatusUnauthorized)
+			render.JSON(w, r, map[string]string{
+				"error": "User not found - please log in again",
+				"code":  "USER_NOT_FOUND",
+			})
+		} else {
+			logging.LogErrorf(err, "Failed to verify user: %s", userID)
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": "Failed to verify user"})
+		}
+		return
+	}
+
 	var req CreateConversationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		render.Status(r, http.StatusBadRequest)
@@ -98,7 +124,7 @@ func (h *ConversationsHandler) CreateConversation(w http.ResponseWriter, r *http
 	}
 
 	if err := h.db.Create(&conversation).Error; err != nil {
-		logging.LogErrorf(err, "Failed to create conversation")
+		logging.LogErrorf(err, "Failed to create conversation for user: %s", userID)
 		render.Status(r, http.StatusInternalServerError)
 		render.JSON(w, r, map[string]string{"error": "Failed to create conversation"})
 		return
