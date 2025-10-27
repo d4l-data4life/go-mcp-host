@@ -12,7 +12,7 @@
 *.out
 
 # The binary
-go-svc-template
+go-mcp-host
 deploy/manifests
 vendor/
 deploy/helm-chart/Chart.yaml

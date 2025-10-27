@@ -29,8 +29,8 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: go-svc-template
-          POSTGRES_USER: go-svc-template
+          POSTGRES_DB: go-mcp-host
+          POSTGRES_USER: go-mcp-host
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready

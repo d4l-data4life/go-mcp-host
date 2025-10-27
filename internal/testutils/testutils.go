@@ -13,43 +13,12 @@ import (
 	"github.com/go-chi/cors"
 	"gorm.io/datatypes"
 
-	"github.com/gesundheitscloud/go-svc-template/pkg/config"
-	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
-	"github.com/gesundheitscloud/go-svc-template/pkg/models"
-	"github.com/gesundheitscloud/go-svc-template/pkg/server"
+	"github.com/weese/go-mcp-host/pkg/config"
+	"github.com/weese/go-mcp-host/pkg/metrics"
+	"github.com/weese/go-mcp-host/pkg/models"
+	"github.com/weese/go-mcp-host/pkg/server"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
-
-func CreateExample(name string, attribute string) models.Example {
-	example := models.Example{
-		Name:      name,
-		Attribute: attribute,
-	}
-	return example
-}
-
-// InitDBWithTestExample inits a test db with one registred and one activated account
-func InitDBWithTestExample(t *testing.T) (example models.Example) {
-	models.InitializeTestDB(t)
-	return AddExamplesToDB()
-}
-
-// AddTestDataExamplesToDB adds examples test data to the database
-func AddTestDataExamplesToDB() (example models.Example) {
-	example = CreateExample("test_persistent", "test")
-	if err := example.Upsert(); err != nil {
-		logging.LogErrorf(err, "Error in test Setup")
-	}
-	return example
-}
-
-func AddExamplesToDB() (example models.Example) {
-	example = CreateExample("test", "test")
-	if err := example.Upsert(); err != nil {
-		logging.LogErrorf(err, "Error in test Setup")
-	}
-	return example
-}
 
 // GetRequestPayload converts a given object into a reader of that obect as json payload
 func GetRequestPayload(payload interface{}) io.Reader {
@@ -63,7 +32,7 @@ func GetTestMockServer(t *testing.T) *server.Server {
 	corsOptions := config.CorsConfig([]string{"localhost"})
 	srv := server.NewServer("TEST_SERVER", cors.New(corsOptions), 1, 10*time.Second)
 
-	server.SetupRoutes(srv.Mux())
+	server.SetupRoutes(context.Background(), srv.Mux())
 	metrics.AddBuildInfoMetric()
 	return srv
 }

@@ -25,5 +25,5 @@ jobs:
       - uses: gesundheitscloud/github-actions/deploy@main
         with:
           environment: ${{ inputs.environment }}
-          repository: go-svc-templates
+          repository: go-mcp-host
           azure-credentials: ${{ secrets.AZURE_CI_CREDENTIALS }}

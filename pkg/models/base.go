@@ -18,7 +18,14 @@ func MigrationFunc(conn *gorm.DB) error {
 	// use conn.Debug().AutoMigrate(...) to enable debugging
 	// Need to create schema here of migration fails
 	conn.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", viper.GetString("DB_SCHEMA")))
-	return conn.AutoMigrate(&Example{})
+	return conn.AutoMigrate(
+		&User{},
+		&Conversation{},
+		&Message{},
+		&MCPSession{},
+		&MCPTool{},
+		&MCPResource{},
+	)
 }
 
 // BaseModel defines the basic fields for each other model

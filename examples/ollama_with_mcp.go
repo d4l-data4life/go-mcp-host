@@ -1,0 +1,193 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/weese/go-mcp-host/pkg/config"
+	"github.com/weese/go-mcp-host/pkg/llm"
+	"github.com/weese/go-mcp-host/pkg/llm/ollama"
+	"github.com/weese/go-mcp-host/pkg/mcp/manager"
+	"github.com/google/uuid"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
+
+// This example demonstrates how to use Ollama with MCP tools
+// It shows the complete flow: MCP tools → LLM → Tool execution → Response
+
+func main() {
+	// Setup configuration
+	config.SetupEnv()
+	config.SetupLogger()
+
+	// Connect to database
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		"localhost", "6000", "go-mcp-host", "postgres", "go-mcp-host")
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		fmt.Printf("Failed to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Create MCP manager
+	mcpManager := manager.NewManager(db, 1*time.Hour)
+
+	// Create Ollama client
+	ollamaClient := ollama.NewClient(ollama.Config{
+		BaseURL: "http://localhost:11434",
+		Model:   "llama3.2",
+		Timeout: 5 * time.Minute,
+	})
+
+	// Test Ollama connection
+	fmt.Println("Testing Ollama connection...")
+	models, err := ollamaClient.ListModels(context.Background())
+	if err != nil {
+		fmt.Printf("Failed to connect to Ollama: %v\n", err)
+		fmt.Println("Make sure Ollama is running: ollama serve")
+		os.Exit(1)
+	}
+	fmt.Printf("Connected to Ollama. Available models: %d\n", len(models))
+	for _, model := range models {
+		fmt.Printf("  - %s\n", model.Name)
+	}
+
+	// Create a conversation
+	conversationID := uuid.New()
+	fmt.Printf("\nConversation ID: %s\n", conversationID)
+
+	// Configure weather MCP server
+	weatherConfig := config.MCPServerConfig{
+		Name:    "weather",
+		Type:    "stdio",
+		Command: "npx",
+		Args:    []string{"-y", "@h1deya/mcp-server-weather"},
+		Enabled: true,
+	}
+
+	// Create MCP session
+	fmt.Println("\nInitializing weather MCP server...")
+	ctx := context.Background()
+	session, err := mcpManager.GetOrCreateSession(ctx, conversationID, weatherConfig)
+	if err != nil {
+		fmt.Printf("Failed to create MCP session: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("MCP session created: %s\n", session.SessionID)
+
+	// Wait a moment for tools to be discovered
+	time.Sleep(2 * time.Second)
+
+	// Get all available tools
+	toolsWithServer, err := mcpManager.GetAllTools(ctx, conversationID)
+	if err != nil {
+		fmt.Printf("Failed to get tools: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("\nDiscovered %d tools:\n", len(toolsWithServer))
+	for _, t := range toolsWithServer {
+		fmt.Printf("  - %s.%s: %s\n", t.ServerName, t.Tool.Name, t.Tool.Description)
+	}
+
+	// Convert MCP tools to LLM format
+	var llmTools []llm.Tool
+	for _, t := range toolsWithServer {
+		llmTools = append(llmTools, llm.ConvertMCPToolToLLMTool(t.Tool, t.ServerName))
+	}
+
+	// Create a chat request with tools
+	fmt.Println("\nSending request to LLM...")
+	messages := []llm.Message{
+		{
+			Role:    llm.RoleSystem,
+			Content: "You are a helpful assistant with access to weather information. When asked about weather, use the available tools to get current data.",
+		},
+		{
+			Role:    llm.RoleUser,
+			Content: "What's the weather like in San Francisco?",
+		},
+	}
+
+	chatRequest := llm.ChatRequest{
+		Model:    "llama3.2",
+		Messages: messages,
+		Tools:    llmTools,
+	}
+
+	// Send to LLM
+	response, err := ollamaClient.Chat(ctx, chatRequest)
+	if err != nil {
+		fmt.Printf("Failed to get LLM response: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("\nLLM Response:\n")
+	fmt.Printf("  Role: %s\n", response.Message.Role)
+	fmt.Printf("  Content: %s\n", response.Message.Content)
+	fmt.Printf("  Tool Calls: %d\n", len(response.Message.ToolCalls))
+
+	// Execute tool calls if any
+	if len(response.Message.ToolCalls) > 0 {
+		fmt.Println("\nExecuting tool calls...")
+
+		for _, toolCall := range response.Message.ToolCalls {
+			fmt.Printf("\n  Tool: %s\n", toolCall.Function.Name)
+
+			// Parse server and tool name
+			serverName, toolName := llm.ParseToolName(toolCall.Function.Name)
+			fmt.Printf("  Server: %s\n", serverName)
+			fmt.Printf("  Method: %s\n", toolName)
+
+			// Parse arguments
+			var args map[string]interface{}
+			if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+				fmt.Printf("  Error parsing arguments: %v\n", err)
+				continue
+			}
+			fmt.Printf("  Arguments: %v\n", args)
+
+			// Execute via MCP
+			result, err := mcpManager.CallTool(ctx, conversationID, serverName, toolName, args)
+			if err != nil {
+				fmt.Printf("  Error: %v\n", err)
+				continue
+			}
+
+			// Convert result to string
+			resultText := llm.ConvertMCPContentToString(result.Content)
+			fmt.Printf("  Result: %s\n", resultText)
+
+			// Add tool result to messages for next LLM call
+			messages = append(messages, llm.Message{
+				Role:       llm.RoleAssistant,
+				ToolCalls:  []llm.ToolCall{toolCall},
+			})
+			messages = append(messages, llm.Message{
+				Role:       llm.RoleTool,
+				ToolCallID: toolCall.ID,
+				Content:    resultText,
+			})
+		}
+
+		// Send tool results back to LLM for final response
+		fmt.Println("\nSending tool results back to LLM...")
+		chatRequest.Messages = messages
+		finalResponse, err := ollamaClient.Chat(ctx, chatRequest)
+		if err != nil {
+			fmt.Printf("Failed to get final response: %v\n", err)
+		} else {
+			fmt.Printf("\nFinal Response:\n%s\n", finalResponse.Message.Content)
+		}
+	}
+
+	// Cleanup
+	fmt.Println("\nCleaning up...")
+	mcpManager.CloseAllSessionsForConversation(conversationID)
+	fmt.Println("Done!")
+}
+

@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/gesundheitscloud/go-svc-template/internal/testutils"
+	"github.com/weese/go-mcp-host/internal/testutils"
 	"github.com/gesundheitscloud/go-svc/pkg/db"
 )
 
@@ -50,7 +50,7 @@ func TestMetrics(t *testing.T) {
 	}{
 		{"Golang metrics should exist", "go_memstats_alloc_bytes_total", -1, true, false},
 		{"Golang metrics should exist", "go_info", 1, true, true},
-		{"go-svc-template info metric should exist", "build_info", 1, true, true},
+		{"go-mcp-host info metric should exist", "build_info", 1, true, true},
 	}
 
 	server := testutils.GetTestMockServer(t)

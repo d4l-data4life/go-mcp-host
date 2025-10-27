@@ -82,9 +82,9 @@ WORKDIR /app
 FROM run-base AS run
 ARG PORT=9000
 EXPOSE $PORT
-LABEL org.label-schema.name="go-svc-template"
+LABEL org.label-schema.name="go-mcp-host"
 LABEL org.label-schema.description="Does this and that"
 COPY --from=base /root.ca.pem /root.ca.pem
-COPY --from=build /app/go-svc-template /app
+COPY --from=build /app/go-mcp-host /app
 USER nobody:nobody
-ENTRYPOINT ["/app/go-svc-template"]
+ENTRYPOINT ["/app/go-mcp-host"]

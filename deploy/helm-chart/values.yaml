@@ -6,8 +6,8 @@ APP:
   PORT: 9000
   CORS_HOSTS: "ENV DEPENDENT"
   REMOTE_KEYS_URL: "https://login.microsoftonline.com/common/discovery/keys"
-DB_CONFIGMAP: go-svc-template-db-connection
-DB_SECRET: go-svc-template-db-credentials
+DB_CONFIGMAP: go-mcp-host-db-connection
+DB_SECRET: go-mcp-host-db-credentials
 REPLICAS: 1
 
 # DB config

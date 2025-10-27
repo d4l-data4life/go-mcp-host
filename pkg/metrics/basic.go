@@ -3,7 +3,7 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gesundheitscloud/go-svc-template/pkg/config"
+	"github.com/weese/go-mcp-host/pkg/config"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 

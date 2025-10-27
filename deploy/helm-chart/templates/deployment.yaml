@@ -84,7 +84,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: {{ .Chart.Name }}-secrets
-              key: go-svc-template-secret
+              key: go-mcp-host-secret
         {{- range $key, $value := .Values.APP }}
         - name: GO_SVC_TEMPLATE_{{ $key }}
           value: "{{ $value }}"

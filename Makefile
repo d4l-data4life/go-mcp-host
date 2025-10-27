@@ -17,10 +17,10 @@ ifeq ($(strip $(BRANCH)),)
 endif
 
 USER=$(shell whoami)
-BINARY=go-svc-template
+BINARY=go-mcp-host
 
 # Go Variables
-PKG=github.com/gesundheitscloud/go-svc-template/pkg/config
+PKG=github.com/weese/go-mcp-host/pkg/config
 LDFLAGS="-X '$(PKG).Version=$(APP_VERSION)' -X '$(PKG).Commit=$(COMMIT)' -X '$(PKG).Branch=$(BRANCH)' -X '$(PKG).BuildUser=$(USER)'"
 GOCMD=go
 GOBUILD=$(GOCMD) build -ldflags $(LDFLAGS)
@@ -38,8 +38,8 @@ PORT=9000
 TEST_DB_PORT=6000
 TEST_DB_IMAGE=postgres
 TEST_DB_CONTAINER_NAME=$(BINARY)-postgres
-TEST_DB_NAME = go-svc-template
-TEST_DB_USER = go-svc-template
+TEST_DB_NAME = go-mcp-host
+TEST_DB_USER = go-mcp-host
 TEST_DB_PASSWORD = postgres
 
 # Deploy variables
@@ -51,7 +51,7 @@ SECRETS_YAML ?= "$(shell pwd)/deploy/local/secrets.yaml"
 NAMESPACE ?= default
 
 ## ----------------------------------------------------------------------
-## Help: Makefile for app: go-svc-template
+## Help: Makefile for app: go-mcp-host
 ## ----------------------------------------------------------------------
 
 .PHONY: help

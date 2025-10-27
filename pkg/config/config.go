@@ -18,7 +18,7 @@ import (
 
 // Build information. Populated at build-time.
 var (
-	Name      = "go-svc-template"
+	Name      = "go-mcp-host"
 	Version   string
 	Branch    string
 	Commit    string
@@ -47,12 +47,12 @@ const (
 	// ##### DATABASE VARIABLES
 
 	// MigrationVersion determines which migration should be executed
-	MigrationVersion  = 1
+	MigrationVersion  = 2
 	DefaultDBHost     = "localhost"
 	DefaultDBPort     = "6000"
-	DefaultDBName     = "go-svc-template"
+	DefaultDBName     = "go-mcp-host"
 	DefaultDBSchema   = "public"
-	DefaultDBUser     = "go-svc-template"
+	DefaultDBUser     = "go-mcp-host"
 	DefaultDBPassword = "postgres"
 	DefaultDBSSLMode  = "verify-full"
 
@@ -120,12 +120,15 @@ func SetupEnv() {
 	// Authentication
 	bindEnvVariable("SERVICE_SECRET", "")
 	bindEnvVariable("JWT_KEY_PATH", DefaultJWTKeyPath)
+	bindEnvVariable("JWT_EXPIRATION_HOURS", 24)
+	// MCP and Agent configuration
+	SetupMCPEnv()
 }
 
 // SetupLogger configures the logger with environment preferences
 func SetupLogger() {
 	logging.LoggerConfig(
-		logging.ServiceName("go-svc-template"),
+		logging.ServiceName("go-mcp-host"),
 		logging.ServiceVersion(Version),
 		logging.Hostname(os.Getenv("HOSTNAME")),
 		logging.PodName(os.Getenv("POD_NAME")),

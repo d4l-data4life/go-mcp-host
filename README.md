@@ -11,7 +11,7 @@
 
 ## Template usage
 
-1. replace `go-svc-template` with the name of your service everywhere
+1. replace `go-mcp-host` with the name of your service everywhere
 1. replace `GO_SVC_TEMPLATE` with the capitalized version of your service
 1. make sure the go.mod file looks reasonable
 1. Choose a different PORT for the server (change 9000 to avoid conflicts)
@@ -20,7 +20,7 @@
 1. Delete this part of the README
 1. Happy Coding!
 
-# `go-svc-template`
+# `go-mcp-host`
 
 This is the backend service providing providing some functionality.
 
@@ -81,10 +81,10 @@ Add `"go.lintTool": "golangci-lint",` in `settings.json`.
 
 ### Run in local Kubernetes
 
-To be able to reach the running service add `go-svc-template-dns.local` to `/etc/hosts' file.
+To be able to reach the running service add `go-mcp-host-dns.local` to `/etc/hosts' file.
 
 ```txt
-127.0.0.1 kubernetes.docker.internal go-svc-template-dns.local
+127.0.0.1 kubernetes.docker.internal go-mcp-host-dns.local
 ```
 
 ```bash

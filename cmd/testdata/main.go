@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 
-	"github.com/gesundheitscloud/go-svc-template/internal/testutils"
-	"github.com/gesundheitscloud/go-svc-template/pkg/config"
-	"github.com/gesundheitscloud/go-svc-template/pkg/models"
+	"github.com/weese/go-mcp-host/internal/testutils"
+	"github.com/weese/go-mcp-host/pkg/config"
+	"github.com/weese/go-mcp-host/pkg/models"
 	"github.com/gesundheitscloud/go-svc/pkg/db"
 	"github.com/gesundheitscloud/go-svc/pkg/standard"
 	"github.com/spf13/viper"
@@ -28,7 +28,7 @@ func main() {
 		db.WithMigrationFunc(models.MigrationFunc),
 		db.WithMigrationVersion(config.MigrationVersion),
 	)
-	standard.Main(addTestData, "go-svc-template-testdata", standard.WithPostgres(dbOpts))
+	standard.Main(addTestData, "go-mcp-host-testdata", standard.WithPostgres(dbOpts))
 }
 
 func addTestData(_ context.Context, _ string) <-chan struct{} {

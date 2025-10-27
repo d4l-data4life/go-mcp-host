@@ -1,6 +1,6 @@
 apiVersion: v2
-name: go-svc-template
+name: go-mcp-host
 version: <github_release>
-home: https://github.com/gesundheitscloud/go-svc-template/
+home: https://github.com/weese/go-mcp-host/
 icon: https://avatars2.githubusercontent.com/u/25636481?v=3&s=200
 description: Service for a certain purpose

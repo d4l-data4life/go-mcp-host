@@ -7,10 +7,10 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/spf13/viper"
 
-	"github.com/gesundheitscloud/go-svc-template/pkg/config"
-	"github.com/gesundheitscloud/go-svc-template/pkg/metrics"
-	"github.com/gesundheitscloud/go-svc-template/pkg/models"
-	"github.com/gesundheitscloud/go-svc-template/pkg/server"
+	"github.com/weese/go-mcp-host/pkg/config"
+	"github.com/weese/go-mcp-host/pkg/metrics"
+	"github.com/weese/go-mcp-host/pkg/models"
+	"github.com/weese/go-mcp-host/pkg/server"
 	"github.com/gesundheitscloud/go-svc/pkg/db"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/gesundheitscloud/go-svc/pkg/standard"
@@ -32,7 +32,7 @@ func main() {
 		db.WithMigrationFunc(models.MigrationFunc),
 		db.WithMigrationVersion(config.MigrationVersion),
 	)
-	standard.Main(mainAPI, "go-svc-template", standard.WithPostgres(dbOpts))
+	standard.Main(mainAPI, "go-mcp-host", standard.WithPostgres(dbOpts))
 }
 
 // mainAPI contains the main service logic - it must finish on runCtx cancelation!
@@ -54,7 +54,7 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 		return dieEarly
 	}
 
-	server.SetupRoutes(srv.Mux())
+	server.SetupRoutes(runCtx, srv.Mux())
 	metrics.AddBuildInfoMetric()
 	return standard.ListenAndServe(runCtx, srv.Mux(), port)
 }
