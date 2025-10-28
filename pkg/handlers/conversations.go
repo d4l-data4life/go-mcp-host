@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/weese/go-mcp-host/pkg/models"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
+	"github.com/weese/go-mcp-host/pkg/models"
 	"gorm.io/gorm"
+
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // ConversationsHandler handles conversation endpoints
@@ -223,7 +224,7 @@ func (h *ConversationsHandler) UpdateConversation(w http.ResponseWriter, r *http
 	render.JSON(w, r, conversation)
 }
 
-// DeleteConversation deletes a conversation (soft delete)
+// DeleteConversation deletes a conversation and all associated messages (immediate delete with CASCADE)
 func (h *ConversationsHandler) DeleteConversation(w http.ResponseWriter, r *http.Request) {
 	userID := GetUserIDFromContext(r.Context())
 	conversationID := chi.URLParam(r, "id")
@@ -235,8 +236,25 @@ func (h *ConversationsHandler) DeleteConversation(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Soft delete
+	// Verify conversation exists and belongs to user
+	var conversation models.Conversation
 	err = h.db.Where("id = ? AND user_id = ?", convID, userID).
+		First(&conversation).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, map[string]string{"error": "Conversation not found"})
+		} else {
+			logging.LogErrorf(err, "Failed to get conversation")
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": "Failed to get conversation"})
+		}
+		return
+	}
+
+	// Immediate delete with CASCADE (messages will be deleted automatically due to foreign key constraint)
+	err = h.db.Unscoped().Where("id = ? AND user_id = ?", convID, userID).
 		Delete(&models.Conversation{}).Error
 
 	if err != nil {
@@ -246,9 +264,8 @@ func (h *ConversationsHandler) DeleteConversation(w http.ResponseWriter, r *http
 		return
 	}
 
-	logging.LogDebugf("Deleted conversation: %s", convID)
+	logging.LogDebugf("Deleted conversation and associated messages: %s", convID)
 
 	render.Status(r, http.StatusNoContent)
 	w.Write([]byte{})
 }
-

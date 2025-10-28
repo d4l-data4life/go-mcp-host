@@ -22,9 +22,6 @@ func MigrationFunc(conn *gorm.DB) error {
 		&User{},
 		&Conversation{},
 		&Message{},
-		&MCPSession{},
-		&MCPTool{},
-		&MCPResource{},
 	)
 }
 

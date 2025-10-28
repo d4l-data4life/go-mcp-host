@@ -5,13 +5,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/weese/go-mcp-host/pkg/models"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
+	"github.com/weese/go-mcp-host/pkg/models"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // AuthHandler handles authentication endpoints
@@ -191,4 +192,3 @@ func generateJWT(userID uuid.UUID, jwtKey []byte) (string, error) {
 	token := userID.String() + ":" + time.Now().Add(24*time.Hour).Format(time.RFC3339)
 	return token, nil
 }
-

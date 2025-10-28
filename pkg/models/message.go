@@ -21,7 +21,7 @@ const (
 // Message represents a single message in a conversation
 type Message struct {
 	ID             uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
-	ConversationID uuid.UUID      `gorm:"type:uuid;not null;index" json:"conversationId"`
+	ConversationID uuid.UUID      `gorm:"type:uuid;not null;index;constraint:OnDelete:CASCADE" json:"conversationId"`
 	Role           MessageRole    `gorm:"size:20;not null;check:role IN ('user','assistant','system','tool')" json:"role"`
 	Content        string         `gorm:"type:text" json:"content"`
 	ToolCalls      datatypes.JSON `gorm:"type:jsonb" json:"toolCalls,omitempty"`
@@ -31,7 +31,7 @@ type Message struct {
 	CreatedAt      time.Time      `json:"createdAt"`
 
 	// Associations
-	Conversation Conversation `gorm:"foreignKey:ConversationID" json:"conversation,omitempty"`
+	Conversation Conversation `gorm:"foreignKey:ConversationID;constraint:OnDelete:CASCADE" json:"conversation,omitempty"`
 }
 
 // TableName specifies the table name for Message model
@@ -49,9 +49,9 @@ func (m *Message) BeforeCreate(tx *gorm.DB) error {
 
 // ToolCall represents a tool call in a message
 type ToolCall struct {
-	ID       string                 `json:"id"`
-	Type     string                 `json:"type"`
-	Function ToolCallFunction       `json:"function"`
+	ID       string           `json:"id"`
+	Type     string           `json:"type"`
+	Function ToolCallFunction `json:"function"`
 }
 
 // ToolCallFunction represents the function part of a tool call
@@ -59,4 +59,3 @@ type ToolCallFunction struct {
 	Name      string                 `json:"name"`
 	Arguments map[string]interface{} `json:"arguments"`
 }
-

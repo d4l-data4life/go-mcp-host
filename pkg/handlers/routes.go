@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"github.com/weese/go-mcp-host/pkg/agent"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 	"github.com/go-chi/chi"
 	"github.com/spf13/viper"
+	"github.com/weese/go-mcp-host/pkg/agent"
+	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 	"gorm.io/gorm"
 )
 
@@ -42,4 +42,3 @@ func RegisterRoutes(r chi.Router, db *gorm.DB, agent *agent.Agent, mcpManager *m
 	// exampleHandler := NewExampleHandler()
 	// r.Mount("/api/examples", exampleHandler.Routes())
 }
-

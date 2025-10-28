@@ -51,4 +51,3 @@ func (u *User) ToPublic() PublicUser {
 		CreatedAt: u.CreatedAt,
 	}
 }
-

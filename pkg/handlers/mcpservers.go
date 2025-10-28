@@ -3,12 +3,13 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
+	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 	"gorm.io/gorm"
+
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // MCPServersHandler handles MCP server endpoints
@@ -38,12 +39,12 @@ func (h *MCPServersHandler) Routes() chi.Router {
 
 // ServerInfo represents information about an MCP server
 type ServerInfo struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Type        string   `json:"type"`
-	Enabled     bool     `json:"enabled"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	Type         string   `json:"type"`
+	Enabled      bool     `json:"enabled"`
 	Capabilities []string `json:"capabilities"`
-	Connected   bool     `json:"connected"`
+	Connected    bool     `json:"connected"`
 }
 
 // ToolInfo represents information about an MCP tool
@@ -93,12 +94,12 @@ func (h *MCPServersHandler) ListServers(w http.ResponseWriter, r *http.Request) 
 	var serverInfos []ServerInfo
 	for _, cfg := range servers {
 		info := ServerInfo{
-			Name:        cfg.Name,
-			Description: cfg.Description,
-			Type:        cfg.Type,
-			Enabled:     cfg.Enabled,
+			Name:         cfg.Name,
+			Description:  cfg.Description,
+			Type:         cfg.Type,
+			Enabled:      cfg.Enabled,
 			Capabilities: []string{},
-			Connected:   false,
+			Connected:    false,
 		}
 
 		// Try to get session info for this server
@@ -216,4 +217,3 @@ func (h *MCPServersHandler) ListResources(w http.ResponseWriter, r *http.Request
 
 	render.JSON(w, r, resourceInfos)
 }
-

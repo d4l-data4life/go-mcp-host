@@ -2,24 +2,21 @@ package manager
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/weese/go-mcp-host/pkg/config"
 	"github.com/weese/go-mcp-host/pkg/mcp/client"
 	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
-	"github.com/weese/go-mcp-host/pkg/models"
+
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"gorm.io/gorm"
 )
 
 // Manager manages MCP client sessions for conversations
 type Manager struct {
-	db             *gorm.DB
 	factory        *client.Factory
 	serverConfigs  []config.MCPServerConfig
 	sessions       map[string]*SessionInfo // key: conversationID:serverName
@@ -41,11 +38,10 @@ type SessionInfo struct {
 }
 
 // NewManager creates a new MCP manager
-func NewManager(serverConfigs []config.MCPServerConfig, db *gorm.DB) *Manager {
+func NewManager(serverConfigs []config.MCPServerConfig) *Manager {
 	factory := client.NewFactory("go-mcp-host", config.Version)
 
 	m := &Manager{
-		db:             db,
 		factory:        factory,
 		serverConfigs:  serverConfigs,
 		sessions:       make(map[string]*SessionInfo),
@@ -125,41 +121,13 @@ func (m *Manager) GetOrCreateSession(ctx context.Context, conversationID uuid.UU
 		return nil, errors.Wrapf(err, "failed to initialize MCP client for server %s", serverConfig.Name)
 	}
 
-	// Create session record in database
-	connectionInfo, err := m.getConnectionInfo(serverConfig)
-	if err != nil {
-		mcpClient.Close()
-		return nil, errors.Wrap(err, "failed to get connection info")
-	}
-
-	capabilities, err := m.getCapabilitiesJSON(mcpClient.GetServerCapabilities())
-	if err != nil {
-		mcpClient.Close()
-		return nil, errors.Wrap(err, "failed to serialize capabilities")
-	}
-
-	dbSession := &models.MCPSession{
-		ConversationID: conversationID,
-		ServerName:     serverConfig.Name,
-		ServerType:     models.MCPSessionType(serverConfig.Type),
-		ConnectionInfo: connectionInfo,
-		Capabilities:   capabilities,
-		Status:         models.MCPSessionStatusConnected,
-		LastActiveAt:   time.Now(),
-	}
-
-	if err := m.db.Create(dbSession).Error; err != nil {
-		mcpClient.Close()
-		return nil, errors.Wrap(err, "failed to create session in database")
-	}
-
-	// Create session info
+	// Create session info (in-memory only)
 	session := &SessionInfo{
 		Client:         mcpClient,
 		ConversationID: conversationID,
 		ServerName:     serverConfig.Name,
 		ServerConfig:   serverConfig,
-		SessionID:      dbSession.ID,
+		SessionID:      uuid.New(), // Generate UUID for internal tracking
 		LastAccessed:   time.Now(),
 	}
 
@@ -179,7 +147,7 @@ func (m *Manager) GetOrCreateSession(ctx context.Context, conversationID uuid.UU
 	// Store session
 	m.sessions[sessionKey] = session
 
-	logging.LogDebugf("Created MCP session: id=%s server=%s", dbSession.ID, serverConfig.Name)
+	logging.LogDebugf("Created MCP session: id=%s server=%s", session.SessionID, serverConfig.Name)
 
 	return session, nil
 }
@@ -214,15 +182,7 @@ func (m *Manager) CloseSession(conversationID uuid.UUID, serverName string) erro
 	delete(m.sessions, sessionKey)
 	m.mu.Unlock()
 
-	// Update database
-	if err := m.db.Model(&models.MCPSession{}).
-		Where("id = ?", session.SessionID).
-		Updates(map[string]interface{}{
-			"status":         models.MCPSessionStatusDisconnected,
-			"last_active_at": time.Now(),
-		}).Error; err != nil {
-		logging.LogErrorf(err, "Failed to update session status in database")
-	}
+	// No database updates needed - sessions are in-memory only
 
 	// Close client
 	if err := session.Client.Close(); err != nil {
@@ -244,15 +204,7 @@ func (m *Manager) CloseAllSessionsForConversation(conversationID uuid.UUID) erro
 		if session.ConversationID == conversationID {
 			delete(m.sessions, key)
 
-			// Update database
-			if err := m.db.Model(&models.MCPSession{}).
-				Where("id = ?", session.SessionID).
-				Updates(map[string]interface{}{
-					"status":         models.MCPSessionStatusDisconnected,
-					"last_active_at": time.Now(),
-				}).Error; err != nil {
-				errs = append(errs, err)
-			}
+			// No database updates needed - sessions are in-memory only
 
 			// Close client
 			if err := session.Client.Close(); err != nil {
@@ -310,10 +262,10 @@ func (m *Manager) CallTool(ctx context.Context, conversationID uuid.UUID, server
 		return nil, errors.Wrapf(err, "failed to call tool %s on server %s", toolName, serverName)
 	}
 
-	// Update last active in database
-	m.db.Model(&models.MCPSession{}).
-		Where("id = ?", session.SessionID).
-		Update("last_active_at", time.Now())
+	// Update last accessed time (in-memory only)
+	session.mu.Lock()
+	session.LastAccessed = time.Now()
+	session.mu.Unlock()
 
 	return result, nil
 }
@@ -359,10 +311,10 @@ func (m *Manager) ReadResource(ctx context.Context, conversationID uuid.UUID, se
 		return nil, errors.Wrapf(err, "failed to read resource %s from server %s", resourceURI, serverName)
 	}
 
-	// Update last active in database
-	m.db.Model(&models.MCPSession{}).
-		Where("id = ?", session.SessionID).
-		Update("last_active_at", time.Now())
+	// Update last accessed time (in-memory only)
+	session.mu.Lock()
+	session.LastAccessed = time.Now()
+	session.mu.Unlock()
 
 	return result, nil
 }
@@ -379,9 +331,6 @@ func (m *Manager) refreshTools(ctx context.Context, session *SessionInfo) {
 	session.Tools = tools
 	session.mu.Unlock()
 
-	// Update database cache
-	m.updateToolsCache(session.SessionID, tools)
-
 	logging.LogDebugf("Refreshed tools for server %s: %d tools", session.ServerName, len(tools))
 }
 
@@ -396,9 +345,6 @@ func (m *Manager) refreshResources(ctx context.Context, session *SessionInfo) {
 	session.mu.Lock()
 	session.Resources = resources
 	session.mu.Unlock()
-
-	// Update database cache
-	m.updateResourcesCache(session.SessionID, resources)
 
 	logging.LogDebugf("Refreshed resources for server %s: %d resources", session.ServerName, len(resources))
 }
@@ -427,14 +373,6 @@ func (m *Manager) cleanupInactiveSessions() {
 		if now.Sub(lastAccessed) > m.sessionTimeout {
 			delete(m.sessions, key)
 
-			// Update database
-			m.db.Model(&models.MCPSession{}).
-				Where("id = ?", session.SessionID).
-				Updates(map[string]interface{}{
-					"status":         models.MCPSessionStatusDisconnected,
-					"last_active_at": time.Now(),
-				})
-
 			// Close client
 			session.Client.Close()
 
@@ -449,76 +387,7 @@ func (m *Manager) getSessionKey(conversationID uuid.UUID, serverName string) str
 	return fmt.Sprintf("%s:%s", conversationID.String(), serverName)
 }
 
-func (m *Manager) getConnectionInfo(serverConfig config.MCPServerConfig) ([]byte, error) {
-	var info interface{}
-
-	switch serverConfig.Type {
-	case "stdio":
-		info = models.StdioConnectionInfo{
-			Command: serverConfig.Command,
-			Args:    serverConfig.Args,
-			Env:     m.mapToSlice(serverConfig.Env),
-		}
-	case "http":
-		info = models.HTTPConnectionInfo{
-			URL:     serverConfig.URL,
-			Headers: serverConfig.Headers,
-		}
-	default:
-		return nil, errors.Errorf("unsupported transport type: %s", serverConfig.Type)
-	}
-
-	return json.Marshal(info)
-}
-
-func (m *Manager) getCapabilitiesJSON(caps *protocol.ServerCapabilities) ([]byte, error) {
-	if caps == nil {
-		return []byte("{}"), nil
-	}
-	return json.Marshal(caps)
-}
-
-func (m *Manager) mapToSlice(envMap map[string]string) []string {
-	result := make([]string, 0, len(envMap))
-	for k, v := range envMap {
-		result = append(result, k+"="+v)
-	}
-	return result
-}
-
-func (m *Manager) updateToolsCache(sessionID uuid.UUID, tools []protocol.Tool) {
-	// Delete existing tools
-	m.db.Where("session_id = ?", sessionID).Delete(&models.MCPTool{})
-
-	// Insert new tools
-	for _, tool := range tools {
-		schemaJSON, _ := json.Marshal(tool.InputSchema)
-		dbTool := &models.MCPTool{
-			SessionID:       sessionID,
-			ToolName:        tool.Name,
-			ToolDescription: tool.Description,
-			InputSchema:     schemaJSON,
-		}
-		m.db.Create(dbTool)
-	}
-}
-
-func (m *Manager) updateResourcesCache(sessionID uuid.UUID, resources []protocol.Resource) {
-	// Delete existing resources
-	m.db.Where("session_id = ?", sessionID).Delete(&models.MCPResource{})
-
-	// Insert new resources
-	for _, resource := range resources {
-		dbResource := &models.MCPResource{
-			SessionID:           sessionID,
-			ResourceURI:         resource.URI,
-			ResourceName:        resource.Name,
-			ResourceDescription: resource.Description,
-			MimeType:            resource.MimeType,
-		}
-		m.db.Create(dbResource)
-	}
-}
+// Helper methods removed - no longer needed for in-memory cache
 
 // Helper types
 
@@ -533,4 +402,3 @@ type ResourceWithServer struct {
 	Resource   protocol.Resource
 	ServerName string
 }
-

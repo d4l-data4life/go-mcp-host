@@ -10,6 +10,7 @@ import (
 	"github.com/weese/go-mcp-host/pkg/handlers"
 	"github.com/weese/go-mcp-host/pkg/llm/ollama"
 	"github.com/weese/go-mcp-host/pkg/mcp/manager"
+
 	"github.com/gesundheitscloud/go-svc/pkg/db"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 
@@ -33,7 +34,7 @@ func SetupRoutes(ctx context.Context, mux *chi.Mux) {
 		}
 	}
 
-	mcpManager := manager.NewManager(mcpConfig.Servers, database)
+	mcpManager := manager.NewManager(mcpConfig.Servers)
 
 	// Initialize Ollama client
 	ollamaClient := ollama.NewClient(ollama.Config{
