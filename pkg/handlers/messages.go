@@ -183,12 +183,31 @@ func (h *MessagesHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	// Save assistant message
 	toolCallsJSON, _ := json.Marshal(response.Message.ToolCalls)
+	// Attach tool execution metadata for frontend display
+	toolExecs := make([]map[string]interface{}, 0, len(response.ToolsUsed))
+	for _, te := range response.ToolsUsed {
+		entry := map[string]interface{}{
+			"serverName": te.ServerName,
+			"toolName":   te.ToolName,
+			"arguments":  te.Arguments,
+			"result":     te.Result,
+			"durationMs": te.Duration.Milliseconds(),
+		}
+		if te.Error != nil {
+			entry["error"] = te.Error.Error()
+		}
+		toolExecs = append(toolExecs, entry)
+	}
+	metaJSON, _ := json.Marshal(map[string]interface{}{
+		"toolExecutions": toolExecs,
+	})
 	assistantMessage := models.Message{
 		ID:             uuid.New(),
 		ConversationID: convID,
 		Role:           models.MessageRoleAssistant,
 		Content:        response.Message.Content,
 		ToolCalls:      datatypes.JSON(toolCallsJSON),
+		Metadata:       datatypes.JSON(metaJSON),
 	}
 
 	if err := h.db.Create(&assistantMessage).Error; err != nil {
@@ -293,7 +312,8 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 
-		var fullContent string
+	var fullContent string
+	var streamedToolExecs []map[string]interface{}
 		for event := range streamChan {
 			switch event.Type {
 			case agent.StreamEventTypeContent:
@@ -302,23 +322,41 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 					"type":    "content",
 					"content": event.Content,
 				})
-			case agent.StreamEventTypeToolStart:
+		case agent.StreamEventTypeToolStart:
 				conn.WriteJSON(map[string]interface{}{
 					"type": "tool_start",
 					"tool": event.Tool,
 				})
 			case agent.StreamEventTypeToolComplete:
-				conn.WriteJSON(map[string]interface{}{
+			// Collect tool execution for metadata and forward to client
+			if event.Tool != nil {
+				entry := map[string]interface{}{
+					"serverName": event.Tool.ServerName,
+					"toolName":   event.Tool.ToolName,
+					"arguments":  event.Tool.Arguments,
+					"result":     event.Tool.Result,
+					"durationMs": event.Tool.Duration.Milliseconds(),
+				}
+				if event.Tool.Error != nil {
+					entry["error"] = event.Tool.Error.Error()
+				}
+				streamedToolExecs = append(streamedToolExecs, entry)
+			}
+			conn.WriteJSON(map[string]interface{}{
 					"type": "tool_complete",
 					"tool": event.Tool,
 				})
 			case agent.StreamEventTypeDone:
 				// Save assistant message
-				assistantMessage := models.Message{
+			metaJSON, _ := json.Marshal(map[string]interface{}{
+				"toolExecutions": streamedToolExecs,
+			})
+			assistantMessage := models.Message{
 					ID:             uuid.New(),
 					ConversationID: convID,
 					Role:           models.MessageRoleAssistant,
-					Content:        fullContent,
+				Content:        fullContent,
+				Metadata:       datatypes.JSON(metaJSON),
 				}
 				h.db.Create(&assistantMessage)
 

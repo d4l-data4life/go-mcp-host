@@ -96,9 +96,35 @@ func loadDotEnv() {
 	}
 }
 
+func loadConfigFile() {
+	// Set config file name and type
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	
+	// Add config paths to search
+	viper.AddConfigPath(".")              // Current directory
+	viper.AddConfigPath("./")             // Current directory
+	viper.AddConfigPath("../")            // Parent directory
+	viper.AddConfigPath("../../")         // Two levels up
+	
+	// Try to read config file
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found; using defaults and environment variables
+			logging.LogDebugf("No config.yaml found, using environment variables and defaults")
+		} else {
+			// Config file was found but another error was produced
+			logging.LogWarningf(err, "Error reading config file")
+		}
+	} else {
+		logging.LogDebugf("Loaded configuration from: %s", viper.ConfigFileUsed())
+	}
+}
+
 // SetupEnv configures app to read ENV variables
 func SetupEnv() {
 	loadDotEnv()
+	loadConfigFile()
 	viper.SetEnvPrefix(EnvPrefix)
 	// General
 	bindEnvVariable("DEBUG", Debug)

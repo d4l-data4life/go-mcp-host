@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	
 	"github.com/spf13/viper"
 )
 
@@ -58,8 +60,9 @@ func GetMCPConfig() MCPConfig {
 // GetMCPServers returns configured MCP servers from viper
 func GetMCPServers() []MCPServerConfig {
 	var servers []MCPServerConfig
-	if err := viper.UnmarshalKey("MCP_SERVERS", &servers); err != nil {
-		// Return default configuration if parsing fails
+	if err := viper.UnmarshalKey("mcp_servers", &servers); err != nil {
+		// Log the error and return default configuration
+		fmt.Printf("Warning: Failed to unmarshal mcp_servers from config: %v\n", err)
 		return []MCPServerConfig{
 			{
 				Name:        "filesystem",
@@ -70,6 +73,10 @@ func GetMCPServers() []MCPServerConfig {
 				Description: "Local filesystem access",
 			},
 		}
+	}
+	fmt.Printf("Loaded %d MCP servers from configuration\n", len(servers))
+	for i, s := range servers {
+		fmt.Printf("  [%d] %s (%s) - enabled: %v\n", i+1, s.Name, s.Type, s.Enabled)
 	}
 	return servers
 }
