@@ -217,6 +217,30 @@ func (h *MessagesHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Auto-generate conversation title if this is the first message and title is still default
+	if conversation.Title == "New Chat" || conversation.Title == "New Conversation" {
+		// Count total messages (should be 2: user + assistant)
+		var messageCount int64
+		h.db.Model(&models.Message{}).Where("conversation_id = ?", convID).Count(&messageCount)
+		
+		if messageCount == 2 {
+			// Generate title based on user's first message
+			go func() {
+				title := h.agent.GenerateChatTitle(context.Background(), req.Content)
+				if title != "" {
+					// Update conversation title
+					if err := h.db.Model(&models.Conversation{}).
+						Where("id = ?", convID).
+						Update("title", title).Error; err != nil {
+						logging.LogErrorf(err, "Failed to update conversation title")
+					} else {
+						logging.LogDebugf("Auto-generated title for conversation %s: %s", convID, title)
+					}
+				}
+			}()
+		}
+	}
+
 	logging.LogDebugf("Message processed: conversation=%s iterations=%d tools=%d",
 		convID, response.Iterations, len(response.ToolsUsed))
 
@@ -346,24 +370,45 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 					"type": "tool_complete",
 					"tool": event.Tool,
 				})
-			case agent.StreamEventTypeDone:
-				// Save assistant message
+		case agent.StreamEventTypeDone:
+			// Save assistant message
 			metaJSON, _ := json.Marshal(map[string]interface{}{
 				"toolExecutions": streamedToolExecs,
 			})
 			assistantMessage := models.Message{
-					ID:             uuid.New(),
-					ConversationID: convID,
-					Role:           models.MessageRoleAssistant,
+				ID:             uuid.New(),
+				ConversationID: convID,
+				Role:           models.MessageRoleAssistant,
 				Content:        fullContent,
 				Metadata:       datatypes.JSON(metaJSON),
-				}
-				h.db.Create(&assistantMessage)
+			}
+			h.db.Create(&assistantMessage)
 
-				conn.WriteJSON(map[string]interface{}{
-					"type":    "done",
-					"message": assistantMessage,
-				})
+			// Auto-generate conversation title if this is the first message
+			if conversation.Title == "New Chat" || conversation.Title == "New Conversation" {
+				var messageCount int64
+				h.db.Model(&models.Message{}).Where("conversation_id = ?", convID).Count(&messageCount)
+				
+				if messageCount == 2 {
+					go func() {
+						title := h.agent.GenerateChatTitle(context.Background(), req.Content)
+						if title != "" {
+							if err := h.db.Model(&models.Conversation{}).
+								Where("id = ?", convID).
+								Update("title", title).Error; err != nil {
+								logging.LogErrorf(err, "Failed to update conversation title")
+							} else {
+								logging.LogDebugf("Auto-generated title for conversation %s: %s", convID, title)
+							}
+						}
+					}()
+				}
+			}
+
+			conn.WriteJSON(map[string]interface{}{
+				"type":    "done",
+				"message": assistantMessage,
+			})
 			case agent.StreamEventTypeError:
 				conn.WriteJSON(map[string]interface{}{
 					"type":  "error",
