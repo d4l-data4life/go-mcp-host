@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/weese/go-mcp-host/pkg/agent"
-	"github.com/weese/go-mcp-host/pkg/models"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/weese/go-mcp-host/pkg/agent"
+	"github.com/weese/go-mcp-host/pkg/models"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // MessagesHandler handles message endpoints
@@ -222,7 +223,7 @@ func (h *MessagesHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		// Count total messages (should be 2: user + assistant)
 		var messageCount int64
 		h.db.Model(&models.Message{}).Where("conversation_id = ?", convID).Count(&messageCount)
-		
+
 		if messageCount == 2 {
 			// Generate title based on user's first message
 			go func() {
@@ -336,8 +337,8 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 
-	var fullContent string
-	var streamedToolExecs []map[string]interface{}
+		var fullContent string
+		var streamedToolExecs []map[string]interface{}
 		for event := range streamChan {
 			switch event.Type {
 			case agent.StreamEventTypeContent:
@@ -346,69 +347,69 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 					"type":    "content",
 					"content": event.Content,
 				})
-		case agent.StreamEventTypeToolStart:
+			case agent.StreamEventTypeToolStart:
 				conn.WriteJSON(map[string]interface{}{
 					"type": "tool_start",
 					"tool": event.Tool,
 				})
 			case agent.StreamEventTypeToolComplete:
-			// Collect tool execution for metadata and forward to client
-			if event.Tool != nil {
-				entry := map[string]interface{}{
-					"serverName": event.Tool.ServerName,
-					"toolName":   event.Tool.ToolName,
-					"arguments":  event.Tool.Arguments,
-					"result":     event.Tool.Result,
-					"durationMs": event.Tool.Duration.Milliseconds(),
+				// Collect tool execution for metadata and forward to client
+				if event.Tool != nil {
+					entry := map[string]interface{}{
+						"serverName": event.Tool.ServerName,
+						"toolName":   event.Tool.ToolName,
+						"arguments":  event.Tool.Arguments,
+						"result":     event.Tool.Result,
+						"durationMs": event.Tool.Duration.Milliseconds(),
+					}
+					if event.Tool.Error != nil {
+						entry["error"] = event.Tool.Error.Error()
+					}
+					streamedToolExecs = append(streamedToolExecs, entry)
 				}
-				if event.Tool.Error != nil {
-					entry["error"] = event.Tool.Error.Error()
-				}
-				streamedToolExecs = append(streamedToolExecs, entry)
-			}
-			conn.WriteJSON(map[string]interface{}{
+				conn.WriteJSON(map[string]interface{}{
 					"type": "tool_complete",
 					"tool": event.Tool,
 				})
-		case agent.StreamEventTypeDone:
-			// Save assistant message
-			metaJSON, _ := json.Marshal(map[string]interface{}{
-				"toolExecutions": streamedToolExecs,
-			})
-			assistantMessage := models.Message{
-				ID:             uuid.New(),
-				ConversationID: convID,
-				Role:           models.MessageRoleAssistant,
-				Content:        fullContent,
-				Metadata:       datatypes.JSON(metaJSON),
-			}
-			h.db.Create(&assistantMessage)
-
-			// Auto-generate conversation title if this is the first message
-			if conversation.Title == "New Chat" || conversation.Title == "New Conversation" {
-				var messageCount int64
-				h.db.Model(&models.Message{}).Where("conversation_id = ?", convID).Count(&messageCount)
-				
-				if messageCount == 2 {
-					go func() {
-						title := h.agent.GenerateChatTitle(context.Background(), req.Content)
-						if title != "" {
-							if err := h.db.Model(&models.Conversation{}).
-								Where("id = ?", convID).
-								Update("title", title).Error; err != nil {
-								logging.LogErrorf(err, "Failed to update conversation title")
-							} else {
-								logging.LogDebugf("Auto-generated title for conversation %s: %s", convID, title)
-							}
-						}
-					}()
+			case agent.StreamEventTypeDone:
+				// Save assistant message
+				metaJSON, _ := json.Marshal(map[string]interface{}{
+					"toolExecutions": streamedToolExecs,
+				})
+				assistantMessage := models.Message{
+					ID:             uuid.New(),
+					ConversationID: convID,
+					Role:           models.MessageRoleAssistant,
+					Content:        fullContent,
+					Metadata:       datatypes.JSON(metaJSON),
 				}
-			}
+				h.db.Create(&assistantMessage)
 
-			conn.WriteJSON(map[string]interface{}{
-				"type":    "done",
-				"message": assistantMessage,
-			})
+				// Auto-generate conversation title if this is the first message
+				if conversation.Title == "New Chat" || conversation.Title == "New Conversation" {
+					var messageCount int64
+					h.db.Model(&models.Message{}).Where("conversation_id = ?", convID).Count(&messageCount)
+
+					if messageCount == 2 {
+						go func() {
+							title := h.agent.GenerateChatTitle(context.Background(), req.Content)
+							if title != "" {
+								if err := h.db.Model(&models.Conversation{}).
+									Where("id = ?", convID).
+									Update("title", title).Error; err != nil {
+									logging.LogErrorf(err, "Failed to update conversation title")
+								} else {
+									logging.LogDebugf("Auto-generated title for conversation %s: %s", convID, title)
+								}
+							}
+						}()
+					}
+				}
+
+				conn.WriteJSON(map[string]interface{}{
+					"type":    "done",
+					"message": assistantMessage,
+				})
 			case agent.StreamEventTypeError:
 				conn.WriteJSON(map[string]interface{}{
 					"type":  "error",
@@ -425,4 +426,3 @@ func (h *MessagesHandler) convertToAgentMessages(dbMessages []models.Message) []
 	// In production, convert message history to proper format
 	return nil
 }
-

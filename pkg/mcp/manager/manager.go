@@ -22,6 +22,15 @@ type Manager struct {
 	sessions       map[string]*SessionInfo // key: conversationID:serverName
 	mu             sync.RWMutex
 	sessionTimeout time.Duration
+
+	// Per-user ephemeral cache (no long-lived connections)
+	userToolsCache     map[string][]protocol.Tool     // key: userID:server
+	userResourcesCache map[string][]protocol.Resource // key: userID:server
+	userCacheExpiry    map[string]time.Time           // key: userID:server
+	userCacheTTL       time.Duration
+
+	// Prevent concurrent short-lived initializations to the same server (avoids session thrash)
+	serverLocks map[string]*sync.Mutex
 }
 
 // SessionInfo holds information about an active MCP session
@@ -42,10 +51,15 @@ func NewManager(serverConfigs []config.MCPServerConfig) *Manager {
 	factory := client.NewFactory("go-mcp-host", config.Version)
 
 	m := &Manager{
-		factory:        factory,
-		serverConfigs:  serverConfigs,
-		sessions:       make(map[string]*SessionInfo),
-		sessionTimeout: 30 * time.Minute,
+		factory:            factory,
+		serverConfigs:      serverConfigs,
+		sessions:           make(map[string]*SessionInfo),
+		sessionTimeout:     30 * time.Minute,
+		userToolsCache:     make(map[string][]protocol.Tool),
+		userResourcesCache: make(map[string][]protocol.Resource),
+		userCacheExpiry:    make(map[string]time.Time),
+		userCacheTTL:       30 * time.Minute,
+		serverLocks:        make(map[string]*sync.Mutex),
 	}
 
 	// Start cleanup goroutine
@@ -69,8 +83,165 @@ func (m *Manager) ListAllResources(ctx context.Context, conversationID uuid.UUID
 	return m.GetAllResources(ctx, conversationID)
 }
 
+// ListAllToolsForUser returns all tools for all enabled servers, scoped by user (short-lived clients + cache)
+func (m *Manager) ListAllToolsForUser(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ToolWithServer, error) {
+	var results []ToolWithServer
+	for _, server := range m.serverConfigs {
+		if !server.Enabled {
+			continue
+		}
+		key := m.getUserKey(userID, server.Name)
+
+		// Use cache if valid
+		m.mu.RLock()
+		tools, has := m.userToolsCache[key]
+		exp, hasExp := m.userCacheExpiry[key]
+		m.mu.RUnlock()
+
+		if has && hasExp && time.Now().Before(exp) {
+			for _, t := range tools {
+				results = append(results, ToolWithServer{Tool: t, ServerName: server.Name})
+			}
+			continue
+		}
+
+		// Fetch fresh via short-lived client
+		fetched, err := m.fetchToolsForUser(ctx, server, bearerToken)
+		if err != nil {
+			logging.LogWarningf(err, "Failed to fetch tools for server %s", server.Name)
+			continue
+		}
+
+		m.mu.Lock()
+		m.userToolsCache[key] = fetched
+		m.userCacheExpiry[key] = time.Now().Add(m.userCacheTTL)
+		m.mu.Unlock()
+
+		for _, t := range fetched {
+			results = append(results, ToolWithServer{Tool: t, ServerName: server.Name})
+		}
+	}
+	return results, nil
+}
+
+// ListAllResourcesForUser returns all resources for all enabled servers, scoped by user (short-lived clients + cache)
+func (m *Manager) ListAllResourcesForUser(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ResourceWithServer, error) {
+	var results []ResourceWithServer
+	for _, server := range m.serverConfigs {
+		if !server.Enabled {
+			continue
+		}
+		key := m.getUserKey(userID, server.Name)
+
+		// Use cache if valid
+		m.mu.RLock()
+		resources, has := m.userResourcesCache[key]
+		exp, hasExp := m.userCacheExpiry[key]
+		m.mu.RUnlock()
+
+		if has && hasExp && time.Now().Before(exp) {
+			for _, r := range resources {
+				results = append(results, ResourceWithServer{Resource: r, ServerName: server.Name})
+			}
+			continue
+		}
+
+		// Fetch fresh via short-lived client
+		fetched, err := m.fetchResourcesForUser(ctx, server, bearerToken)
+		if err != nil {
+			logging.LogWarningf(err, "Failed to fetch resources for server %s", server.Name)
+			continue
+		}
+
+		m.mu.Lock()
+		m.userResourcesCache[key] = fetched
+		m.userCacheExpiry[key] = time.Now().Add(m.userCacheTTL)
+		m.mu.Unlock()
+
+		for _, r := range fetched {
+			results = append(results, ResourceWithServer{Resource: r, ServerName: server.Name})
+		}
+	}
+	return results, nil
+}
+
+// ProbeServer performs a short-lived initialize to detect capabilities
+func (m *Manager) ProbeServer(
+	ctx context.Context,
+	serverCfg config.MCPServerConfig,
+	bearerToken string,
+) (*protocol.ServerCapabilities, error) {
+	lock := m.getServerLock(serverCfg.Name)
+	lock.Lock()
+	defer lock.Unlock()
+
+	cli, err := m.createClientForUser(serverCfg, bearerToken)
+	if err != nil {
+		return nil, err
+	}
+	defer cli.Close()
+
+	if err := cli.Initialize(ctx, client.ClientConfig{ClientName: "go-mcp-host", ClientVersion: config.Version, Capabilities: protocol.ClientCapabilities{Roots: &protocol.RootsCapability{ListChanged: true}, Sampling: map[string]interface{}{}}}); err != nil {
+		return nil, err
+	}
+	return cli.GetCapabilities(), nil
+}
+
+// Internal helpers for per-user fetches
+func (m *Manager) fetchToolsForUser(ctx context.Context, serverCfg config.MCPServerConfig, bearerToken string) ([]protocol.Tool, error) {
+	lock := m.getServerLock(serverCfg.Name)
+	lock.Lock()
+	defer lock.Unlock()
+
+	cli, err := m.createClientForUser(serverCfg, bearerToken)
+	if err != nil {
+		return nil, err
+	}
+	defer cli.Close()
+	if err := cli.Initialize(ctx, client.ClientConfig{ClientName: "go-mcp-host", ClientVersion: config.Version, Capabilities: protocol.ClientCapabilities{Roots: &protocol.RootsCapability{ListChanged: true}, Sampling: map[string]interface{}{}}}); err != nil {
+		return nil, err
+	}
+	return cli.ListTools(ctx)
+}
+
+func (m *Manager) fetchResourcesForUser(
+	ctx context.Context,
+	serverCfg config.MCPServerConfig,
+	bearerToken string,
+) ([]protocol.Resource, error) {
+	lock := m.getServerLock(serverCfg.Name)
+	lock.Lock()
+	defer lock.Unlock()
+
+	cli, err := m.createClientForUser(serverCfg, bearerToken)
+	if err != nil {
+		return nil, err
+	}
+	defer cli.Close()
+	if err := cli.Initialize(ctx, client.ClientConfig{ClientName: "go-mcp-host", ClientVersion: config.Version, Capabilities: protocol.ClientCapabilities{Roots: &protocol.RootsCapability{ListChanged: true}, Sampling: map[string]interface{}{}}}); err != nil {
+		return nil, err
+	}
+	return cli.ListResources(ctx)
+}
+
+func (m *Manager) createClientForUser(serverCfg config.MCPServerConfig, bearerToken string) (*client.Client, error) {
+	// Clone config and inject Authorization header when requested
+	sc := serverCfg
+	if sc.Type == "http" && sc.ForwardBearer && bearerToken != "" {
+		if sc.Headers == nil {
+			sc.Headers = map[string]string{}
+		}
+		sc.Headers["Authorization"] = "Bearer " + bearerToken
+	}
+	return m.factory.CreateClient(sc)
+}
+
 // GetOrCreateSession gets or creates an MCP session for a conversation and server
-func (m *Manager) GetOrCreateSession(ctx context.Context, conversationID uuid.UUID, serverConfig config.MCPServerConfig) (*SessionInfo, error) {
+func (m *Manager) GetOrCreateSession(
+	ctx context.Context,
+	conversationID uuid.UUID,
+	serverConfig config.MCPServerConfig,
+) (*SessionInfo, error) {
 	sessionKey := m.getSessionKey(conversationID, serverConfig.Name)
 
 	// Check if session already exists
@@ -245,7 +416,12 @@ func (m *Manager) GetAllTools(ctx context.Context, conversationID uuid.UUID) ([]
 }
 
 // CallTool calls a tool on the appropriate server
-func (m *Manager) CallTool(ctx context.Context, conversationID uuid.UUID, serverName, toolName string, arguments map[string]interface{}) (*protocol.CallToolResult, error) {
+func (m *Manager) CallTool(
+	ctx context.Context,
+	conversationID uuid.UUID,
+	serverName, toolName string,
+	arguments map[string]interface{},
+) (*protocol.CallToolResult, error) {
 	session, exists := m.GetSession(conversationID, serverName)
 	if !exists {
 		return nil, errors.Errorf("no active session for server %s", serverName)
@@ -294,7 +470,11 @@ func (m *Manager) GetAllResources(ctx context.Context, conversationID uuid.UUID)
 }
 
 // ReadResource reads a resource from the appropriate server
-func (m *Manager) ReadResource(ctx context.Context, conversationID uuid.UUID, serverName, resourceURI string) (*protocol.ReadResourceResult, error) {
+func (m *Manager) ReadResource(
+	ctx context.Context,
+	conversationID uuid.UUID,
+	serverName, resourceURI string,
+) (*protocol.ReadResourceResult, error) {
 	session, exists := m.GetSession(conversationID, serverName)
 	if !exists {
 		return nil, errors.Errorf("no active session for server %s", serverName)
@@ -385,6 +565,20 @@ func (m *Manager) cleanupInactiveSessions() {
 
 func (m *Manager) getSessionKey(conversationID uuid.UUID, serverName string) string {
 	return fmt.Sprintf("%s:%s", conversationID.String(), serverName)
+}
+
+func (m *Manager) getUserKey(userID uuid.UUID, serverName string) string {
+	return fmt.Sprintf("%s:%s", userID.String(), serverName)
+}
+
+// getServerLock returns a per-server mutex to serialize short-lived client operations
+func (m *Manager) getServerLock(serverName string) *sync.Mutex {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.serverLocks[serverName] == nil {
+		m.serverLocks[serverName] = &sync.Mutex{}
+	}
+	return m.serverLocks[serverName]
 }
 
 // Helper methods removed - no longer needed for in-memory cache

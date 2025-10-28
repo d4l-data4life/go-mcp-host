@@ -9,9 +9,10 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/pkg/errors"
+	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
+
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // StdioTransport implements the Transport interface for stdio-based communication
@@ -279,4 +280,3 @@ func (t *StdioTransport) stderrLoop() {
 		logging.LogDebugf("MCP stderr: %s", line)
 	}
 }
-

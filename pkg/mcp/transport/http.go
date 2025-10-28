@@ -13,9 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/pkg/errors"
+	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
+
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // HTTPTransport implements the Transport interface for HTTP-based communication
@@ -29,6 +30,9 @@ type HTTPTransport struct {
 	cancel      context.CancelFunc
 	sseReader   *bufio.Reader
 	sseResponse *http.Response
+
+	// Session management for HTTP-based MCP servers
+	sessionID string
 
 	// Notification handlers
 	notificationHandlers []MessageHandler
@@ -58,6 +62,7 @@ func NewHTTPTransport(baseURL string, headers map[string]string, tlsSkipVerify b
 		cancel:               cancel,
 		connected:            true,
 		notificationHandlers: make([]MessageHandler, 0),
+		sessionID:            "",
 	}
 
 	logging.LogDebugf("Created HTTP transport: %s", baseURL)
@@ -90,6 +95,12 @@ func (t *HTTPTransport) Send(ctx context.Context, request *protocol.JSONRPCReque
 	for key, value := range t.headers {
 		httpReq.Header.Set(key, value)
 	}
+	// Per MCP HTTP spec, client must Accept both JSON responses and SSE
+	httpReq.Header.Set("Accept", "application/json, text/event-stream")
+	// Attach session header if present
+	if t.sessionID != "" {
+		httpReq.Header.Set("mcp-session-id", t.sessionID)
+	}
 
 	// Send request
 	httpResp, err := t.client.Do(httpReq)
@@ -104,13 +115,47 @@ func (t *HTTPTransport) Send(ctx context.Context, request *protocol.JSONRPCReque
 		return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, string(body))
 	}
 
-	// Read response
+	contentType := httpResp.Header.Get("Content-Type")
+	// If server responds using SSE, extract JSON payload from data: lines
+	if strings.Contains(contentType, "text/event-stream") {
+		raw, err := io.ReadAll(httpResp.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to read SSE response body")
+		}
+		logging.LogDebugf("Received HTTP MCP response: %s", string(raw))
+		// Capture session id if provided on initialize
+		if request.Method == protocol.MethodInitialize {
+			if sid := httpResp.Header.Get("mcp-session-id"); sid != "" {
+				logging.LogDebugf("Captured MCP session id from HTTP initialize (SSE): %s", sid)
+				t.sessionID = sid
+			}
+		}
+
+		resp, err := parseSSEJSONRPCResponse(string(raw), request.ID)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse SSE JSON-RPC response")
+		}
+		if resp.Error != nil {
+			return nil, fmt.Errorf("JSON-RPC error %d: %s", resp.Error.Code, resp.Error.Message)
+		}
+		return resp, nil
+	}
+
+	// Read response as plain JSON
 	respData, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read response body")
 	}
 
 	logging.LogDebugf("Received HTTP MCP response: %s", string(respData))
+
+	// Capture session id if provided on initialize
+	if request.Method == protocol.MethodInitialize {
+		if sid := httpResp.Header.Get("mcp-session-id"); sid != "" {
+			logging.LogDebugf("Captured MCP session id from HTTP initialize: %s", sid)
+			t.sessionID = sid
+		}
+	}
 
 	// Parse response
 	var response protocol.JSONRPCResponse
@@ -149,6 +194,12 @@ func (t *HTTPTransport) SendNotification(ctx context.Context, notification *prot
 	httpReq.Header.Set("Content-Type", "application/json")
 	for key, value := range t.headers {
 		httpReq.Header.Set(key, value)
+	}
+	// Ensure server can send either JSON or SSE compatible responses
+	httpReq.Header.Set("Accept", "application/json, text/event-stream")
+	// Attach session header if present
+	if t.sessionID != "" {
+		httpReq.Header.Set("mcp-session-id", t.sessionID)
 	}
 
 	// Send request (ignore response for notifications)
@@ -288,6 +339,53 @@ func (t *HTTPTransport) handleSSEEvent(eventType, data string) {
 	}
 }
 
+// parseSSEJSONRPCResponse extracts the JSON-RPC response from an SSE-formatted payload.
+// It scans for data: lines within SSE events and returns the first JSON object
+// that parses into a JSONRPCResponse matching the given request ID (if provided).
+func parseSSEJSONRPCResponse(payload string, requestID interface{}) (*protocol.JSONRPCResponse, error) {
+	scanner := bufio.NewScanner(strings.NewReader(payload))
+	var eventData strings.Builder
+
+	flush := func() (*protocol.JSONRPCResponse, bool) {
+		if eventData.Len() == 0 {
+			return nil, false
+		}
+		candidate := eventData.String()
+		var resp protocol.JSONRPCResponse
+		if err := json.Unmarshal([]byte(candidate), &resp); err == nil {
+			if requestID == nil || fmt.Sprint(resp.ID) == fmt.Sprint(requestID) {
+				return &resp, true
+			}
+		}
+		eventData.Reset()
+		return nil, false
+	}
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			if resp, ok := flush(); ok {
+				return resp, nil
+			}
+			continue
+		}
+		if strings.HasPrefix(line, "data:") {
+			data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			if eventData.Len() > 0 {
+				eventData.WriteString("\n")
+			}
+			eventData.WriteString(data)
+		}
+	}
+
+	// Flush any remaining buffered data (in case stream ended without blank line)
+	if resp, ok := flush(); ok {
+		return resp, nil
+	}
+
+	return nil, errors.New("no JSON-RPC response found in SSE payload")
+}
+
 // Close closes the transport
 func (t *HTTPTransport) Close() error {
 	t.mu.Lock()
@@ -322,4 +420,3 @@ func (t *HTTPTransport) AddNotificationHandler(handler MessageHandler) {
 	defer t.notificationMu.Unlock()
 	t.notificationHandlers = append(t.notificationHandlers, handler)
 }
-

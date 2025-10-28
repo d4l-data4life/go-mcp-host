@@ -1,17 +1,25 @@
 package llm
 
 import (
+	"encoding/json"
+
 	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
 )
 
 // ConvertMCPToolToLLMTool converts an MCP tool to LLM function format
 func ConvertMCPToolToLLMTool(mcpTool protocol.Tool, serverName string) Tool {
+	// Clone schema and enforce strict typing if not already specified
+	parameters := cloneMap(mcpTool.InputSchema)
+	if _, has := parameters["strict"]; !has {
+		parameters["strict"] = true
+	}
+
 	return Tool{
 		Type: ToolTypeFunction,
 		Function: ToolFunction{
 			Name:        serverName + "_" + mcpTool.Name, // Prefix with server name to avoid conflicts
 			Description: mcpTool.Description,
-			Parameters:  mcpTool.InputSchema,
+			Parameters:  parameters,
 		},
 	}
 }
@@ -55,3 +63,17 @@ func ConvertMCPContentToString(contents []protocol.Content) string {
 	return result
 }
 
+// cloneMap performs a deep copy of a generic map to avoid mutating original schemas
+func cloneMap(src map[string]interface{}) map[string]interface{} {
+	if src == nil {
+		return nil
+	}
+	// Use JSON round-trip for a safe deep copy of arbitrary structures
+	b, _ := json.Marshal(src)
+	var dst map[string]interface{}
+	_ = json.Unmarshal(b, &dst)
+	if dst == nil {
+		dst = make(map[string]interface{})
+	}
+	return dst
+}

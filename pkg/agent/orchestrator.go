@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/weese/go-mcp-host/pkg/llm"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/weese/go-mcp-host/pkg/llm"
+	"github.com/weese/go-mcp-host/pkg/mcp/manager"
+
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // Orchestrator manages the agent's reasoning and tool execution loop
@@ -317,6 +318,22 @@ func (o *Orchestrator) executeTool(ctx context.Context, conversationID uuid.UUID
 		execution.Error = errors.Wrap(err, "failed to parse tool arguments")
 		return execution, execution.Error
 	}
+
+	// Coerce/validate arguments to match the tool's input schema when possible
+	// This helps when the model emits strings for numbers/booleans, etc.
+	if toolsWithServer, err := o.mcpManager.GetAllTools(ctx, conversationID); err == nil {
+		var schema map[string]interface{}
+		for _, tws := range toolsWithServer {
+			if tws.ServerName == serverName && tws.Tool.Name == toolName {
+				schema = tws.Tool.InputSchema
+				break
+			}
+		}
+		if schema != nil {
+			args = coerceArgumentsToSchema(schema, args)
+		}
+	}
+
 	execution.Arguments = args
 
 	logging.LogDebugf("Executing tool: %s.%s with args: %v", serverName, toolName, args)
@@ -369,4 +386,3 @@ func (o *Orchestrator) buildMessages(request ChatRequest) []llm.Message {
 
 	return messages
 }
-

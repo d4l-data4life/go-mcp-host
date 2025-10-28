@@ -25,25 +25,25 @@ const (
 func AuthMiddleware(jwtKey []byte, db *gorm.DB) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            // Get token from Authorization header or query parameter (for WebSocket)
-            authHeader := r.Header.Get("Authorization")
-            token := ""
-            if authHeader != "" {
-                // Parse Bearer token
-                parts := strings.Split(authHeader, " ")
-                if len(parts) == 2 && parts[0] == "Bearer" {
-                    token = parts[1]
-                }
-            }
-            if token == "" {
-                // Fallback to token query parameter (used for WebSocket where headers can be tricky)
-                token = r.URL.Query().Get("token")
-            }
-            if token == "" {
-                render.Status(r, http.StatusUnauthorized)
-                render.JSON(w, r, map[string]string{"error": "Missing authorization token"})
-                return
-            }
+			// Get token from Authorization header or query parameter (for WebSocket)
+			authHeader := r.Header.Get("Authorization")
+			token := ""
+			if authHeader != "" {
+				// Parse Bearer token
+				parts := strings.Split(authHeader, " ")
+				if len(parts) == 2 && parts[0] == "Bearer" {
+					token = parts[1]
+				}
+			}
+			if token == "" {
+				// Fallback to token query parameter (used for WebSocket where headers can be tricky)
+				token = r.URL.Query().Get("token")
+			}
+			if token == "" {
+				render.Status(r, http.StatusUnauthorized)
+				render.JSON(w, r, map[string]string{"error": "Missing authorization token"})
+				return
+			}
 
 			// Parse token (simple implementation - use proper JWT in production)
 			userID, err := parseToken(token)
@@ -129,4 +129,3 @@ func GetBearerTokenFromContext(ctx context.Context) string {
 	}
 	return token
 }
-

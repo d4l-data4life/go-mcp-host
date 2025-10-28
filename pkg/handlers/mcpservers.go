@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	"github.com/google/uuid"
 	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 	"gorm.io/gorm"
 
@@ -30,9 +29,9 @@ func NewMCPServersHandler(db *gorm.DB, mcpManager *manager.Manager) *MCPServersH
 func (h *MCPServersHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 
-	r.Get("/{conversationId}/servers", h.ListServers)
-	r.Get("/{conversationId}/tools", h.ListTools)
-	r.Get("/{conversationId}/resources", h.ListResources)
+	r.Get("/servers", h.ListServers)
+	r.Get("/tools", h.ListTools)
+	r.Get("/resources", h.ListResources)
 
 	return r
 }
@@ -66,27 +65,8 @@ type ResourceInfo struct {
 
 // ListServers returns all configured MCP servers and their status
 func (h *MCPServersHandler) ListServers(w http.ResponseWriter, r *http.Request) {
-	userID := GetUserIDFromContext(r.Context())
-	conversationID := chi.URLParam(r, "conversationId")
-
-	convID, err := uuid.Parse(conversationID)
-	if err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid conversation ID"})
-		return
-	}
-
-	// Verify conversation belongs to user
-	var count int64
-	h.db.Table("conversations").
-		Where("id = ? AND user_id = ?", convID, userID).
-		Count(&count)
-
-	if count == 0 {
-		render.Status(r, http.StatusNotFound)
-		render.JSON(w, r, map[string]string{"error": "Conversation not found"})
-		return
-	}
+	_ = GetUserIDFromContext(r.Context())
+	bearer := GetBearerTokenFromContext(r.Context())
 
 	// Get configured servers
 	servers := h.mcpManager.GetConfiguredServers()
@@ -102,20 +82,19 @@ func (h *MCPServersHandler) ListServers(w http.ResponseWriter, r *http.Request) 
 			Connected:    false,
 		}
 
-		// Try to get session info for this server
-		session, exists := h.mcpManager.GetSession(convID, cfg.Name)
-		if exists && session != nil && session.Client != nil {
-			info.Connected = true
-			// Get capabilities
-			caps := session.Client.GetCapabilities()
-			if caps.Tools != nil {
-				info.Capabilities = append(info.Capabilities, "tools")
-			}
-			if caps.Resources != nil {
-				info.Capabilities = append(info.Capabilities, "resources")
-			}
-			if caps.Prompts != nil {
-				info.Capabilities = append(info.Capabilities, "prompts")
+		if cfg.Enabled {
+			// Short-lived probe (no long-lived sessions)
+			if caps, err := h.mcpManager.ProbeServer(r.Context(), cfg, bearer); err == nil {
+				info.Connected = true
+				if caps.Tools != nil {
+					info.Capabilities = append(info.Capabilities, "tools")
+				}
+				if caps.Resources != nil {
+					info.Capabilities = append(info.Capabilities, "resources")
+				}
+				if caps.Prompts != nil {
+					info.Capabilities = append(info.Capabilities, "prompts")
+				}
 			}
 		}
 
@@ -128,29 +107,10 @@ func (h *MCPServersHandler) ListServers(w http.ResponseWriter, r *http.Request) 
 // ListTools returns all available tools from MCP servers
 func (h *MCPServersHandler) ListTools(w http.ResponseWriter, r *http.Request) {
 	userID := GetUserIDFromContext(r.Context())
-	conversationID := chi.URLParam(r, "conversationId")
-
-	convID, err := uuid.Parse(conversationID)
-	if err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid conversation ID"})
-		return
-	}
-
-	// Verify conversation belongs to user
-	var count int64
-	h.db.Table("conversations").
-		Where("id = ? AND user_id = ?", convID, userID).
-		Count(&count)
-
-	if count == 0 {
-		render.Status(r, http.StatusNotFound)
-		render.JSON(w, r, map[string]string{"error": "Conversation not found"})
-		return
-	}
+	bearer := GetBearerTokenFromContext(r.Context())
 
 	// Get tools from MCP manager
-	tools, err := h.mcpManager.ListAllTools(r.Context(), convID, "")
+	tools, err := h.mcpManager.ListAllToolsForUser(r.Context(), userID, bearer)
 	if err != nil {
 		logging.LogErrorf(err, "Failed to list tools")
 		render.Status(r, http.StatusInternalServerError)
@@ -174,29 +134,10 @@ func (h *MCPServersHandler) ListTools(w http.ResponseWriter, r *http.Request) {
 // ListResources returns all available resources from MCP servers
 func (h *MCPServersHandler) ListResources(w http.ResponseWriter, r *http.Request) {
 	userID := GetUserIDFromContext(r.Context())
-	conversationID := chi.URLParam(r, "conversationId")
-
-	convID, err := uuid.Parse(conversationID)
-	if err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid conversation ID"})
-		return
-	}
-
-	// Verify conversation belongs to user
-	var count int64
-	h.db.Table("conversations").
-		Where("id = ? AND user_id = ?", convID, userID).
-		Count(&count)
-
-	if count == 0 {
-		render.Status(r, http.StatusNotFound)
-		render.JSON(w, r, map[string]string{"error": "Conversation not found"})
-		return
-	}
+	bearer := GetBearerTokenFromContext(r.Context())
 
 	// Get resources from MCP manager
-	resources, err := h.mcpManager.ListAllResources(r.Context(), convID, "")
+	resources, err := h.mcpManager.ListAllResourcesForUser(r.Context(), userID, bearer)
 	if err != nil {
 		logging.LogErrorf(err, "Failed to list resources")
 		render.Status(r, http.StatusInternalServerError)

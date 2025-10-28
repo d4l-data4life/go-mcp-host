@@ -100,13 +100,13 @@ func loadConfigFile() {
 	// Set config file name and type
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
-	
+
 	// Add config paths to search
-	viper.AddConfigPath(".")              // Current directory
-	viper.AddConfigPath("./")             // Current directory
-	viper.AddConfigPath("../")            // Parent directory
-	viper.AddConfigPath("../../")         // Two levels up
-	
+	viper.AddConfigPath(".")      // Current directory
+	viper.AddConfigPath("./")     // Current directory
+	viper.AddConfigPath("../")    // Parent directory
+	viper.AddConfigPath("../../") // Two levels up
+
 	// Try to read config file
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {

@@ -2,58 +2,59 @@ package config
 
 import (
 	"fmt"
-	
+
 	"github.com/spf13/viper"
 )
 
 // MCPServerConfig represents configuration for an MCP server connection
 type MCPServerConfig struct {
-	Name        string            `yaml:"name" json:"name"`
-	Type        string            `yaml:"type" json:"type"` // "stdio" or "http"
-	Command     string            `yaml:"command,omitempty" json:"command,omitempty"`
-	Args        []string          `yaml:"args,omitempty" json:"args,omitempty"`
-	Env         map[string]string `yaml:"env,omitempty" json:"env,omitempty"`
-	URL         string            `yaml:"url,omitempty" json:"url,omitempty"`
-	Headers     map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
-	Enabled     bool              `yaml:"enabled" json:"enabled"`
-	Description string            `yaml:"description,omitempty" json:"description,omitempty"`
+	Name          string            `yaml:"name"                  json:"name"`
+	Type          string            `yaml:"type"                  json:"type"` // "stdio" or "http"
+	Command       string            `yaml:"command,omitempty"     json:"command,omitempty"`
+	Args          []string          `yaml:"args,omitempty"        json:"args,omitempty"`
+	Env           map[string]string `yaml:"env,omitempty"         json:"env,omitempty"`
+	URL           string            `yaml:"url,omitempty"         json:"url,omitempty"`
+	Headers       map[string]string `yaml:"headers,omitempty"     json:"headers,omitempty"`
+	ForwardBearer bool              `yaml:"forwardBearer"         json:"forwardBearer"` // When true, the current user's bearer token will be forwarded as Authorization header.
+	Enabled       bool              `yaml:"enabled"               json:"enabled"`
+	Description   string            `yaml:"description,omitempty" json:"description,omitempty"`
 }
 
 // OllamaConfig represents configuration for Ollama LLM
 type OllamaConfig struct {
-	BaseURL        string  `yaml:"baseUrl" json:"baseUrl"`
-	DefaultModel   string  `yaml:"defaultModel" json:"defaultModel"`
-	Temperature    float64 `yaml:"temperature" json:"temperature"`
-	MaxTokens      int     `yaml:"maxTokens" json:"maxTokens"`
-	TopP           float64 `yaml:"topP" json:"topP"`
+	BaseURL        string  `yaml:"baseUrl"        json:"baseUrl"`
+	DefaultModel   string  `yaml:"defaultModel"   json:"defaultModel"`
+	Temperature    float64 `yaml:"temperature"    json:"temperature"`
+	MaxTokens      int     `yaml:"maxTokens"      json:"maxTokens"`
+	TopP           float64 `yaml:"topP"           json:"topP"`
 	RequestTimeout string  `yaml:"requestTimeout" json:"requestTimeout"`
 }
 
 // MCPConfig represents configuration for MCP-related settings
 type MCPConfig struct {
-	Servers           []MCPServerConfig `yaml:"servers" json:"servers"`
-	SessionTimeout    string            `yaml:"sessionTimeout" json:"sessionTimeout"`
-	MaxSessionsPerUser int              `yaml:"maxSessionsPerUser" json:"maxSessionsPerUser"`
-	ReconnectAttempts int               `yaml:"reconnectAttempts" json:"reconnectAttempts"`
-	ReconnectDelay    string            `yaml:"reconnectDelay" json:"reconnectDelay"`
+	Servers            []MCPServerConfig `yaml:"servers"            json:"servers"`
+	SessionTimeout     string            `yaml:"sessionTimeout"     json:"sessionTimeout"`
+	MaxSessionsPerUser int               `yaml:"maxSessionsPerUser" json:"maxSessionsPerUser"`
+	ReconnectAttempts  int               `yaml:"reconnectAttempts"  json:"reconnectAttempts"`
+	ReconnectDelay     string            `yaml:"reconnectDelay"     json:"reconnectDelay"`
 }
 
 // AgentConfig represents configuration for the agent orchestrator
 type AgentConfig struct {
-	MaxIterations        int    `yaml:"maxIterations" json:"maxIterations"`
-	MaxContextTokens     int    `yaml:"maxContextTokens" json:"maxContextTokens"`
+	MaxIterations        int    `yaml:"maxIterations"        json:"maxIterations"`
+	MaxContextTokens     int    `yaml:"maxContextTokens"     json:"maxContextTokens"`
 	ToolExecutionTimeout string `yaml:"toolExecutionTimeout" json:"toolExecutionTimeout"`
-	DefaultModel         string `yaml:"defaultModel" json:"defaultModel"`
+	DefaultModel         string `yaml:"defaultModel"         json:"defaultModel"`
 }
 
 // GetMCPConfig returns MCP configuration from viper
 func GetMCPConfig() MCPConfig {
 	return MCPConfig{
-		Servers:           GetMCPServers(),
-		SessionTimeout:    viper.GetString("MCP_SESSION_TIMEOUT"),
+		Servers:            GetMCPServers(),
+		SessionTimeout:     viper.GetString("MCP_SESSION_TIMEOUT"),
 		MaxSessionsPerUser: viper.GetInt("MCP_MAX_SESSIONS_PER_USER"),
-		ReconnectAttempts: viper.GetInt("MCP_RECONNECT_ATTEMPTS"),
-		ReconnectDelay:    viper.GetString("MCP_RECONNECT_DELAY"),
+		ReconnectAttempts:  viper.GetInt("MCP_RECONNECT_ATTEMPTS"),
+		ReconnectDelay:     viper.GetString("MCP_RECONNECT_DELAY"),
 	}
 }
 
@@ -151,4 +152,3 @@ func LoadMCPConfig() (*FullMCPConfig, error) {
 
 	return cfg, nil
 }
-

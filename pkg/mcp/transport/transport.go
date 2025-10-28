@@ -74,4 +74,3 @@ func NewReadWriter(r io.Reader, w io.Writer) *ReadWriter {
 		Writer: w,
 	}
 }
-
