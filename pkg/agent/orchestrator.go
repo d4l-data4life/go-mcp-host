@@ -249,12 +249,16 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 
 			// Execute tool calls
 			for _, toolCall := range toolCalls {
-				// Notify tool start
-				eventChan <- StreamEvent{
-					Type: StreamEventTypeToolStart,
-					Tool: &ToolExecution{
-						ToolName: toolCall.Function.Name,
-					},
+				// Notify tool start (include parsed server and tool names for UI)
+				{
+					serverName, toolName := llm.ParseToolName(toolCall.Function.Name)
+					eventChan <- StreamEvent{
+						Type: StreamEventTypeToolStart,
+						Tool: &ToolExecution{
+							ServerName: serverName,
+							ToolName:   toolName,
+						},
+					}
 				}
 
 				execution, err := o.executeTool(ctx, request, toolCall)
@@ -306,6 +310,8 @@ func (o *Orchestrator) executeTool(ctx context.Context, request ChatRequest, too
 	// Parse server and tool name
 	serverName, toolName := llm.ParseToolName(toolCall.Function.Name)
 	execution.ServerName = serverName
+	// Store parsed tool name (without server prefix) for cleaner UI display
+	execution.ToolName = toolName
 
 	if serverName == "" {
 		execution.Error = errors.New("invalid tool name format")
