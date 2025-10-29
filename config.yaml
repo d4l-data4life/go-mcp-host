@@ -1,0 +1,64 @@
+# MCP Host Configuration
+
+# CORS Configuration - Add your frontend URLs here
+cors_hosts: "http://localhost:3334 http://localhost:3000"
+
+# Remote Keys URL for Azure AD authentication (leave empty for local development)
+remote_keys_url: ""
+
+# MCP Servers Configuration
+mcp_servers:
+  # Weather server - enabled by default as an example
+  - name: weather
+    type: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@h1deya/mcp-server-weather"
+    enabled: true
+    description: "Weather information server - provides current weather and forecasts"
+  
+  # MC Pillars HTTP MCP server
+  - name: mc-pillars
+    type: http
+    url: "http://localhost:3300"
+    # Optional static headers (merged with forwarded bearer when enabled)
+    headers: {}
+    # Forward the current user's BEARER token as Authorization header
+    forwardBearer: true
+    enabled: true
+    description: "MC Pillars HTTP MCP server"
+  
+  # Example: Local filesystem server (commented out)
+  # - name: filesystem
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - "-y"
+  #     - "@modelcontextprotocol/server-filesystem"
+  #     - "/Users/yourusername/Documents"  # Adjust to your allowed directory
+  #   enabled: false
+  #   description: "Local filesystem access for reading and writing files"
+
+  # Example: PostgreSQL database server (uncomment to enable)
+  # - name: postgres
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - "-y"
+  #     - "@modelcontextprotocol/server-postgres"
+  #     - "postgresql://user:password@localhost:5432/dbname"
+  #   enabled: false
+  #   description: "PostgreSQL database access"
+
+  # Example: Web search/puppeteer (uncomment to enable)
+  # - name: puppeteer
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - "-y"
+  #     - "@modelcontextprotocol/server-puppeteer"
+  #   enabled: false
+  #   description: "Web browser automation and scraping"
+
+  # Add more MCP servers as needed
