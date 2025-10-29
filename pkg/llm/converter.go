@@ -8,11 +8,8 @@ import (
 
 // ConvertMCPToolToLLMTool converts an MCP tool to LLM function format
 func ConvertMCPToolToLLMTool(mcpTool protocol.Tool, serverName string) Tool {
-	// Clone schema and enforce strict typing if not already specified
+	// Clone schema (don't add "strict" as it confuses some models)
 	parameters := cloneMap(mcpTool.InputSchema)
-	if _, has := parameters["strict"]; !has {
-		parameters["strict"] = true
-	}
 
 	return Tool{
 		Type: ToolTypeFunction,

@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/weese/go-mcp-host/pkg/agent"
+	"github.com/weese/go-mcp-host/pkg/llm"
 	"github.com/weese/go-mcp-host/pkg/models"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -164,8 +165,8 @@ func (h *MessagesHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		Order("created_at ASC").
 		Find(&messages)
 
-	// TODO: Convert message history to agent format
-	// agentMessages := h.convertToAgentMessages(messages)
+	// Convert message history to agent format
+	agentMessages := h.convertToAgentMessages(messages)
 
 	// Call agent
 	response, err := h.agent.Chat(r.Context(), agent.ChatRequest{
@@ -173,7 +174,7 @@ func (h *MessagesHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		UserID:         userID,
 		BearerToken:    GetBearerTokenFromContext(r.Context()),
 		UserMessage:    req.Content,
-		Messages:       nil, // Use nil instead of agentMessages for now
+		Messages:       agentMessages,
 		Model:          conversation.Model,
 	})
 
@@ -323,8 +324,8 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 			Order("created_at ASC").
 			Find(&messages)
 
-		// TODO: Convert message history to agent format
-		// agentMessages := h.convertToAgentMessages(messages)
+		// Convert message history to agent format
+		agentMessages := h.convertToAgentMessages(messages)
 
 		// Stream agent response
 		streamChan, err := h.agent.ChatStream(context.Background(), agent.ChatRequest{
@@ -332,7 +333,7 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 			UserID:         userID,
 			BearerToken:    GetBearerTokenFromContext(r.Context()),
 			UserMessage:    req.Content,
-			Messages:       nil, // Use nil instead of agentMessages for now
+			Messages:       agentMessages,
 			Model:          conversation.Model,
 		})
 
@@ -377,6 +378,7 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 				})
 			case agent.StreamEventTypeDone:
 				// Save assistant message
+				logging.LogDebugf("Saving assistant message: content=%s", fullContent)
 				metaJSON, _ := json.Marshal(map[string]interface{}{
 					"toolExecutions": streamedToolExecs,
 				})
@@ -425,8 +427,36 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 }
 
 // convertToAgentMessages converts database messages to agent messages
-func (h *MessagesHandler) convertToAgentMessages(dbMessages []models.Message) []map[string]interface{} {
-	// Return empty for now - agent will use last message
-	// In production, convert message history to proper format
-	return nil
+func (h *MessagesHandler) convertToAgentMessages(dbMessages []models.Message) []llm.Message {
+	// Convert all messages except the last one (which is the current user message that will be added by orchestrator)
+	// Also skip system messages as the orchestrator adds its own system prompt
+	var agentMessages []llm.Message
+
+	for i := 0; i < len(dbMessages)-1; i++ {
+		msg := dbMessages[i]
+
+		// Skip system messages
+		if msg.Role == models.MessageRoleSystem {
+			continue
+		}
+
+		agentMsg := llm.Message{
+			Role:       string(msg.Role),
+			Content:    msg.Content,
+			ToolCallID: msg.ToolCallID,
+			Name:       msg.Name,
+		}
+
+		// Parse tool calls if present
+		if len(msg.ToolCalls) > 0 {
+			var toolCalls []llm.ToolCall
+			if err := json.Unmarshal(msg.ToolCalls, &toolCalls); err == nil {
+				agentMsg.ToolCalls = toolCalls
+			}
+		}
+
+		agentMessages = append(agentMessages, agentMsg)
+	}
+
+	return agentMessages
 }

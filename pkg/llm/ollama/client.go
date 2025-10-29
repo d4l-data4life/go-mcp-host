@@ -10,9 +10,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/weese/go-mcp-host/pkg/llm"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/pkg/errors"
+	"github.com/weese/go-mcp-host/pkg/llm"
+
+	"github.com/gesundheitscloud/go-svc/pkg/logging"
 )
 
 // Client implements the LLM client interface for Ollama
@@ -267,10 +268,10 @@ func (c *Client) ListModels(ctx context.Context) ([]llm.Model, error) {
 // Helper types for Ollama API
 
 type ollamaChatRequest struct {
-	Model    string            `json:"model"`
-	Messages []ollamaMessage   `json:"messages"`
-	Tools    []ollamaTool      `json:"tools,omitempty"`
-	Stream   bool              `json:"stream"`
+	Model    string                 `json:"model"`
+	Messages []ollamaMessage        `json:"messages"`
+	Tools    []ollamaTool           `json:"tools,omitempty"`
+	Stream   bool                   `json:"stream"`
 	Options  map[string]interface{} `json:"options,omitempty"`
 }
 
@@ -281,8 +282,8 @@ type ollamaMessage struct {
 }
 
 type ollamaTool struct {
-	Type     string                 `json:"type"`
-	Function ollamaToolFunction     `json:"function"`
+	Type     string             `json:"type"`
+	Function ollamaToolFunction `json:"function"`
 }
 
 type ollamaToolFunction struct {
@@ -399,4 +400,3 @@ func (c *Client) convertFromOllamaResponse(resp *ollamaChatResponse) *llm.ChatRe
 
 	return response
 }
-
