@@ -170,6 +170,8 @@ func (h *MessagesHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	// Call agent
 	response, err := h.agent.Chat(r.Context(), agent.ChatRequest{
 		ConversationID: convID,
+		UserID:         userID,
+		BearerToken:    GetBearerTokenFromContext(r.Context()),
 		UserMessage:    req.Content,
 		Messages:       nil, // Use nil instead of agentMessages for now
 		Model:          conversation.Model,
@@ -327,6 +329,8 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 		// Stream agent response
 		streamChan, err := h.agent.ChatStream(context.Background(), agent.ChatRequest{
 			ConversationID: convID,
+			UserID:         userID,
+			BearerToken:    GetBearerTokenFromContext(r.Context()),
 			UserMessage:    req.Content,
 			Messages:       nil, // Use nil instead of agentMessages for now
 			Model:          conversation.Model,

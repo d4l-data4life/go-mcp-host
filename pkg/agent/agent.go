@@ -4,10 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/weese/go-mcp-host/pkg/config"
+	"github.com/google/uuid"
 	"github.com/weese/go-mcp-host/pkg/llm"
 	"github.com/weese/go-mcp-host/pkg/mcp/manager"
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -77,12 +76,7 @@ func NewAgent(db *gorm.DB, mcpManager *manager.Manager, llmClient llm.Client, cf
 
 // Chat sends a message and returns the agent's response
 func (a *Agent) Chat(ctx context.Context, request ChatRequest) (*ChatResponse, error) {
-	// Initialize MCP sessions for configured servers
-	if err := a.initializeMCPSessions(ctx, request.ConversationID); err != nil {
-		return nil, err
-	}
-
-	// Execute orchestration loop
+	// Execute orchestration loop (sessions created on-demand)
 	response, err := a.orchestrator.Execute(ctx, request)
 	if err != nil {
 		return nil, err
@@ -93,35 +87,8 @@ func (a *Agent) Chat(ctx context.Context, request ChatRequest) (*ChatResponse, e
 
 // ChatStream sends a message and returns a streaming response channel
 func (a *Agent) ChatStream(ctx context.Context, request ChatRequest) (<-chan StreamEvent, error) {
-	// Initialize MCP sessions for configured servers
-	if err := a.initializeMCPSessions(ctx, request.ConversationID); err != nil {
-		return nil, err
-	}
-
-	// Execute streaming orchestration
+	// Execute streaming orchestration (sessions created on-demand)
 	return a.orchestrator.ExecuteStream(ctx, request)
-}
-
-// initializeMCPSessions ensures MCP sessions are created for enabled servers
-func (a *Agent) initializeMCPSessions(ctx context.Context, conversationID uuid.UUID) error {
-	// Get enabled MCP servers from config
-	mcpConfig := config.GetMCPConfig()
-
-	for _, serverConfig := range mcpConfig.Servers {
-		if !serverConfig.Enabled {
-			continue
-		}
-
-		// Get or create session (idempotent)
-		_, err := a.mcpManager.GetOrCreateSession(ctx, conversationID, serverConfig)
-		if err != nil {
-			// Log error but continue with other servers
-			// Don't fail the entire request if one server is unavailable
-			continue
-		}
-	}
-
-	return nil
 }
 
 // CloseConversation cleans up resources for a conversation
@@ -173,6 +140,8 @@ func (a *Agent) GetAvailableResources(ctx context.Context, conversationID uuid.U
 // ChatRequest represents a chat request to the agent
 type ChatRequest struct {
 	ConversationID uuid.UUID
+	UserID         uuid.UUID
+	BearerToken    string
 	UserMessage    string
 	Messages       []llm.Message // Optional: provide full message history
 	Model          string        // Optional: override default model
@@ -180,11 +149,11 @@ type ChatRequest struct {
 
 // ChatResponse represents the agent's response
 type ChatResponse struct {
-	Message       llm.Message
-	ToolsUsed     []ToolExecution
-	Iterations    int
-	TotalTokens   int
-	Error         error
+	Message     llm.Message
+	ToolsUsed   []ToolExecution
+	Iterations  int
+	TotalTokens int
+	Error       error
 }
 
 // StreamEvent represents a streaming event from the agent
@@ -234,4 +203,3 @@ type ResourceInfo struct {
 	Description string
 	MimeType    string
 }
-

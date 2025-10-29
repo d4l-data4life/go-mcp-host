@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/weese/go-mcp-host/pkg/config"
 	"github.com/weese/go-mcp-host/pkg/llm"
 	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 
@@ -35,8 +35,8 @@ func (o *Orchestrator) Execute(ctx context.Context, request ChatRequest) (*ChatR
 	// Build initial messages
 	messages := o.buildMessages(request)
 
-	// Get available tools
-	toolsWithServer, err := o.mcpManager.GetAllTools(ctx, request.ConversationID)
+	// Get available tools (short-lived clients, no sessions yet)
+	toolsWithServer, err := o.mcpManager.ListAllToolsForUser(ctx, request.UserID, request.BearerToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get tools")
 	}
@@ -101,7 +101,7 @@ func (o *Orchestrator) Execute(ctx context.Context, request ChatRequest) (*ChatR
 
 		// Execute tool calls
 		for _, toolCall := range response.Message.ToolCalls {
-			execution, err := o.executeTool(ctx, request.ConversationID, toolCall)
+			execution, err := o.executeTool(ctx, request, toolCall)
 			toolExecutions = append(toolExecutions, execution)
 
 			if err != nil {
@@ -148,8 +148,8 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 		// Build initial messages
 		messages := o.buildMessages(request)
 
-		// Get available tools
-		toolsWithServer, err := o.mcpManager.GetAllTools(ctx, request.ConversationID)
+		// Get available tools (short-lived clients, no sessions yet)
+		toolsWithServer, err := o.mcpManager.ListAllToolsForUser(ctx, request.UserID, request.BearerToken)
 		if err != nil {
 			eventChan <- StreamEvent{
 				Type:  StreamEventTypeError,
@@ -257,7 +257,7 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 					},
 				}
 
-				execution, err := o.executeTool(ctx, request.ConversationID, toolCall)
+				execution, err := o.executeTool(ctx, request, toolCall)
 
 				// Notify tool complete
 				eventChan <- StreamEvent{
@@ -296,7 +296,7 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 }
 
 // executeTool executes a single tool call
-func (o *Orchestrator) executeTool(ctx context.Context, conversationID uuid.UUID, toolCall llm.ToolCall) (ToolExecution, error) {
+func (o *Orchestrator) executeTool(ctx context.Context, request ChatRequest, toolCall llm.ToolCall) (ToolExecution, error) {
 	startTime := time.Now()
 
 	execution := ToolExecution{
@@ -321,7 +321,8 @@ func (o *Orchestrator) executeTool(ctx context.Context, conversationID uuid.UUID
 
 	// Coerce/validate arguments to match the tool's input schema when possible
 	// This helps when the model emits strings for numbers/booleans, etc.
-	if toolsWithServer, err := o.mcpManager.GetAllTools(ctx, conversationID); err == nil {
+	// Use user cache instead of session tools since session may not exist yet
+	if toolsWithServer, err := o.mcpManager.ListAllToolsForUser(ctx, request.UserID, request.BearerToken); err == nil {
 		var schema map[string]interface{}
 		for _, tws := range toolsWithServer {
 			if tws.ServerName == serverName && tws.Tool.Name == toolName {
@@ -330,7 +331,9 @@ func (o *Orchestrator) executeTool(ctx context.Context, conversationID uuid.UUID
 			}
 		}
 		if schema != nil {
+			logging.LogDebugf("Coercing args for %s.%s: before=%v schema=%v", serverName, toolName, args, schema)
 			args = coerceArgumentsToSchema(schema, args)
+			logging.LogDebugf("Coercing args for %s.%s: after=%v", serverName, toolName, args)
 		}
 	}
 
@@ -338,12 +341,30 @@ func (o *Orchestrator) executeTool(ctx context.Context, conversationID uuid.UUID
 
 	logging.LogDebugf("Executing tool: %s.%s with args: %v", serverName, toolName, args)
 
+	// Ensure session exists for this server (just-in-time creation)
+	mcpCfg := config.GetMCPConfig()
+	var serverCfg config.MCPServerConfig
+	for _, s := range mcpCfg.Servers {
+		if s.Enabled && s.Name == serverName {
+			serverCfg = s
+			break
+		}
+	}
+	if serverCfg.Name == "" {
+		execution.Error = errors.Errorf("unknown or disabled server: %s", serverName)
+		return execution, execution.Error
+	}
+	if _, err := o.mcpManager.GetOrCreateSession(ctx, request.ConversationID, serverCfg, request.BearerToken, request.UserID); err != nil {
+		execution.Error = errors.Wrap(err, "failed to open MCP session")
+		return execution, execution.Error
+	}
+
 	// Create timeout context
 	toolCtx, cancel := context.WithTimeout(ctx, o.config.ToolExecutionTimeout)
 	defer cancel()
 
 	// Execute via MCP manager
-	result, err := o.mcpManager.CallTool(toolCtx, conversationID, serverName, toolName, args)
+	result, err := o.mcpManager.CallTool(toolCtx, request.ConversationID, serverName, toolName, args)
 	execution.Duration = time.Since(startTime)
 
 	if err != nil {
