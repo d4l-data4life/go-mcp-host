@@ -23,7 +23,7 @@ jobs:
   create:
     runs-on: ubuntu-latest
     steps:
-      - uses: gesundheitscloud/github-actions/database@main
+      - uses: d4l-data4life/github-actions/database@main
         with:
           operation: ${{ inputs.operation }}
           repository: go-mcp-host

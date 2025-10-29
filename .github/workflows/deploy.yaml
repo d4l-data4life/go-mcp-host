@@ -22,7 +22,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: gesundheitscloud/github-actions/deploy@main
+      - uses: d4l-data4life/github-actions/deploy@main
         with:
           environment: ${{ inputs.environment }}
           repository: go-mcp-host

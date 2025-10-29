@@ -7,7 +7,7 @@
     - [Repo list](https://github.com/gesundheitscloud/phdp-release-it/blob/master/repos.csv)
     - [Codeowner settings](https://github.com/gesundheitscloud/phdp-release-it/blob/master/CODEOWNERS.csv)
     - run the setup via tool `d4l setup-repo <repo-name> -r ./repos.csv -c ./CODEOWNERS_ret.csv`
-3. Adjust the GitHub Actions in this repo to the correct needs and read [github-actions](https://github.com/gesundheitscloud/github-actions) for general understanding
+3. Adjust the GitHub Actions in this repo to the correct needs and read [github-actions](https://github.com/d4l-data4life/github-actions) for general understanding
 
 ## Template usage
 
