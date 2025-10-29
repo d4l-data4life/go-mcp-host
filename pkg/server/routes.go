@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/weese/go-mcp-host/pkg/agent"
+	"github.com/weese/go-mcp-host/pkg/auth"
 	"github.com/weese/go-mcp-host/pkg/config"
 	"github.com/weese/go-mcp-host/pkg/handlers"
 	"github.com/weese/go-mcp-host/pkg/llm/ollama"
@@ -19,7 +20,7 @@ import (
 )
 
 // SetupRoutes adds all routes that the server should listen to
-func SetupRoutes(ctx context.Context, mux *chi.Mux) {
+func SetupRoutes(ctx context.Context, mux *chi.Mux, tokenValidator auth.TokenValidator) {
 	// Get database connection
 	database := db.Get()
 
@@ -49,7 +50,7 @@ func SetupRoutes(ctx context.Context, mux *chi.Mux) {
 	})
 
 	// Register new API routes
-	handlers.RegisterRoutes(mux, database, agentInstance, mcpManager)
+	handlers.RegisterRoutes(mux, database, agentInstance, mcpManager, tokenValidator)
 
 	// Health checks and metrics
 	ch := handlers.NewChecksHandler()

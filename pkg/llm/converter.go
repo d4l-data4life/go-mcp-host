@@ -14,7 +14,7 @@ func ConvertMCPToolToLLMTool(mcpTool protocol.Tool, serverName string) Tool {
 	return Tool{
 		Type: ToolTypeFunction,
 		Function: ToolFunction{
-			Name:        serverName + "_" + mcpTool.Name, // Prefix with server name to avoid conflicts
+			Name:        serverName + ":" + mcpTool.Name, // Prefix with server name using ':' for clarity
 			Description: mcpTool.Description,
 			Parameters:  parameters,
 		},
@@ -31,15 +31,21 @@ func ConvertMCPToolsToLLMTools(mcpTools []protocol.Tool, serverName string) []To
 }
 
 // ParseToolName extracts server name and tool name from a combined tool name
-// Format: "serverName_toolName"
+// Preferred format: "serverName:toolName". Falls back to "serverName_toolName" for backward compatibility.
 func ParseToolName(combinedName string) (serverName, toolName string) {
-	// Find the first underscore
+	// Prefer colon separator
+	for i := 0; i < len(combinedName); i++ {
+		if combinedName[i] == ':' {
+			return combinedName[:i], combinedName[i+1:]
+		}
+	}
+	// Fallback: support underscore separator to handle older names
 	for i := 0; i < len(combinedName); i++ {
 		if combinedName[i] == '_' {
 			return combinedName[:i], combinedName[i+1:]
 		}
 	}
-	// If no underscore found, return empty server name
+	// If no separator found, return empty server name
 	return "", combinedName
 }
 

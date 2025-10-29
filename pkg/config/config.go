@@ -42,7 +42,7 @@ const (
 	// DefaultPort default port the service is served on
 	DefaultPort = "8080"
 	// DefaultCorsHosts default cors horst for local development
-	DefaultCorsHosts = "https://localhost:3000 http://localhost:3456"
+	DefaultCorsHosts = "http://localhost:3334 https://localhost:3000 http://localhost:3456"
 
 	// ##### DATABASE VARIABLES
 
@@ -57,7 +57,8 @@ const (
 	DefaultDBSSLMode  = "verify-full"
 
 	// ##### AUTHENTICATION VARIABLES
-	DefaultJWTKeyPath = "/keys/jwt.key"
+	DefaultJWTKeyPath    = "/keys/jwt.key"
+	DefaultRemoteKeysURL = "" // Empty by default; set to use Azure AD or similar
 )
 
 func bindEnvVariable(name string, fallback interface{}) {
@@ -147,6 +148,7 @@ func SetupEnv() {
 	bindEnvVariable("SERVICE_SECRET", "")
 	bindEnvVariable("JWT_KEY_PATH", DefaultJWTKeyPath)
 	bindEnvVariable("JWT_EXPIRATION_HOURS", 24)
+	bindEnvVariable("REMOTE_KEYS_URL", DefaultRemoteKeysURL)
 	// MCP and Agent configuration
 	SetupMCPEnv()
 }

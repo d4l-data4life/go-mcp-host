@@ -20,15 +20,15 @@ const (
 
 // Message represents a single message in a conversation
 type Message struct {
-	ID             uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
-	ConversationID uuid.UUID      `gorm:"type:uuid;not null;index;constraint:OnDelete:CASCADE" json:"conversationId"`
+	ID             uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey"                      json:"id"`
+	ConversationID uuid.UUID      `gorm:"type:uuid;not null;index;constraint:OnDelete:CASCADE"                json:"conversationId"`
 	Role           MessageRole    `gorm:"size:20;not null;check:role IN ('user','assistant','system','tool')" json:"role"`
-	Content        string         `gorm:"type:text" json:"content"`
-	ToolCalls      datatypes.JSON `gorm:"type:jsonb" json:"toolCalls,omitempty"`
-	ToolCallID     string         `gorm:"size:255" json:"toolCallId,omitempty"`
-	Name           string         `gorm:"size:255" json:"name,omitempty"`
-	Metadata       datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"metadata,omitempty"`
-	CreatedAt      time.Time      `json:"createdAt"`
+	Content        string         `gorm:"type:text"                                                           json:"content"`
+	ToolCalls      datatypes.JSON `gorm:"type:jsonb"                                                          json:"toolCalls,omitempty"`
+	ToolCallID     string         `gorm:"size:255"                                                            json:"toolCallId,omitempty"`
+	Name           string         `gorm:"size:255"                                                            json:"name,omitempty"`
+	Metadata       datatypes.JSON `gorm:"type:jsonb;default:'{}'"                                             json:"metadata,omitempty"`
+	CreatedAt      time.Time      `                                                                           json:"createdAt"`
 
 	// Associations
 	Conversation Conversation `gorm:"foreignKey:ConversationID;constraint:OnDelete:CASCADE" json:"conversation,omitempty"`

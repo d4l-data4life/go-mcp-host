@@ -7,10 +7,12 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/spf13/viper"
 
+	"github.com/weese/go-mcp-host/pkg/auth"
 	"github.com/weese/go-mcp-host/pkg/config"
 	"github.com/weese/go-mcp-host/pkg/metrics"
 	"github.com/weese/go-mcp-host/pkg/models"
 	"github.com/weese/go-mcp-host/pkg/server"
+
 	"github.com/gesundheitscloud/go-svc/pkg/db"
 	"github.com/gesundheitscloud/go-svc/pkg/logging"
 	"github.com/gesundheitscloud/go-svc/pkg/standard"
@@ -50,11 +52,27 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 
 	_, err := config.LoadJwtKey(viper.GetString("JWT_KEY_PATH"))
 	if err != nil {
-		logging.LogErrorf(err, "failed to create TLS HTTP client:")
+		logging.LogErrorf(err, "failed to load JWT key")
 		return dieEarly
 	}
 
-	server.SetupRoutes(runCtx, srv.Mux())
+	// Initialize TokenValidator if REMOTE_KEYS_URL is configured
+	var tokenValidator auth.TokenValidator
+	remoteKeysURL := viper.GetString("REMOTE_KEYS_URL")
+	if remoteKeysURL != "" {
+		logging.LogInfof("Initializing remote token validator with URL: %s", remoteKeysURL)
+		tokenValidator, err = auth.NewRemoteKeyStore(context.Background(), remoteKeysURL)
+		if err != nil {
+			logging.LogErrorf(err, "failed to create remote key store - continuing without remote validation")
+			tokenValidator = nil
+		} else {
+			logging.LogInfof("Remote token validator initialized successfully")
+		}
+	} else {
+		logging.LogInfof("REMOTE_KEYS_URL not configured - using local JWT authentication")
+	}
+
+	server.SetupRoutes(runCtx, srv.Mux(), tokenValidator)
 	metrics.AddBuildInfoMetric()
 	return standard.ListenAndServe(runCtx, srv.Mux(), port)
 }

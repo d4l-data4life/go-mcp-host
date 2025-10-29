@@ -5,17 +5,20 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"github.com/gesundheitscloud/go-svc/pkg/db"
 )
 
 // User represents a user in the system
 type User struct {
 	ID           uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
-	Username     string         `gorm:"size:255;uniqueIndex;not null" json:"username"`
-	Email        string         `gorm:"size:255;uniqueIndex;not null" json:"email"`
-	PasswordHash string         `gorm:"size:255;not null" json:"-"` // Never expose password hash in JSON
-	CreatedAt    time.Time      `json:"createdAt"`
-	UpdatedAt    time.Time      `json:"updatedAt"`
-	DeletedAt    gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
+	Username     *string        `gorm:"size:255;uniqueIndex"                           json:"username,omitempty"`
+	Email        *string        `gorm:"size:255;uniqueIndex"                           json:"email,omitempty"`
+	PasswordHash *string        `gorm:"size:255"                                       json:"-"` // Never expose password hash in JSON
+	CreatedAt    time.Time      `                                                      json:"createdAt"`
+	UpdatedAt    time.Time      `                                                      json:"updatedAt"`
+	DeletedAt    gorm.DeletedAt `gorm:"index"                                          json:"deletedAt,omitempty"`
 
 	// Associations
 	Conversations []Conversation `gorm:"foreignKey:UserID" json:"conversations,omitempty"`
@@ -37,8 +40,8 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 // PublicUser represents user data safe for public consumption
 type PublicUser struct {
 	ID        uuid.UUID `json:"id"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
+	Username  *string   `json:"username,omitempty"`
+	Email     *string   `json:"email,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -50,4 +53,13 @@ func (u *User) ToPublic() PublicUser {
 		Email:     u.Email,
 		CreatedAt: u.CreatedAt,
 	}
+}
+
+// EnsureUser makes sure the user with the given ID exists
+func EnsureUser(userID uuid.UUID) error {
+	u := &User{ID: userID}
+	return db.Get().Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoNothing: true,
+	}).Create(u).Error
 }

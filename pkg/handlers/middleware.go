@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -9,6 +10,9 @@ import (
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"github.com/weese/go-mcp-host/pkg/auth"
+	"github.com/weese/go-mcp-host/pkg/models"
 )
 
 // ContextKey is the type for context keys
@@ -22,7 +26,9 @@ const (
 )
 
 // AuthMiddleware verifies JWT tokens and adds user ID to context
-func AuthMiddleware(jwtKey []byte, db *gorm.DB) func(http.Handler) http.Handler {
+// If tokenValidator is provided (remote Azure AD keys), it validates using that.
+// Otherwise, falls back to simple token parsing (for local development).
+func AuthMiddleware(jwtKey []byte, db *gorm.DB, tokenValidator auth.TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Get token from Authorization header or query parameter (for WebSocket)
@@ -45,29 +51,49 @@ func AuthMiddleware(jwtKey []byte, db *gorm.DB) func(http.Handler) http.Handler 
 				return
 			}
 
-			// Parse token (simple implementation - use proper JWT in production)
-			userID, err := parseToken(token)
-			if err != nil {
-				render.Status(r, http.StatusUnauthorized)
-				render.JSON(w, r, map[string]string{"error": "Invalid or expired token"})
-				return
-			}
+			var userID uuid.UUID
+			var err error
 
-			// Validate that the user still exists in the database
-			if db != nil {
-				var count int64
-				if err := db.Table("users").Where("id = ? AND deleted_at IS NULL", userID).Count(&count).Error; err != nil {
-					render.Status(r, http.StatusInternalServerError)
-					render.JSON(w, r, map[string]string{"error": "Failed to validate user"})
+			// If tokenValidator is configured (remote keys), use it
+			if tokenValidator != nil {
+				userID, err = validateRemoteToken(tokenValidator, token)
+				if err != nil {
+					render.Status(r, http.StatusUnauthorized)
+					render.JSON(w, r, map[string]string{"error": "Invalid or expired token"})
 					return
 				}
-				if count == 0 {
-					render.Status(r, http.StatusUnauthorized)
-					render.JSON(w, r, map[string]string{
-						"error": "User not found - please log in again",
-						"code":  "USER_NOT_FOUND",
-					})
+
+				// Ensure user exists in database (auto-create for Azure AD users)
+				if err := models.EnsureUser(userID); err != nil {
+					render.Status(r, http.StatusInternalServerError)
+					render.JSON(w, r, map[string]string{"error": "Failed to ensure user exists"})
 					return
+				}
+			} else {
+				// Fallback to simple token parsing (local development)
+				userID, err = parseToken(token)
+				if err != nil {
+					render.Status(r, http.StatusUnauthorized)
+					render.JSON(w, r, map[string]string{"error": "Invalid or expired token"})
+					return
+				}
+
+				// Validate that the user still exists in the database (only for simple tokens)
+				if db != nil {
+					var count int64
+					if err := db.Table("users").Where("id = ? AND deleted_at IS NULL", userID).Count(&count).Error; err != nil {
+						render.Status(r, http.StatusInternalServerError)
+						render.JSON(w, r, map[string]string{"error": "Failed to validate user"})
+						return
+					}
+					if count == 0 {
+						render.Status(r, http.StatusUnauthorized)
+						render.JSON(w, r, map[string]string{
+							"error": "User not found - please log in again",
+							"code":  "USER_NOT_FOUND",
+						})
+						return
+					}
 				}
 			}
 
@@ -78,6 +104,41 @@ func AuthMiddleware(jwtKey []byte, db *gorm.DB) func(http.Handler) http.Handler 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// validateRemoteToken validates a JWT token using remote keys (Azure AD, etc.)
+// and extracts the user ID from the token claims
+func validateRemoteToken(validator auth.TokenValidator, tokenStr string) (uuid.UUID, error) {
+	parsedToken, err := validator.ValidateJWT(tokenStr)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	token := *parsedToken // Dereference the pointer
+
+	// Extract user ID from token claims
+	// Azure AD tokens typically have 'oid' (object ID) or 'sub' (subject) claim
+	var userIDStr string
+	if oid, ok := token.Get("oid"); ok {
+		userIDStr = oid.(string)
+	} else if sub, ok := token.Get("sub"); ok {
+		userIDStr = sub.(string)
+	} else if email, ok := token.Get("email"); ok {
+		// Fallback to email if oid/sub not available
+		userIDStr = email.(string)
+	} else {
+		return uuid.Nil, errors.New("token missing required user identifier claims (oid, sub, or email)")
+	}
+
+	// Try to parse as UUID, or hash the string to create a deterministic UUID
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		// If not a valid UUID, create a deterministic UUID from the string
+		// This ensures consistent user IDs across sessions
+		userID = uuid.NewSHA1(uuid.NameSpaceOID, []byte(userIDStr))
+	}
+
+	return userID, nil
 }
 
 // parseToken parses a simple token and returns the user ID

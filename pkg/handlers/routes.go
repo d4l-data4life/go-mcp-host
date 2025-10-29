@@ -4,12 +4,13 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/spf13/viper"
 	"github.com/weese/go-mcp-host/pkg/agent"
+	"github.com/weese/go-mcp-host/pkg/auth"
 	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 	"gorm.io/gorm"
 )
 
 // RegisterRoutes registers all API routes
-func RegisterRoutes(r chi.Router, db *gorm.DB, agent *agent.Agent, mcpManager *manager.Manager) {
+func RegisterRoutes(r chi.Router, db *gorm.DB, agent *agent.Agent, mcpManager *manager.Manager, tokenValidator auth.TokenValidator) {
 	jwtKey := []byte(viper.GetString("SERVICE_SECRET"))
 	if len(jwtKey) == 0 {
 		jwtKey = []byte("default-jwt-key-change-in-production")
@@ -21,7 +22,7 @@ func RegisterRoutes(r chi.Router, db *gorm.DB, agent *agent.Agent, mcpManager *m
 
 	// Protected routes (authentication required)
 	r.Group(func(r chi.Router) {
-		r.Use(AuthMiddleware(jwtKey, db))
+		r.Use(AuthMiddleware(jwtKey, db, tokenValidator))
 
 		// Conversations
 		conversationsHandler := NewConversationsHandler(db)

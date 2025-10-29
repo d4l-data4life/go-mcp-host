@@ -43,6 +43,7 @@ type SessionInfo struct {
 	ServerName     string
 	ServerConfig   config.MCPServerConfig
 	SessionID      uuid.UUID
+	BearerToken    string // Bearer token used to create this session (for HTTP servers with forwardBearer)
 	Tools          []protocol.Tool
 	Resources      []protocol.Resource
 	LastAccessed   time.Time
@@ -262,32 +263,74 @@ func (m *Manager) GetOrCreateSession(
 	bearerToken string,
 	_ uuid.UUID,
 ) (*SessionInfo, error) {
-	sessionKey := m.getSessionKey(conversationID, serverConfig.Name)
-
-	// Check if session already exists
-	m.mu.RLock()
-	if session, exists := m.sessions[sessionKey]; exists {
-		session.mu.Lock()
-		session.LastAccessed = time.Now()
-		session.mu.Unlock()
+	// For HTTP servers with forwardBearer, don't cache sessions since bearer token may change
+	// Instead, check if session exists AND verify it has the same bearer token
+	if serverConfig.Type == "http" && serverConfig.ForwardBearer {
+		sessionKey := m.getSessionKey(conversationID, serverConfig.Name)
+		
+		m.mu.RLock()
+		if session, exists := m.sessions[sessionKey]; exists {
+			// Check if bearer token matches
+			session.mu.RLock()
+			sessionToken := session.BearerToken
+			session.mu.RUnlock()
+			
+			if sessionToken == bearerToken {
+				// Token matches, reuse session
+				session.mu.Lock()
+				session.LastAccessed = time.Now()
+				session.mu.Unlock()
+				m.mu.RUnlock()
+				logging.LogDebugf("Reusing MCP session with same bearer token: conversation=%s server=%s", conversationID, serverConfig.Name)
+				return session, nil
+			}
+			
+			// Token changed, need to recreate session
+			m.mu.RUnlock()
+			logging.LogDebugf("Bearer token changed, recreating MCP session: conversation=%s server=%s", conversationID, serverConfig.Name)
+			
+			// Close old session
+			m.mu.Lock()
+			if session, exists := m.sessions[sessionKey]; exists {
+				delete(m.sessions, sessionKey)
+				session.Client.Close()
+			}
+			m.mu.Unlock()
+		} else {
+			m.mu.RUnlock()
+		}
+	} else {
+		// For non-bearer-forwarding servers, use normal caching
+		sessionKey := m.getSessionKey(conversationID, serverConfig.Name)
+		
+		m.mu.RLock()
+		if session, exists := m.sessions[sessionKey]; exists {
+			session.mu.Lock()
+			session.LastAccessed = time.Now()
+			session.mu.Unlock()
+			m.mu.RUnlock()
+			return session, nil
+		}
 		m.mu.RUnlock()
-		return session, nil
 	}
-	m.mu.RUnlock()
+
+	sessionKey := m.getSessionKey(conversationID, serverConfig.Name)
 
 	// Create new session
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Double-check after acquiring write lock
-	if session, exists := m.sessions[sessionKey]; exists {
-		session.mu.Lock()
-		session.LastAccessed = time.Now()
-		session.mu.Unlock()
-		return session, nil
+	// Double-check after acquiring write lock (only for non-bearer servers)
+	if !(serverConfig.Type == "http" && serverConfig.ForwardBearer) {
+		if session, exists := m.sessions[sessionKey]; exists {
+			session.mu.Lock()
+			session.LastAccessed = time.Now()
+			session.mu.Unlock()
+			return session, nil
+		}
 	}
 
-	logging.LogDebugf("Creating new MCP session: conversation=%s server=%s", conversationID, serverConfig.Name)
+	logging.LogDebugf("Creating new MCP session: conversation=%s server=%s bearerToken=%v", conversationID, serverConfig.Name, bearerToken != "")
 
 	// Create MCP client with bearer if configured
 	mcpClient, err := m.createClientForUser(serverConfig, bearerToken)
@@ -319,6 +362,7 @@ func (m *Manager) GetOrCreateSession(
 		ServerName:     serverConfig.Name,
 		ServerConfig:   serverConfig,
 		SessionID:      uuid.New(), // Generate UUID for internal tracking
+		BearerToken:    bearerToken, // Store bearer token for comparison
 		LastAccessed:   time.Now(),
 	}
 

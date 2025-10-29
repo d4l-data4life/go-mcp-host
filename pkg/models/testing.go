@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/weese/go-mcp-host/pkg/config"
+
 	"github.com/gesundheitscloud/go-svc/pkg/db"
 )
 

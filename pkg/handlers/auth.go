@@ -77,7 +77,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Check if user already exists
 	var existingUser models.User
-	if err := h.db.Where("username = ? OR email = ?", req.Username, req.Email).First(&existingUser).Error; err == nil {
+	if err := h.db.Where("(username = ? AND username IS NOT NULL) OR (email = ? AND email IS NOT NULL)", req.Username, req.Email).First(&existingUser).Error; err == nil {
 		render.Status(r, http.StatusConflict)
 		render.JSON(w, r, map[string]string{"error": "Username or email already exists"})
 		return
@@ -93,11 +93,12 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create user
+	hashedPasswordStr := string(hashedPassword)
 	user := models.User{
 		ID:           uuid.New(),
-		Username:     req.Username,
-		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
+		Username:     &req.Username,
+		Email:        &req.Email,
+		PasswordHash: &hashedPasswordStr,
 	}
 
 	if err := h.db.Create(&user).Error; err != nil {
@@ -116,7 +117,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logging.LogDebugf("User registered: %s", user.Username)
+	username := ""
+	if user.Username != nil {
+		username = *user.Username
+	}
+	logging.LogDebugf("User registered: %s", username)
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, AuthResponse{
@@ -143,7 +148,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	if user.PasswordHash == nil {
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, map[string]string{"error": "Invalid username or password"})
+		return
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.Password)); err != nil {
 		render.Status(r, http.StatusUnauthorized)
 		render.JSON(w, r, map[string]string{"error": "Invalid username or password"})
 		return
@@ -158,7 +168,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logging.LogDebugf("User logged in: %s", user.Username)
+	username := ""
+	if user.Username != nil {
+		username = *user.Username
+	}
+	logging.LogDebugf("User logged in: %s", username)
 
 	render.JSON(w, r, AuthResponse{
 		User:  user.ToPublic(),
