@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/weese/go-mcp-host/pkg/agent"
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/weese/go-mcp-host/pkg/llm/ollama"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
+	"github.com/d4l-data4life/go-mcp-host/pkg/agent"
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm/ollama"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -39,7 +39,7 @@ func main() {
 	ollamaClient := ollama.NewClient(ollama.Config{
 		BaseURL: "http://localhost:11434",
 		Model:   "llama3.2",
-		Timeout: 5*time.Minute,
+		Timeout: 5 * time.Minute,
 	})
 
 	// Test Ollama connection
@@ -151,4 +151,3 @@ func main() {
 	aiAgent.CloseConversation(conversationID)
 	fmt.Println("Done!")
 }
-

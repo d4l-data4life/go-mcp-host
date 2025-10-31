@@ -1,9 +1,9 @@
-module github.com/weese/go-mcp-host
+module github.com/d4l-data4life/go-mcp-host
 
 go 1.24.0
 
 require (
-	github.com/gesundheitscloud/go-svc v1.84.0
+	github.com/d4l-data4life/go-svc v1.89.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.3
@@ -18,12 +18,12 @@ require (
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.43.0
 	gorm.io/datatypes v1.2.0
-	gorm.io/driver/postgres v1.5.3
+	gorm.io/driver/postgres v1.5.9
 	gorm.io/gorm v1.25.10
 )
 
 require (
-	github.com/DATA-DOG/go-txdb v0.1.7 // indirect
+	github.com/DATA-DOG/go-txdb v0.1.9 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
@@ -34,9 +34,8 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-sql-driver/mysql v1.7.1 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
-	github.com/golang-migrate/migrate/v4 v4.16.2 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0 // indirect
+	github.com/golang-migrate/migrate/v4 v4.17.1 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -62,7 +61,7 @@ require (
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
-	github.com/rs/cors v1.10.1 // indirect
+	github.com/rs/cors v1.11.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
@@ -77,10 +76,10 @@ require (
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240311132316-a219d84964c2 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240314234333-6e1732d8331c // indirect
-	google.golang.org/grpc v1.62.1 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240513163218-0867130af1f8 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240513163218-0867130af1f8 // indirect
+	google.golang.org/grpc v1.64.1 // indirect
+	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.4.7 // indirect

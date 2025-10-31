@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/agent"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-mcp-host/pkg/models"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/weese/go-mcp-host/pkg/agent"
-	"github.com/weese/go-mcp-host/pkg/llm"
-	"github.com/weese/go-mcp-host/pkg/models"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // MessagesHandler handles message endpoints

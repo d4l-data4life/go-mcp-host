@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/weese/go-mcp-host/pkg/llm"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 	"github.com/google/uuid"
 )
 
@@ -189,4 +189,3 @@ type ResourceContent struct {
 	Content   string
 	Relevance float64
 }
-

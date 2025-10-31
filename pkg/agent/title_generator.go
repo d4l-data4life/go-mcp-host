@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/weese/go-mcp-host/pkg/llm"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // GenerateChatTitle generates a short, descriptive title for a conversation based on the user's first message
@@ -57,10 +57,10 @@ Title: React Hooks Best Practices`
 
 	// Clean up the title
 	title := strings.TrimSpace(response.Message.Content)
-	
+
 	// Remove quotes if present
 	title = strings.Trim(title, `"'`)
-	
+
 	// Truncate if too long
 	if len(title) > 60 {
 		title = title[:57] + "..."
@@ -82,4 +82,3 @@ func float64Ptr(f float64) *float64 {
 func intPtr(i int) *int {
 	return &i
 }
-

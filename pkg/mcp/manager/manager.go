@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/client"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 	"github.com/google/uuid"
 	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/weese/go-mcp-host/pkg/mcp/client"
-	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
 
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // Manager manages MCP client sessions for conversations
@@ -267,14 +267,14 @@ func (m *Manager) GetOrCreateSession(
 	// Instead, check if session exists AND verify it has the same bearer token
 	if serverConfig.Type == "http" && serverConfig.ForwardBearer {
 		sessionKey := m.getSessionKey(conversationID, serverConfig.Name)
-		
+
 		m.mu.RLock()
 		if session, exists := m.sessions[sessionKey]; exists {
 			// Check if bearer token matches
 			session.mu.RLock()
 			sessionToken := session.BearerToken
 			session.mu.RUnlock()
-			
+
 			if sessionToken == bearerToken {
 				// Token matches, reuse session
 				session.mu.Lock()
@@ -284,11 +284,11 @@ func (m *Manager) GetOrCreateSession(
 				logging.LogDebugf("Reusing MCP session with same bearer token: conversation=%s server=%s", conversationID, serverConfig.Name)
 				return session, nil
 			}
-			
+
 			// Token changed, need to recreate session
 			m.mu.RUnlock()
 			logging.LogDebugf("Bearer token changed, recreating MCP session: conversation=%s server=%s", conversationID, serverConfig.Name)
-			
+
 			// Close old session
 			m.mu.Lock()
 			if session, exists := m.sessions[sessionKey]; exists {
@@ -302,7 +302,7 @@ func (m *Manager) GetOrCreateSession(
 	} else {
 		// For non-bearer-forwarding servers, use normal caching
 		sessionKey := m.getSessionKey(conversationID, serverConfig.Name)
-		
+
 		m.mu.RLock()
 		if session, exists := m.sessions[sessionKey]; exists {
 			session.mu.Lock()
@@ -361,7 +361,7 @@ func (m *Manager) GetOrCreateSession(
 		ConversationID: conversationID,
 		ServerName:     serverConfig.Name,
 		ServerConfig:   serverConfig,
-		SessionID:      uuid.New(), // Generate UUID for internal tracking
+		SessionID:      uuid.New(),  // Generate UUID for internal tracking
 		BearerToken:    bearerToken, // Store bearer token for comparison
 		LastAccessed:   time.Now(),
 	}

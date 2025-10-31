@@ -11,8 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/weese/go-mcp-host/internal/testutils"
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/d4l-data4life/go-mcp-host/internal/testutils"
+	"github.com/d4l-data4life/go-svc/pkg/db"
 )
 
 func TestEndpointProtection(t *testing.T) {

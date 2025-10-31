@@ -7,15 +7,15 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/spf13/viper"
 
-	"github.com/weese/go-mcp-host/pkg/auth"
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/weese/go-mcp-host/pkg/metrics"
-	"github.com/weese/go-mcp-host/pkg/models"
-	"github.com/weese/go-mcp-host/pkg/server"
+	"github.com/d4l-data4life/go-mcp-host/pkg/auth"
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/metrics"
+	"github.com/d4l-data4life/go-mcp-host/pkg/models"
+	"github.com/d4l-data4life/go-mcp-host/pkg/server"
 
-	"github.com/gesundheitscloud/go-svc/pkg/db"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
-	"github.com/gesundheitscloud/go-svc/pkg/standard"
+	"github.com/d4l-data4life/go-svc/pkg/db"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/standard"
 )
 
 func main() {

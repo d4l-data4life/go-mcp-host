@@ -9,7 +9,7 @@ import (
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jwt"
 
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 var (

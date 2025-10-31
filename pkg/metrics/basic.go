@@ -3,8 +3,8 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // Metric definitions

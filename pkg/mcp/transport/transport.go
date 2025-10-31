@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 )
 
 // Transport defines the interface for MCP transport mechanisms

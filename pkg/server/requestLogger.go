@@ -3,8 +3,8 @@ package server
 import (
 	"net/http"
 
-	"github.com/gesundheitscloud/go-svc/pkg/log"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/log"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // RequestLogger sets up the middleware to log requests

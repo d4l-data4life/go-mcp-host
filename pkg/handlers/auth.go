@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/models"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
-	"github.com/weese/go-mcp-host/pkg/models"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // AuthHandler handles authentication endpoints

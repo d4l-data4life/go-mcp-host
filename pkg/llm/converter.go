@@ -3,7 +3,7 @@ package llm
 import (
 	"encoding/json"
 
-	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 )
 
 // ConvertMCPToolToLLMTool converts an MCP tool to LLM function format

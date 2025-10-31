@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 	"github.com/pkg/errors"
-	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
 
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // HTTPTransport implements the Transport interface for HTTP-based communication

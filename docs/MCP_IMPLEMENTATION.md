@@ -281,8 +281,8 @@ import (
     "fmt"
     "time"
     
-    "github.com/weese/go-mcp-host/pkg/config"
-    "github.com/weese/go-mcp-host/pkg/mcp/manager"
+    "github.com/d4l-data4life/go-mcp-host/pkg/config"
+    "github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
     "github.com/google/uuid"
     "gorm.io/gorm"
 )

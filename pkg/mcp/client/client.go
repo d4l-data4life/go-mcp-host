@@ -7,20 +7,20 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
-	"github.com/weese/go-mcp-host/pkg/mcp/transport"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/transport"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 	"github.com/pkg/errors"
 )
 
 // Client represents an MCP client that communicates with an MCP server
 type Client struct {
-	transport       transport.Transport
-	serverInfo      *protocol.Implementation
+	transport          transport.Transport
+	serverInfo         *protocol.Implementation
 	serverCapabilities *protocol.ServerCapabilities
-	mu              sync.RWMutex
-	initialized     bool
-	requestIDCounter uint64
+	mu                 sync.RWMutex
+	initialized        bool
+	requestIDCounter   uint64
 
 	// Notification callbacks
 	onToolsListChanged     func()
@@ -426,4 +426,3 @@ func (c *Client) isInitialized() bool {
 func (c *Client) nextRequestID() interface{} {
 	return fmt.Sprintf("req_%d", atomic.AddUint64(&c.requestIDCounter, 1))
 }
-

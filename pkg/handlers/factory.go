@@ -3,7 +3,7 @@ package handlers
 import (
 	"sync"
 
-	"github.com/gesundheitscloud/go-svc/pkg/instrumented"
+	"github.com/d4l-data4life/go-svc/pkg/instrumented"
 )
 
 var once sync.Once

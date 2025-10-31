@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 	"github.com/google/uuid"
-	"github.com/weese/go-mcp-host/pkg/llm"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 	"gorm.io/gorm"
 )
 

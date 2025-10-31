@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 
-	"github.com/weese/go-mcp-host/internal/testutils"
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/weese/go-mcp-host/pkg/models"
-	"github.com/gesundheitscloud/go-svc/pkg/db"
-	"github.com/gesundheitscloud/go-svc/pkg/standard"
+	"github.com/d4l-data4life/go-mcp-host/internal/testutils"
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/models"
+	"github.com/d4l-data4life/go-svc/pkg/db"
+	"github.com/d4l-data4life/go-svc/pkg/standard"
 	"github.com/spf13/viper"
 )
 

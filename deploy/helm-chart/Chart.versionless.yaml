@@ -1,6 +1,6 @@
 apiVersion: v2
 name: go-mcp-host
 version: <github_release>
-home: https://github.com/weese/go-mcp-host/
+home: https://github.com/d4l-data4life/go-mcp-host/
 icon: https://avatars2.githubusercontent.com/u/25636481?v=3&s=200
 description: Service for a certain purpose

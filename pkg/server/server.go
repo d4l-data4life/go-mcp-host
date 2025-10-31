@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 
-	"github.com/gesundheitscloud/go-svc/pkg/middlewares"
+	"github.com/d4l-data4life/go-svc/pkg/middlewares"
 )
 
 // Server wraps a chi router (chi.Mux)

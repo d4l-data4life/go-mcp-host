@@ -29,7 +29,7 @@ RUN mkdir /user && \
 WORKDIR /app
 
 RUN git config --global --add url."https://${GITHUB_USER_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-ENV GOPRIVATE="github.com/gesundheitscloud/*"
+ENV GOPRIVATE="github.com/d4l-data4life/*"
 ENV CGO_ENABLED=0
 ENV GOOS=linux
 ENV GOARCH=amd64
@@ -65,7 +65,7 @@ COPY --from=base /user/group /user/passwd /etc/
 COPY --from=base --chown=nobody:nobody /app /app
 
 LABEL org.label-schema.build-date="$BUILD_DATE"
-LABEL org.label-schema.vcs-url="https://github.com/gesundheitscloud/go-svc-tempalte"
+LABEL org.label-schema.vcs-url="https://github.com/d4l-data4life/go-mcp-host"
 LABEL org.label-schema.vcs-ref="$GIT_COMMIT"
 LABEL org.label-schema.vendor="data4life gGmbH"
 LABEL org.label-schema.version="$APP_VERSION"

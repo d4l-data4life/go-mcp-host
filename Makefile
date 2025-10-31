@@ -20,7 +20,7 @@ USER=$(shell whoami)
 BINARY=go-mcp-host
 
 # Go Variables
-PKG=github.com/weese/go-mcp-host/pkg/config
+PKG=github.com/d4l-data4life/go-mcp-host/pkg/config
 LDFLAGS="-X '$(PKG).Version=$(APP_VERSION)' -X '$(PKG).Commit=$(COMMIT)' -X '$(PKG).Branch=$(BRANCH)' -X '$(PKG).BuildUser=$(USER)'"
 GOCMD=go
 GOBUILD=$(GOCMD) build -ldflags $(LDFLAGS)

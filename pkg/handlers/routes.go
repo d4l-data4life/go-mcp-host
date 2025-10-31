@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"github.com/d4l-data4life/go-mcp-host/pkg/agent"
+	"github.com/d4l-data4life/go-mcp-host/pkg/auth"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 	"github.com/go-chi/chi"
 	"github.com/spf13/viper"
-	"github.com/weese/go-mcp-host/pkg/agent"
-	"github.com/weese/go-mcp-host/pkg/auth"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 	"gorm.io/gorm"
 )
 

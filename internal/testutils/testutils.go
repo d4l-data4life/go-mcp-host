@@ -13,11 +13,11 @@ import (
 	"github.com/go-chi/cors"
 	"gorm.io/datatypes"
 
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/weese/go-mcp-host/pkg/metrics"
-	"github.com/weese/go-mcp-host/pkg/models"
-	"github.com/weese/go-mcp-host/pkg/server"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/metrics"
+	"github.com/d4l-data4life/go-mcp-host/pkg/models"
+	"github.com/d4l-data4life/go-mcp-host/pkg/server"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // GetRequestPayload converts a given object into a reader of that obect as json payload

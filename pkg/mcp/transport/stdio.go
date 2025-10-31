@@ -9,10 +9,10 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 	"github.com/pkg/errors"
-	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
 
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // StdioTransport implements the Transport interface for stdio-based communication

@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 	"github.com/pkg/errors"
-	"github.com/weese/go-mcp-host/pkg/llm"
 
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // Client implements the LLM client interface for Ollama

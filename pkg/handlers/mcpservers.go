@@ -3,12 +3,12 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 	"gorm.io/gorm"
 
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // MCPServersHandler handles MCP server endpoints

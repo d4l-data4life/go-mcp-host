@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/weese/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
 
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/d4l-data4life/go-svc/pkg/db"
 )
 
 // InitializeTestDB connects to an inmemory sqlite for testing

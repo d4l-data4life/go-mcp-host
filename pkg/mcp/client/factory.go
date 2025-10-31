@@ -1,9 +1,9 @@
 package client
 
 import (
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/weese/go-mcp-host/pkg/mcp/protocol"
-	"github.com/weese/go-mcp-host/pkg/mcp/transport"
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/transport"
 	"github.com/pkg/errors"
 )
 
@@ -80,4 +80,3 @@ func (f *Factory) createHTTPTransport(serverConfig config.MCPServerConfig) (tran
 
 	return transport.NewHTTPTransport(serverConfig.URL, serverConfig.Headers, tlsSkipVerify)
 }
-

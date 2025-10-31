@@ -11,8 +11,8 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"github.com/weese/go-mcp-host/pkg/auth"
-	"github.com/weese/go-mcp-host/pkg/models"
+	"github.com/d4l-data4life/go-mcp-host/pkg/auth"
+	"github.com/d4l-data4life/go-mcp-host/pkg/models"
 )
 
 // ContextKey is the type for context keys

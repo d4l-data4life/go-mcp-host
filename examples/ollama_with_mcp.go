@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/weese/go-mcp-host/pkg/llm"
-	"github.com/weese/go-mcp-host/pkg/llm/ollama"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm/ollama"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -164,8 +164,8 @@ func main() {
 
 			// Add tool result to messages for next LLM call
 			messages = append(messages, llm.Message{
-				Role:       llm.RoleAssistant,
-				ToolCalls:  []llm.ToolCall{toolCall},
+				Role:      llm.RoleAssistant,
+				ToolCalls: []llm.ToolCall{toolCall},
 			})
 			messages = append(messages, llm.Message{
 				Role:       llm.RoleTool,
@@ -190,4 +190,3 @@ func main() {
 	mcpManager.CloseAllSessionsForConversation(conversationID)
 	fmt.Println("Done!")
 }
-

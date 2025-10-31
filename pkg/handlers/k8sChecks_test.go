@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/weese/go-mcp-host/pkg/handlers"
-	"github.com/weese/go-mcp-host/pkg/models"
+	"github.com/d4l-data4life/go-mcp-host/pkg/handlers"
+	"github.com/d4l-data4life/go-mcp-host/pkg/models"
 
-	"github.com/gesundheitscloud/go-svc/pkg/db"
+	"github.com/d4l-data4life/go-svc/pkg/db"
 )
 
 const (

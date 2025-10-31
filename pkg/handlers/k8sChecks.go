@@ -5,9 +5,9 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"github.com/gesundheitscloud/go-svc/pkg/db"
-	"github.com/gesundheitscloud/go-svc/pkg/instrumented"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/db"
+	"github.com/d4l-data4life/go-svc/pkg/instrumented"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // ChecksHandler is the handler responsible for k8s checks

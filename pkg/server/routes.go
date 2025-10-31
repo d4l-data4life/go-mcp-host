@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/weese/go-mcp-host/pkg/agent"
-	"github.com/weese/go-mcp-host/pkg/auth"
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/weese/go-mcp-host/pkg/handlers"
-	"github.com/weese/go-mcp-host/pkg/llm/ollama"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
+	"github.com/d4l-data4life/go-mcp-host/pkg/agent"
+	"github.com/d4l-data4life/go-mcp-host/pkg/auth"
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/handlers"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm/ollama"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 
-	"github.com/gesundheitscloud/go-svc/pkg/db"
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/db"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 
 	"github.com/go-chi/chi"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

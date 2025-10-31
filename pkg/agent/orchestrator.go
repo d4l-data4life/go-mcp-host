@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 	"github.com/pkg/errors"
-	"github.com/weese/go-mcp-host/pkg/config"
-	"github.com/weese/go-mcp-host/pkg/llm"
-	"github.com/weese/go-mcp-host/pkg/mcp/manager"
 
-	"github.com/gesundheitscloud/go-svc/pkg/logging"
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // Orchestrator manages the agent's reasoning and tool execution loop
