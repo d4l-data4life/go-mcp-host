@@ -32,7 +32,7 @@ func (s *Server) configMux() *chi.Mux {
 		middleware.RealIP,
 		middleware.Timeout(s.timeout),
 		middleware.Throttle(s.maxParallelProcesses),
-		middlewares.UrlValidator,
+		middlewares.URLValidator,
 	)
 	return s.mux
 }
