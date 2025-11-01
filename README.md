@@ -156,33 +156,33 @@ See [examples/](examples/) for more usage examples.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Client (React/API)                    │
+│                        Client (React/API)                   │
 └─────────────────────────┬───────────────────────────────────┘
                           │ HTTP/WebSocket
 ┌─────────────────────────▼───────────────────────────────────┐
-│                      go-mcp-host                             │
+│                      go-mcp-host                            │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │  Agent Orchestrator                                     │ │
-│  │  - Context gathering                                    │ │
-│  │  - Tool execution loop                                  │ │
-│  │  - Response generation                                  │ │
-│  └───────────┬────────────────────────┬────────────────────┘ │
-│              │                        │                      │
-│  ┌───────────▼──────────┐  ┌─────────▼──────────┐          │
-│  │  MCP Manager         │  │  LLM Client        │          │
-│  │  - Session mgmt      │  │  - Ollama API      │          │
-│  │  - Client pooling    │  │  - Function calls  │          │
-│  └───────────┬──────────┘  └────────────────────┘          │
-│              │                                               │
-└──────────────┼───────────────────────────────────────────────┘
+│  │  Agent Orchestrator                                    │ │
+│  │  - Context gathering                                   │ │
+│  │  - Tool execution loop                                 │ │
+│  │  - Response generation                                 │ │
+│  └───────────┬────────────────────────┬───────────────────┘ │
+│              │                        │                     │
+│  ┌───────────▼──────────┐  ┌─────────▼──────────┐           │
+│  │  MCP Manager         │  │  LLM Client        │           │
+│  │  - Session mgmt      │  │  - Ollama API      │           │
+│  │  - Client pooling    │  │  - Function calls  │           │
+│  └───────────┬──────────┘  └────────────────────┘           │
+│              │                                              │
+└──────────────┼──────────────────────────────────────────────┘
                │
     ┌──────────┼──────────┐
     │          │          │
-┌───▼────┐ ┌──▼────┐ ┌──▼────┐
-│ MCP    │ │ MCP   │ │ MCP   │
-│Server 1│ │Server2│ │Server3│
-│(stdio) │ │(HTTP) │ │(stdio)│
-└────────┘ └───────┘ └───────┘
+┌───▼───┐  ┌───▼───┐  ┌───▼───┐
+│ MCP   │  │ MCP   │  │ MCP   │
+│Server1│  │Server2│  │Server3│
+│(stdio)│  │(HTTP) │  │(stdio)│
+└───────┘  └───────┘  └───────┘
 ```
 
 ## Configuration
