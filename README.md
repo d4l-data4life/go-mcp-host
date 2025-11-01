@@ -1,107 +1,363 @@
-# Template for Go projects
+# go-mcp-host
 
-## Repo setup
+A Go-based Model Context Protocol (MCP) Host service with AI agent capabilities. This service acts as an intelligent agent that connects to multiple MCP servers, integrates with Ollama (OpenAI-compatible LLM), and provides an agentic AI experience to users.
 
-1. Use this repo as a [template](https://help.github.com/en/articles/creating-a-repository-from-a-template) for your new repository
-2. Add the repo to the automatic configuration tool [phdp-release-it](https://github.com/d4l-data4life/phdp-release-it)
-    - [Repo list](https://github.com/d4l-data4life/phdp-release-it/blob/master/repos.csv)
-    - [Codeowner settings](https://github.com/d4l-data4life/phdp-release-it/blob/master/CODEOWNERS.csv)
-    - run the setup via tool `d4l setup-repo <repo-name> -r ./repos.csv -c ./CODEOWNERS_ret.csv`
-3. Adjust the GitHub Actions in this repo to the correct needs and read [github-actions](https://github.com/d4l-data4life/github-actions) for general understanding
+[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-## Template usage
+## Features
 
-1. replace `go-mcp-host` with the name of your service everywhere
-1. replace `GO_SVC_TEMPLATE` with the capitalized version of your service
-1. make sure the go.mod file looks reasonable
-1. Choose a different PORT for the server (change 8080 to avoid conflicts)
-1. Choose a different PORT for the local database (change 6000 to avoid conflicts)
-1. Add description in `deploy/helm-chart/Chart.versionless.yaml`
-1. Delete this part of the README
-1. Happy Coding!
+- **MCP Protocol Support**: Full implementation of the Model Context Protocol
+  - Stdio and HTTP transports
+  - Tools, Resources, and Prompts primitives
+  - Dynamic capability negotiation
+  - Notification handling (list_changed events)
+  
+- **AI Agent Orchestration**: Intelligent reasoning loop
+  - Context gathering from MCP resources
+  - Tool discovery and execution
+  - Multi-iteration planning and execution
+  - Error recovery
 
-# `go-mcp-host`
+- **LLM Integration**: OpenAI-compatible API
+  - Ollama support out of the box
+  - Streaming responses
+  - Function calling for tool execution
+  
+- **Conversation Management**: Full persistence
+  - PostgreSQL-backed conversation history
+  - Multi-user support with authentication
+  - Session lifecycle management
 
-This is the backend service providing providing some functionality.
+- **Production Ready**
+  - RESTful API with WebSocket streaming
+  - JWT authentication support
+  - Kubernetes deployment via Helm
+  - Prometheus metrics
+  - Structured logging
 
-:construction: :construction: :construction:
+## Quick Start
 
-## Building, Running, Testing
+### Option 1: Use as a Standalone Service
 
-The service can be run as ready-made docker containers for running in the background or via local go execution.
-The Makefile provides a lot of helpful commands, to see a list run `make help`.
+Deploy go-mcp-host as a microservice in your infrastructure.
 
-### Docker Containers
+#### Prerequisites
 
-First clean old artifacts, then export your token for the private dependencies and build the docker containers and run them.
+- Ollama running locally or remotely
+- PostgreSQL database
+- (Optional) Kubernetes cluster for production deployment
+
+#### Run Locally
 
 ```bash
-make clean
-export GITHUB_USER_TOKEN=<your-token>
-make docker-build
-make docker-run
-```
+# Clone the repository
+git clone https://github.com/d4l-data4life/go-mcp-host.git
+cd go-mcp-host
 
-### Local execution
+# Copy and configure
+cp config.example.yaml config.yaml
+# Edit config.yaml to add your MCP servers
 
-Export github user token before installing dependencies to be able to get private repositories.
-Afterwards start a DB in docker and then run the service.
-
-```bash
-export GITHUB_USER_TOKEN=<your-GH-API-token>
-go mod install
+# Start PostgreSQL
 make docker-database
+
+# Run the service
 make run
 ```
 
-### Tests in VSCode
+The service will be available at `http://localhost:8080`.
 
-To run the tests in VSCode the environment variables and (optionally) a Postgres DB have to be provided.
-For that purpose you need to execute the following:
+#### Deploy to Kubernetes
 
 ```bash
-make .env
-make docker-database
+# See detailed deployment guide
+cd deploy
+cat README.md
+
+# Quick deploy
+helm install go-mcp-host ./helm-chart \
+  -f examples/local/values.yaml \
+  --namespace mcp-host
 ```
 
-#### `.vscode/settings.json`
+See [deploy/README.md](deploy/README.md) for full deployment documentation.
 
-```json
-{
-    "go.testEnvFile": "${workspaceFolder}/.env"
+### Option 2: Use as a Go Library
+
+Embed MCP Host functionality into your own Go application.
+
+#### Installation
+
+```bash
+go get github.com/d4l-data4life/go-mcp-host
+```
+
+#### Basic Usage
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/d4l-data4life/go-mcp-host/pkg/config"
+    "github.com/d4l-data4life/go-mcp-host/pkg/mcphost"
+    "github.com/google/uuid"
+    "gorm.io/driver/postgres"
+    "gorm.io/gorm"
+)
+
+func main() {
+    // Setup database
+    db, err := gorm.Open(postgres.Open("host=localhost port=5432 user=mcphost dbname=mcphost password=postgres sslmode=disable"), &gorm.Config{})
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Create MCP Host
+    host, err := mcphost.NewHost(context.Background(), mcphost.Config{
+        MCPServers: []config.MCPServerConfig{
+            {
+                Name:    "weather",
+                Type:    "stdio",
+                Command: "npx",
+                Args:    []string{"-y", "@h1deya/mcp-server-weather"},
+                Enabled: true,
+                Description: "Weather information server",
+            },
+        },
+        LLMEndpoint: "http://localhost:11434",
+        DB:          db,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Chat with the agent
+    response, err := host.Chat(context.Background(), mcphost.ChatRequest{
+        ConversationID: uuid.New(),
+        UserID:         uuid.New(),
+        UserMessage:    "What's the weather in New York?",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Println(response.Message.Content)
 }
 ```
 
-### Linting
+See [examples/](examples/) for more usage examples.
 
-Linting requires `golangci-lint` to be installed.
-https://golangci-lint.run/welcome/install/
-Ideally also setup you VSCode to use this linter for go files.
-Add `"go.lintTool": "golangci-lint",` in `settings.json`.
+## Architecture
 
-### Run in local Kubernetes
-
-To be able to reach the running service add `go-mcp-host-dns.local` to `/etc/hosts' file.
-
-```txt
-127.0.0.1 kubernetes.docker.internal go-mcp-host-dns.local
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                        Client (React/API)                    │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ HTTP/WebSocket
+┌─────────────────────────▼───────────────────────────────────┐
+│                      go-mcp-host                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Agent Orchestrator                                     │ │
+│  │  - Context gathering                                    │ │
+│  │  - Tool execution loop                                  │ │
+│  │  - Response generation                                  │ │
+│  └───────────┬────────────────────────┬────────────────────┘ │
+│              │                        │                      │
+│  ┌───────────▼──────────┐  ┌─────────▼──────────┐          │
+│  │  MCP Manager         │  │  LLM Client        │          │
+│  │  - Session mgmt      │  │  - Ollama API      │          │
+│  │  - Client pooling    │  │  - Function calls  │          │
+│  └───────────┬──────────┘  └────────────────────┘          │
+│              │                                               │
+└──────────────┼───────────────────────────────────────────────┘
+               │
+    ┌──────────┼──────────┐
+    │          │          │
+┌───▼────┐ ┌──▼────┐ ┌──▼────┐
+│ MCP    │ │ MCP   │ │ MCP   │
+│Server 1│ │Server2│ │Server3│
+│(stdio) │ │(HTTP) │ │(stdio)│
+└────────┘ └───────┘ └───────┘
+```
+
+## Configuration
+
+### MCP Servers
+
+Configure MCP servers in `config.yaml`:
+
+```yaml
+mcp_servers:
+  # Stdio server example
+  - name: weather
+    type: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@h1deya/mcp-server-weather"
+    enabled: true
+    description: "Weather information server"
+  
+  # HTTP server example
+  - name: my-api
+    type: http
+    url: "https://api.example.com/mcp"
+    headers:
+      X-API-Key: "your-api-key"
+    forwardBearer: true  # Forward user's bearer token
+    enabled: true
+    description: "My custom MCP server"
+```
+
+### Environment Variables
+
+Key environment variables:
+
+- `PORT` - HTTP port (default: 8080)
+- `CORS_HOSTS` - Allowed CORS origins
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` - Database connection
+- `REMOTE_KEYS_URL` - JWT validation endpoint (optional)
+- `DEBUG` - Enable debug logging
+
+See [config.example.yaml](config.example.yaml) for all options.
+
+## API Documentation
+
+### REST Endpoints
+
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - Login
+- `GET /api/v1/conversations` - List conversations
+- `POST /api/v1/conversations` - Create conversation
+- `DELETE /api/v1/conversations/:id` - Delete conversation
+- `POST /api/v1/messages` - Send message
+- `WS /api/v1/messages/stream` - Stream responses
+- `GET /api/v1/mcp/servers` - List MCP servers
+- `GET /api/v1/mcp/tools` - List available tools
+
+See [swagger/api.yml](swagger/api.yml) for the full API specification.
+
+## Development
+
+### Prerequisites
+
+- Go 1.24+
+- Docker & Docker Compose
+- PostgreSQL
+- Ollama
+- golangci-lint (for linting)
+
+### Building
 
 ```bash
-export GITHUB_USER_TOKEN=<your-GH-API-token>
+# Build binary
+make build
+
+# Build Docker image
 make docker-build
-make local-install
+
+# Run tests
+make test
+
+# Run linter
+make lint
 ```
 
-## How to use
+### Project Structure
 
-Refer to [Example API calls](example-API-calls.http) for selected examples of API calls.
-This file requires [REST Client VSCode plugin](https://marketplace.visualstudio.com/items?itemName=humao.rest-client).
+```
+go-mcp-host/
+├── cmd/
+│   └── api/              # Main application entry point
+├── pkg/
+│   ├── agent/            # Agent orchestration logic
+│   ├── mcp/              # MCP protocol implementation
+│   │   ├── client/       # MCP client core
+│   │   ├── manager/      # Session management
+│   │   ├── protocol/     # Protocol types
+│   │   └── transport/    # Stdio/HTTP transports
+│   ├── llm/              # LLM integration (Ollama)
+│   ├── handlers/         # HTTP handlers
+│   ├── models/           # Database models
+│   ├── config/           # Configuration
+│   ├── auth/             # Authentication
+│   ├── server/           # HTTP server setup
+│   └── mcphost/          # Public API for library usage
+├── deploy/
+│   ├── helm-chart/       # Kubernetes Helm chart
+│   └── examples/         # Example configurations
+├── docs/                 # Additional documentation
+├── examples/             # Usage examples
+├── sql/                  # Database migrations
+└── swagger/              # API specification
+```
 
-## Swagger API definition
+## Testing
 
-The API specification can be found in `/swagger/api.yml`. To preview the specification:
+```bash
+# Run all tests
+make test
 
-1. add a [swagger viewer](https://marketplace.visualstudio.com/items?itemName=Arjun.swagger-viewer) to VSCode
-1. open the `yml` file
-1. open the preview with `SHIFT + OPTION + P`
+# Run with coverage
+make test-coverage
+
+# Run integration tests (requires running database)
+make docker-database
+make test-integration
+```
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Code Standards
+
+- Follow standard Go conventions
+- Run `gofmt` and `golangci-lint`
+- Write tests for new features
+- Update documentation
+
+See [.cursorrules](.cursorrules) for detailed coding standards.
+
+## Documentation
+
+- [MCP Implementation Guide](docs/MCP_IMPLEMENTATION.md)
+- [MCP Quick Reference](docs/MCP_QUICK_REFERENCE.md)
+- [Deployment Guide](deploy/README.md)
+- [API Specification](swagger/api.yml)
+
+## MCP Resources
+
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/docs/specification)
+- [MCP Architecture](https://modelcontextprotocol.io/docs/learn/architecture)
+- [Available MCP Servers](https://github.com/modelcontextprotocol)
+
+## License
+
+Apache License 2.0 - see [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+- Built with [go-svc](https://github.com/d4l-data4life/go-svc) framework
+- Powered by [Ollama](https://ollama.ai/)
+- Implements [Model Context Protocol](https://modelcontextprotocol.io/)
+
+## Support
+
+- GitHub Issues: [Report bugs or request features](https://github.com/d4l-data4life/go-mcp-host/issues)
+- Documentation: [Full documentation](https://github.com/d4l-data4life/go-mcp-host/docs)
+
+---
+
+Made with ❤️ by Data4Life

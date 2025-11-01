@@ -1,6 +1,0 @@
-environment: staging
-APP:
-  HOST: <tbd>.d4l-dev.de
-  TLS: tls-<tbd>.d4l-dev.de
-  DEBUG: false
-  CORS_HOSTS: https://app-staging.data4life.care

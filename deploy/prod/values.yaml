@@ -1,7 +1,0 @@
-environment: prod
-APP:
-  HOST: TBD
-  TLS: TBD
-  DEBUG: false
-  CORS_HOSTS: https://app.data4life.care
-REPLICAS: 3

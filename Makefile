@@ -1,3 +1,21 @@
+# go-mcp-host Makefile
+# 
+# This Makefile supports both local development and deployment.
+# Many variables can be overridden for customization:
+#
+# DOCKER_REGISTRY - Your container registry (default: docker.io/d4l-data4life)
+# PKG             - Your Go module path (default: github.com/d4l-data4life/go-mcp-host/pkg/config)
+# CONFIG_DIR      - External config directory (default: ./deploy)
+# ENVIRONMENT     - Deployment environment (default: local)
+# NAMESPACE       - Kubernetes namespace (default: default)
+#
+# Examples:
+#   make docker-build DOCKER_REGISTRY=myregistry.io/myorg
+#   make deploy CONFIG_DIR=~/my-configs ENVIRONMENT=prod NAMESPACE=production
+#   make run PORT=9090
+#
+# Run 'make help' to see all available commands.
+
 # Common Variables
 APP_VERSION ?= $(shell git describe --tags --always --dirty) # unavailable in Docker unless we copy `.git`
 ifeq ($(strip $(APP_VERSION)),)
@@ -19,8 +37,8 @@ endif
 USER=$(shell whoami)
 BINARY=go-mcp-host
 
-# Go Variables
-PKG=github.com/d4l-data4life/go-mcp-host/pkg/config
+# Go Variables - Override PKG for your fork
+PKG ?= github.com/d4l-data4life/go-mcp-host/pkg/config
 LDFLAGS="-X '$(PKG).Version=$(APP_VERSION)' -X '$(PKG).Commit=$(COMMIT)' -X '$(PKG).Branch=$(BRANCH)' -X '$(PKG).BuildUser=$(USER)'"
 GOCMD=go
 GOBUILD=$(GOCMD) build -ldflags $(LDFLAGS)
@@ -28,11 +46,12 @@ GOTEST=$(GOCMD) test
 SRC = cmd/api/*.go
 SRC_TESTDATA = cmd/testdata/*.go
 
-# Docker Variables
-DOCKER_REGISTRY ?= crsensorhub.azurecr.io
+# Docker Variables - Override DOCKER_REGISTRY for your registry
+# Example: make docker-build DOCKER_REGISTRY=myregistry.io/myorg
+DOCKER_REGISTRY ?= docker.io/d4l-data4life
 DOCKER_IMAGE=$(DOCKER_REGISTRY)/$(BINARY)
 CONTAINER_NAME=$(BINARY)
-PORT=8080
+PORT ?= 8080
 
 # Test DB Variables
 TEST_DB_PORT=6000
@@ -42,12 +61,14 @@ TEST_DB_NAME = go-mcp-host
 TEST_DB_USER = go-mcp-host
 TEST_DB_PASSWORD = postgres
 
-# Deploy variables
+# Deploy variables - Override for your deployment
 APP ?= $(BINARY)
 ENVIRONMENT ?= local
 KUBECONFIG ?= $(HOME)/.kube/config
-VALUES_YAML ?= "$(shell pwd)/deploy/$(ENVIRONMENT)/values.yaml"
-SECRETS_YAML ?= "$(shell pwd)/deploy/local/secrets.yaml"
+# Support external config directory
+CONFIG_DIR ?= $(shell pwd)/deploy
+VALUES_YAML ?= "$(CONFIG_DIR)/examples/$(ENVIRONMENT)/values.yaml"
+SECRETS_YAML ?= "$(CONFIG_DIR)/examples/$(ENVIRONMENT)/secrets.yaml"
 NAMESPACE ?= default
 
 ## ----------------------------------------------------------------------

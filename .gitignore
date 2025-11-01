@@ -11,19 +11,62 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# The binary
+# Compiled binaries
 go-mcp-host
+api
+agent_chat
+main
+
+# Build artifacts
 deploy/manifests
 vendor/
 deploy/helm-chart/Chart.yaml
 
-#
-.vscode/
-.DS_Store
-.env
-.docker.env
-
-# build info perissted in files
+# Build info persisted in files
 BRANCH
 COMMIT
 VERSION
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment and config files (user-specific)
+.env
+.docker.env
+config.yaml
+
+# User-specific deployment configurations
+# Keep example configurations, but ignore actual deployment values
+deploy/local/
+deploy/dev/
+deploy/staging/
+deploy/prod/
+!deploy/examples/
+
+# Secrets (double-check these are never committed!)
+deploy/**/secrets.yaml
+!deploy/**/secrets.example.yaml
+*.pem
+*.key
+test-keys/
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.log
+
+# Test coverage reports
+coverage.out
+coverage.html
+
+# Go workspace file
+go.work
+go.work.sum
