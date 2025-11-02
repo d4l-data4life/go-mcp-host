@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
@@ -57,7 +55,7 @@ const (
 	DefaultDBSSLMode  = "verify-full"
 
 	// ##### AUTHENTICATION VARIABLES
-	DefaultJWTKeyPath    = "/keys/jwt.key"
+	DefaultJWTSecret     = "" // Base64-encoded JWT secret
 	DefaultRemoteKeysURL = "" // Empty by default; set to use Azure AD or similar
 )
 
@@ -146,7 +144,7 @@ func SetupEnv() {
 	bindEnvVariable("DB_SSL_ROOT_CERT_PATH", "/root.ca.pem")
 	// Authentication
 	bindEnvVariable("SERVICE_SECRET", "")
-	bindEnvVariable("JWT_KEY_PATH", DefaultJWTKeyPath)
+	bindEnvVariable("JWT_SECRET", DefaultJWTSecret)
 	bindEnvVariable("JWT_EXPIRATION_HOURS", 24)
 	bindEnvVariable("REMOTE_KEYS_URL", DefaultRemoteKeysURL)
 	// MCP and Agent configuration
@@ -177,16 +175,4 @@ func CorsConfig(corsHosts []string) cors.Options {
 		MaxAge:           300,  // Maximum value not ignored by any of major browsers,
 		Debug:            viper.GetBool("DEBUG_CORS"),
 	}
-}
-
-func LoadJwtKey(keyPath string) ([]byte, error) {
-	b64KeyBytes, err := os.ReadFile(keyPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load JWT Key file")
-	}
-	key, err := base64.StdEncoding.DecodeString(string(b64KeyBytes))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode base64 key string")
-	}
-	return key, nil
 }

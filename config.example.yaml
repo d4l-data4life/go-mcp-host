@@ -1,6 +1,12 @@
 # MCP Host Configuration Example
 # Copy this file to config.yaml and adjust for your needs
 
+# Service Authentication
+# SERVICE_SECRET is used for service-to-service authentication (e.g., /api/users endpoints)
+# This should be a strong, random string
+# Can also be set via GO_MCP_HOST_SERVICE_SECRET environment variable
+service_secret: "change-this-to-a-strong-random-secret"
+
 # MCP Servers Configuration
 mcp_servers:
   # Example: Weather server

@@ -20,7 +20,7 @@ import (
 )
 
 // SetupRoutes adds all routes that the server should listen to
-func SetupRoutes(ctx context.Context, mux *chi.Mux, tokenValidator auth.TokenValidator) {
+func SetupRoutes(ctx context.Context, mux *chi.Mux, tokenValidator auth.TokenValidator, jwtSecret []byte) {
 	// Get database connection
 	database := db.Get()
 
@@ -50,7 +50,7 @@ func SetupRoutes(ctx context.Context, mux *chi.Mux, tokenValidator auth.TokenVal
 	})
 
 	// Register new API routes
-	handlers.RegisterRoutes(mux, database, agentInstance, mcpManager, tokenValidator)
+	handlers.RegisterRoutes(mux, database, agentInstance, mcpManager, tokenValidator, jwtSecret)
 
 	// Health checks and metrics
 	ch := handlers.NewChecksHandler()

@@ -28,7 +28,7 @@ const (
 // AuthMiddleware verifies JWT tokens and adds user ID to context
 // If tokenValidator is provided (remote Azure AD keys), it validates using that.
 // Otherwise, falls back to simple token parsing (for local development).
-func AuthMiddleware(jwtKey []byte, db *gorm.DB, tokenValidator auth.TokenValidator) func(http.Handler) http.Handler {
+func AuthMiddleware(db *gorm.DB, tokenValidator auth.TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Get token from Authorization header or query parameter (for WebSocket)

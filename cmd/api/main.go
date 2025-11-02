@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"strings"
 
 	"github.com/go-chi/cors"
@@ -50,29 +51,50 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 	dieEarly := make(chan struct{})
 	defer close(dieEarly)
 
-	_, err := config.LoadJwtKey(viper.GetString("JWT_KEY_PATH"))
-	if err != nil {
-		logging.LogErrorf(err, "failed to load JWT key")
+	// Get JWT secret from environment (base64-encoded)
+	jwtSecretB64 := viper.GetString("JWT_SECRET")
+	if jwtSecretB64 == "" {
+		logging.LogErrorf(nil, "JWT_SECRET environment variable is not set")
 		return dieEarly
 	}
 
-	// Initialize TokenValidator if REMOTE_KEYS_URL is configured
+	jwtSecret, err := base64.StdEncoding.DecodeString(jwtSecretB64)
+	if err != nil {
+		logging.LogErrorf(err, "failed to decode JWT secret from base64")
+		return dieEarly
+	}
+
+	// Initialize TokenValidator
 	var tokenValidator auth.TokenValidator
 	remoteKeysURL := viper.GetString("REMOTE_KEYS_URL")
 	if remoteKeysURL != "" {
+		// Use remote token validator for external authentication
 		logging.LogInfof("Initializing remote token validator with URL: %s", remoteKeysURL)
 		tokenValidator, err = auth.NewRemoteKeyStore(context.Background(), remoteKeysURL)
 		if err != nil {
-			logging.LogErrorf(err, "failed to create remote key store - continuing without remote validation")
-			tokenValidator = nil
+			logging.LogErrorf(err, "failed to create remote key store - falling back to local JWT authentication")
+			// Fall back to local validator
+			tokenValidator, err = auth.NewLocalJWTValidator(jwtSecret)
+			if err != nil {
+				logging.LogErrorf(err, "failed to create local JWT validator")
+				return dieEarly
+			}
+			logging.LogInfof("Local JWT validator initialized successfully")
 		} else {
 			logging.LogInfof("Remote token validator initialized successfully")
 		}
 	} else {
+		// Use local JWT validator for internal authentication
 		logging.LogInfof("REMOTE_KEYS_URL not configured - using local JWT authentication")
+		tokenValidator, err = auth.NewLocalJWTValidator(jwtSecret)
+		if err != nil {
+			logging.LogErrorf(err, "failed to create local JWT validator")
+			return dieEarly
+		}
+		logging.LogInfof("Local JWT validator initialized successfully")
 	}
 
-	server.SetupRoutes(runCtx, srv.Mux(), tokenValidator)
+	server.SetupRoutes(runCtx, srv.Mux(), tokenValidator, jwtSecret)
 	metrics.AddBuildInfoMetric()
 	return standard.ListenAndServe(runCtx, srv.Mux(), port)
 }

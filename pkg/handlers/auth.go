@@ -2,12 +2,16 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
@@ -18,15 +22,15 @@ import (
 
 // AuthHandler handles authentication endpoints
 type AuthHandler struct {
-	db     *gorm.DB
-	jwtKey []byte
+	db        *gorm.DB
+	jwtSecret []byte
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(db *gorm.DB, jwtKey []byte) *AuthHandler {
+func NewAuthHandler(db *gorm.DB, jwtSecret []byte) *AuthHandler {
 	return &AuthHandler{
-		db:     db,
-		jwtKey: jwtKey,
+		db:        db,
+		jwtSecret: jwtSecret,
 	}
 }
 
@@ -40,6 +44,13 @@ func (h *AuthHandler) Routes() chi.Router {
 
 	return r
 }
+
+const (
+	// TokenExpirationDuration defines how long a JWT token is valid
+	TokenExpirationDuration = 24 * time.Hour
+	// TokenIssuer is the issuer claim for generated JWTs
+	TokenIssuer = "go-mcp-host"
+)
 
 // RegisterRequest represents a registration request
 type RegisterRequest struct {
@@ -70,9 +81,24 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate input
-	if req.Username == "" || req.Email == "" || req.Password == "" {
+	if req.Username == "" {
 		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Username, email, and password are required"})
+		render.JSON(w, r, map[string]string{"error": "Username is required"})
+		return
+	}
+	if req.Email == "" {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Email is required"})
+		return
+	}
+	if req.Password == "" {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Password is required"})
+		return
+	}
+	if len(req.Password) < 8 {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": "Password must be at least 8 characters"})
 		return
 	}
 
@@ -110,7 +136,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate JWT token
-	token, err := generateJWT(user.ID, h.jwtKey)
+	token, err := generateJWT(user.ID, h.jwtSecret)
 	if err != nil {
 		logging.LogErrorf(err, "Failed to generate JWT")
 		render.Status(r, http.StatusInternalServerError)
@@ -161,7 +187,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate JWT token
-	token, err := generateJWT(user.ID, h.jwtKey)
+	token, err := generateJWT(user.ID, h.jwtSecret)
 	if err != nil {
 		logging.LogErrorf(err, "Failed to generate JWT")
 		render.Status(r, http.StatusInternalServerError)
@@ -200,10 +226,60 @@ func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, user.ToPublic())
 }
 
-// generateJWT generates a JWT token for a user
-func generateJWT(userID uuid.UUID, jwtKey []byte) (string, error) {
-	// For now, we'll create a simple token
-	// In production, use a proper JWT library like github.com/golang-jwt/jwt
-	token := userID.String() + ":" + time.Now().Add(24*time.Hour).Format(time.RFC3339)
-	return token, nil
+// generateJWT generates a JWT token for a user with proper claims and signing
+func generateJWT(userID uuid.UUID, jwtSecret []byte) (string, error) {
+	now := time.Now()
+	
+	// Create a new JWT token with standard claims
+	token := jwt.New()
+	
+	// Set standard claims
+	if err := token.Set(jwt.SubjectKey, userID.String()); err != nil {
+		return "", errors.Wrap(err, "failed to set subject claim")
+	}
+	if err := token.Set(jwt.IssuedAtKey, now.Unix()); err != nil {
+		return "", errors.Wrap(err, "failed to set issued at claim")
+	}
+	if err := token.Set(jwt.ExpirationKey, now.Add(TokenExpirationDuration).Unix()); err != nil {
+		return "", errors.Wrap(err, "failed to set expiration claim")
+	}
+	if err := token.Set(jwt.IssuerKey, TokenIssuer); err != nil {
+		return "", errors.Wrap(err, "failed to set issuer claim")
+	}
+	if err := token.Set(jwt.JwtIDKey, uuid.New().String()); err != nil {
+		return "", errors.Wrap(err, "failed to set jwt id claim")
+	}
+	
+	// Sign the token with HS256 algorithm
+	signed, err := jwt.Sign(token, jwa.HS256, jwtSecret)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to sign JWT token")
+	}
+	
+	return string(signed), nil
+}
+
+// ValidateJWT validates and parses a JWT token
+func validateJWT(tokenString string, jwtSecret []byte) (uuid.UUID, error) {
+	token, err := jwt.Parse(
+		[]byte(tokenString),
+		jwt.WithValidate(true),
+		jwt.WithVerify(jwa.HS256, jwtSecret),
+	)
+	if err != nil {
+		return uuid.Nil, errors.Wrap(err, "failed to parse JWT token")
+	}
+	
+	// Extract user ID from subject claim
+	subject := token.Subject()
+	if subject == "" {
+		return uuid.Nil, fmt.Errorf("token missing subject claim")
+	}
+	
+	userID, err := uuid.Parse(subject)
+	if err != nil {
+		return uuid.Nil, errors.Wrap(err, "invalid user ID in token")
+	}
+	
+	return userID, nil
 }

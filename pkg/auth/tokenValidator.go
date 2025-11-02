@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jwt"
 
@@ -13,11 +14,42 @@ import (
 )
 
 var (
-	ErrNoKeyRegistry = errors.New("no remote key registry configured")
+	ErrNoKeyRegistry   = errors.New("no remote key registry configured")
+	ErrInvalidJWTKey   = errors.New("invalid JWT key")
+	ErrTokenValidation = errors.New("token validation failed")
 )
 
+// TokenValidator defines the interface for validating JWT tokens
 type TokenValidator interface {
 	ValidateJWT(token string) (*jwt.Token, error)
+}
+
+// LocalJWTValidator validates JWTs signed with a local symmetric key
+type LocalJWTValidator struct {
+	jwtSecret []byte
+}
+
+// NewLocalJWTValidator creates a new local JWT validator with the provided signing key
+func NewLocalJWTValidator(jwtSecret []byte) (*LocalJWTValidator, error) {
+	if len(jwtSecret) == 0 {
+		return nil, ErrInvalidJWTKey
+	}
+	return &LocalJWTValidator{
+		jwtSecret: jwtSecret,
+	}, nil
+}
+
+// ValidateJWT validates a JWT token signed with the local key
+func (v *LocalJWTValidator) ValidateJWT(token string) (*jwt.Token, error) {
+	t, err := jwt.Parse(
+		[]byte(token),
+		jwt.WithValidate(true),
+		jwt.WithVerify(jwa.HS256, v.jwtSecret),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrTokenValidation, err)
+	}
+	return &t, nil
 }
 
 type RemoteKeyStore struct {
