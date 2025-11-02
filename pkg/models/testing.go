@@ -26,7 +26,7 @@ func InitializeTestDB(t *testing.T) {
 		db.WithDatabaseSchema(viper.GetString("DB_SCHEMA")),
 		db.WithUser(viper.GetString("DB_USER")),
 		db.WithPassword(viper.GetString("DB_PASS")),
-		db.WithSSLMode(viper.GetString("DB_SSL_MODE")),
+		db.WithSSLMode("disable"),
 		db.WithSSLRootCertPath(viper.GetString("DB_SSL_ROOT_CERT_PATH")),
 		db.WithMigrationFunc(MigrationFunc),
 		db.WithDriverFunc(db.TXDBPostgresDriver),

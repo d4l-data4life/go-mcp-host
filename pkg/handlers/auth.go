@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -49,6 +48,7 @@ const (
 	// TokenExpirationDuration defines how long a JWT token is valid
 	TokenExpirationDuration = 24 * time.Hour
 	// TokenIssuer is the issuer claim for generated JWTs
+	// #nosec G101 -- This is not a credential, just an identifier
 	TokenIssuer = "go-mcp-host"
 )
 
@@ -229,10 +229,10 @@ func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 // generateJWT generates a JWT token for a user with proper claims and signing
 func generateJWT(userID uuid.UUID, jwtSecret []byte) (string, error) {
 	now := time.Now()
-	
+
 	// Create a new JWT token with standard claims
 	token := jwt.New()
-	
+
 	// Set standard claims
 	if err := token.Set(jwt.SubjectKey, userID.String()); err != nil {
 		return "", errors.Wrap(err, "failed to set subject claim")
@@ -249,37 +249,12 @@ func generateJWT(userID uuid.UUID, jwtSecret []byte) (string, error) {
 	if err := token.Set(jwt.JwtIDKey, uuid.New().String()); err != nil {
 		return "", errors.Wrap(err, "failed to set jwt id claim")
 	}
-	
+
 	// Sign the token with HS256 algorithm
 	signed, err := jwt.Sign(token, jwa.HS256, jwtSecret)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to sign JWT token")
 	}
-	
-	return string(signed), nil
-}
 
-// ValidateJWT validates and parses a JWT token
-func validateJWT(tokenString string, jwtSecret []byte) (uuid.UUID, error) {
-	token, err := jwt.Parse(
-		[]byte(tokenString),
-		jwt.WithValidate(true),
-		jwt.WithVerify(jwa.HS256, jwtSecret),
-	)
-	if err != nil {
-		return uuid.Nil, errors.Wrap(err, "failed to parse JWT token")
-	}
-	
-	// Extract user ID from subject claim
-	subject := token.Subject()
-	if subject == "" {
-		return uuid.Nil, fmt.Errorf("token missing subject claim")
-	}
-	
-	userID, err := uuid.Parse(subject)
-	if err != nil {
-		return uuid.Nil, errors.Wrap(err, "invalid user ID in token")
-	}
-	
-	return userID, nil
+	return string(signed), nil
 }

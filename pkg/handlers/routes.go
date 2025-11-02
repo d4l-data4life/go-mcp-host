@@ -12,7 +12,14 @@ import (
 )
 
 // RegisterRoutes registers all API routes
-func RegisterRoutes(r chi.Router, db *gorm.DB, agent *agent.Agent, mcpManager *manager.Manager, tokenValidator auth.TokenValidator, jwtSecret []byte) {
+func RegisterRoutes(
+	r chi.Router,
+	db *gorm.DB,
+	agent *agent.Agent,
+	mcpManager *manager.Manager,
+	tokenValidator auth.TokenValidator,
+	jwtSecret []byte,
+) {
 	// Public routes (no authentication required)
 	authHandler := NewAuthHandler(db, jwtSecret)
 	r.Mount("/api/auth", authHandler.Routes())

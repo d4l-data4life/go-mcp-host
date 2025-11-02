@@ -93,4 +93,3 @@ func (h *UsersHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	logging.LogDebugf("User deleted successfully: %s", userID)
 	w.WriteHeader(http.StatusNoContent)
 }
-

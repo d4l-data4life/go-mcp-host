@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/handlers"
 	"github.com/d4l-data4life/go-mcp-host/pkg/models"
@@ -52,7 +53,7 @@ func TestUsersHandler_ListUsers(t *testing.T) {
 
 	var users []models.PublicUser
 	err := json.Unmarshal(w.Body.Bytes(), &users)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, users, 2)
 }
 
@@ -89,7 +90,7 @@ func TestUsersHandler_DeleteUser(t *testing.T) {
 	// Verify user is soft deleted
 	var deletedUser models.User
 	err := db.Get().Unscoped().First(&deletedUser, user.ID).Error
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, deletedUser.DeletedAt)
 }
 
@@ -135,4 +136,3 @@ func TestUsersHandler_DeleteUser_InvalidID(t *testing.T) {
 	// Check response
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
-
