@@ -1,12 +1,14 @@
+version: "2"
+
 run:
   timeout: 10m
 
 linters:
+  default: standard
   enable:
     - bodyclose
     - copyloopvar
     - dogsled
-    - errcheck
     - exptostd
     - funlen
     - gochecknoinits
@@ -21,97 +23,109 @@ linters:
     - nilerr
     - reassign
     - revive
-    - staticcheck
     - tagalign
     - testifylint
-    - typecheck
     - unconvert
     - unparam
     - wastedassign
     - whitespace
 
-linters-settings:
-  funlen:
-    lines: 200
-    statements: 120
-    ignore-comments: true
-  gocyclo:
-    min-complexity: 35
-  gocognit:
-    min-complexity: 35
-  gosec:
-    severity: medium
-    excludes:
-      - G402  # TLS InsecureSkipVerify - needed for some HTTP MCP servers
-  lll:
-    line-length: 260
-  tagalign:
-    align: true
-    sort: false
-    strict: false
+  settings:
+    funlen:
+      lines: 200
+      statements: 120
+      ignore-comments: true
+    gocyclo:
+      # minimal code complexity to report, 30 by default (but we recommend 10-20)
+      min-complexity: 35
+    gocognit:
+      # minimal code complexity to report, 30 by default (but we recommend 10-20)
+      min-complexity: 35
+    gosec:
+      severity: medium
+      excludes:
+        - G402  # TLS InsecureSkipVerify - needed for some HTTP MCP servers
+    lll:
+      line-length: 260
+    tagalign:
+      align: true
+      sort: false
+      strict: false
+
+  exclusions:
+    warn-unused: true
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+      - legacy
+    rules:
+      # Exclude test functions from linting rules
+      - source: "Test.*"
+        linters:
+          - funlen
+          - gocognit
+          - gocyclo
+          - dogsled
+      # Exclude linters from running on tests files.
+      - path: _test\.go
+        linters:
+          - revive
+      # Exclude examples from strict linting - they're meant to be simple demonstrations
+      - path: examples/
+        linters:
+          - funlen
+          - gocyclo
+          - lll
+          - errcheck
+          - gosec
+      # Allow TODO comments - this is actively developed
+      - linters:
+          - godox
+        text: "TODO"
+      # Allow unused parameters in interface implementations and GORM hooks
+      - linters:
+          - revive
+        text: "unused-parameter"
+      # Allow some reasonable naming patterns
+      - linters:
+          - revive
+        text: "stutters"
+      # Allow empty blocks with comments
+      - linters:
+          - revive
+        text: "empty-block"
+      # Allow single-case switches (can be clearer than if-else)
+      - linters:
+          - gocritic
+        text: "singleCaseSwitch"
+      # Allow magic strings in specific contexts
+      - linters:
+          - goconst
+        text: "New Conversation|http"
+      # Allow unused params in generated/interface code
+      - linters:
+          - unparam
+        path: "pkg/handlers/auth.go"
+
+formatters:
+  enable:
+    - goimports
+    - golines
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/d4l-data4life/
+    golines:
+      max-len: 140
 
 issues:
+  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
   max-issues-per-linter: 0
+
+  # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
   max-same-issues: 0
-  
-  exclude-rules:
-    # Exclude test functions from linting rules
-    - source: "Test.*"
-      linters:
-        - funlen
-        - gocognit
-        - gocyclo
-        - dogsled
-    
-    # Exclude linters from running on test files
-    - path: _test\.go
-      linters:
-        - revive
-        - errcheck
-    
-    # Exclude examples from strict linting - they're meant to be simple demonstrations
-    - path: examples/
-      linters:
-        - funlen
-        - gocyclo
-        - lll
-        - errcheck
-        - gosec
-    
-    # Allow TODO comments - this is actively developed
-    - linters:
-        - godox
-      text: "TODO"
-    
-    # Allow unused parameters in interface implementations and GORM hooks
-    - linters:
-        - revive
-      text: "unused-parameter"
-    
-    # Allow some reasonable naming patterns
-    - linters:
-        - revive
-      text: "stutters"
-    
-    # Allow empty blocks with comments
-    - linters:
-        - revive
-      text: "empty-block"
-    
-    # Allow single-case switches (can be clearer than if-else)
-    - linters:
-        - gocritic
-      text: "singleCaseSwitch"
-    
-    # Allow magic strings in specific contexts
-    - linters:
-        - goconst
-      text: "New Conversation|http"
-    
-    # Allow unused params in generated/interface code
-    - linters:
-        - unparam
-      path: "pkg/handlers/auth.go"
+  fix: true
 
 severity:
-  default-severity: error
+  default: error
