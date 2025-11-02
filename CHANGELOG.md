@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [v1.0.0] - 2025-11-02
+
+### Added
+
 - Full Model Context Protocol (MCP) implementation with stdio and HTTP transports
 - MCP primitives support: Tools, Resources, and Prompts
 - Dynamic capability negotiation and notification handling
@@ -21,12 +35,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public Go library API for embedding in applications
 - Example programs demonstrating various usage patterns
 
-### Changed
-
-### Deprecated
-
-### Removed
-
-### Fixed
-
-### Security
+[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.0.0...HEAD
+[v1.0.0]: https://github.com/d4l-data4life/go-mcp-host/releases/tag/v1.0.0
