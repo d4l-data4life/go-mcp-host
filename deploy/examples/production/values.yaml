@@ -1,0 +1,70 @@
+# Production Kubernetes Deployment
+# This configuration is for production environments with high availability
+
+environment: production
+
+APP:
+  DEBUG: false
+  DEBUG_CORS: false
+  HOST: mcp-host.example.com  # CHANGE_ME: Your production domain
+  TLS: tls-mcp-host-prod  # CHANGE_ME: Your TLS secret name
+  PORT: 8080
+  CORS_HOSTS: "https://app.example.com https://www.example.com"  # CHANGE_ME: Your frontend URLs
+  REMOTE_KEYS_URL: "https://login.microsoftonline.com/common/discovery/keys"  # CHANGE_ME: Your JWT provider
+
+DB_CONFIGMAP: go-mcp-host-db-connection
+DB_SECRET: go-mcp-host-db-credentials
+
+# High availability with multiple replicas
+REPLICAS: 3
+
+# Database SSL - required for production
+SSLMode: verify-full
+SSLRootCertPath: /root.ca.pem
+
+# CHANGE_ME: Your container registry and versioned image
+imageTag: your-registry.io/go-mcp-host:v1.0.0
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    # Add monitoring annotations
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# Always use managed database in production
+postgres:
+  enabled: false
+
+# Production resource limits
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# Pod disruption budget for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
