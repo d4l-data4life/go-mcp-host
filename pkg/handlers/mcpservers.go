@@ -3,10 +3,11 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"gorm.io/gorm"
+
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )

@@ -7,10 +7,11 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/pkg/errors"
+
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/transport"
 	"github.com/d4l-data4life/go-svc/pkg/logging"
-	"github.com/pkg/errors"
 )
 
 // Client represents an MCP client that communicates with an MCP server

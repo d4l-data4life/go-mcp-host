@@ -10,8 +10,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 	"github.com/pkg/errors"
+
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
@@ -328,7 +329,7 @@ func (c *Client) convertToOllamaRequest(req llm.ChatRequest, stream bool) ollama
 			ollamaReq.Messages[i].ToolCalls = make([]ollamaToolCall, len(msg.ToolCalls))
 			for j, tc := range msg.ToolCalls {
 				var args map[string]interface{}
-				json.Unmarshal([]byte(tc.Function.Arguments), &args)
+				_ = json.Unmarshal([]byte(tc.Function.Arguments), &args) // Best effort unmarshaling
 				ollamaReq.Messages[i].ToolCalls[j] = ollamaToolCall{
 					Function: ollamaToolCallFunction{
 						Name:      tc.Function.Name,

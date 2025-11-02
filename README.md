@@ -150,7 +150,22 @@ func main() {
 }
 ```
 
-See [examples/](examples/) for more usage examples.
+**Run examples:**
+```bash
+# Simple library usage
+go run examples/simple_library/simple_library.go
+
+# Web server integration
+go run examples/embed_in_webserver/embed_in_webserver.go
+
+# Agent package (mid-level)
+go run examples/agent_chat/agent_chat.go
+
+# Low-level MCP usage
+go run examples/ollama_with_mcp/ollama_with_mcp.go
+```
+
+See [examples/README.md](examples/README.md) for detailed documentation.
 
 ## Architecture
 

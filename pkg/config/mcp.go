@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/viper"
+
+	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
 // MCPServerConfig represents configuration for an MCP server connection
@@ -142,6 +144,7 @@ func LoadMCPConfig() (*FullMCPConfig, error) {
 	// Try to load from config file
 	if err := viper.ReadInConfig(); err != nil {
 		// Config file not required, just use environment variables
+		logging.LogDebugf("No config.yaml found, using environment variables and defaults")
 	}
 
 	cfg := &FullMCPConfig{

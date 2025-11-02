@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
-	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 )
 
 // Agent represents an AI agent that can use MCP tools via LLM

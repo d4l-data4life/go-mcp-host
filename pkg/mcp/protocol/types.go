@@ -51,16 +51,16 @@ const MCPProtocolVersion = "2024-11-05"
 
 // Initialize request and response types
 type InitializeRequest struct {
-	ProtocolVersion string                 `json:"protocolVersion"`
-	Capabilities    ClientCapabilities     `json:"capabilities"`
-	ClientInfo      Implementation         `json:"clientInfo"`
+	ProtocolVersion string             `json:"protocolVersion"`
+	Capabilities    ClientCapabilities `json:"capabilities"`
+	ClientInfo      Implementation     `json:"clientInfo"`
 }
 
 type InitializeResult struct {
-	ProtocolVersion string                 `json:"protocolVersion"`
-	Capabilities    ServerCapabilities     `json:"capabilities"`
-	ServerInfo      Implementation         `json:"serverInfo"`
-	Instructions    string                 `json:"instructions,omitempty"`
+	ProtocolVersion string             `json:"protocolVersion"`
+	Capabilities    ServerCapabilities `json:"capabilities"`
+	ServerInfo      Implementation     `json:"serverInfo"`
+	Instructions    string             `json:"instructions,omitempty"`
 }
 
 type Implementation struct {
@@ -158,8 +158,8 @@ type ListPromptsResult struct {
 }
 
 type Prompt struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
 	Arguments   []PromptArgument `json:"arguments,omitempty"`
 }
 
@@ -170,8 +170,8 @@ type PromptArgument struct {
 }
 
 type GetPromptRequest struct {
-	Name      string                 `json:"name"`
-	Arguments map[string]string      `json:"arguments,omitempty"`
+	Name      string            `json:"name"`
+	Arguments map[string]string `json:"arguments,omitempty"`
 }
 
 type GetPromptResult struct {
@@ -180,8 +180,8 @@ type GetPromptResult struct {
 }
 
 type PromptMessage struct {
-	Role    string    `json:"role"`
-	Content Content   `json:"content"`
+	Role    string  `json:"role"`
+	Content Content `json:"content"`
 }
 
 // Content types
@@ -205,14 +205,14 @@ type Root struct {
 
 // Notification types
 const (
-	NotificationInitialized             = "notifications/initialized"
-	NotificationProgress                = "notifications/progress"
-	NotificationMessage                 = "notifications/message"
-	NotificationToolsListChanged        = "notifications/tools/list_changed"
-	NotificationResourcesListChanged    = "notifications/resources/list_changed"
-	NotificationResourcesUpdated        = "notifications/resources/updated"
-	NotificationPromptsListChanged      = "notifications/prompts/list_changed"
-	NotificationRootsListChanged        = "notifications/roots/list_changed"
+	NotificationInitialized          = "notifications/initialized"
+	NotificationProgress             = "notifications/progress"
+	NotificationMessage              = "notifications/message"
+	NotificationToolsListChanged     = "notifications/tools/list_changed"
+	NotificationResourcesListChanged = "notifications/resources/list_changed"
+	NotificationResourcesUpdated     = "notifications/resources/updated"
+	NotificationPromptsListChanged   = "notifications/prompts/list_changed"
+	NotificationRootsListChanged     = "notifications/roots/list_changed"
 )
 
 type ProgressNotification struct {
@@ -238,14 +238,14 @@ type SetLevelRequest struct {
 
 // Sampling types (client capability)
 type CreateMessageRequest struct {
-	Messages          []SamplingMessage      `json:"messages"`
-	ModelPreferences  *ModelPreferences      `json:"modelPreferences,omitempty"`
-	SystemPrompt      string                 `json:"systemPrompt,omitempty"`
-	IncludeContext    string                 `json:"includeContext,omitempty"`
-	Temperature       *float64               `json:"temperature,omitempty"`
-	MaxTokens         int                    `json:"maxTokens"`
-	StopSequences     []string               `json:"stopSequences,omitempty"`
-	Metadata          map[string]interface{} `json:"metadata,omitempty"`
+	Messages         []SamplingMessage      `json:"messages"`
+	ModelPreferences *ModelPreferences      `json:"modelPreferences,omitempty"`
+	SystemPrompt     string                 `json:"systemPrompt,omitempty"`
+	IncludeContext   string                 `json:"includeContext,omitempty"`
+	Temperature      *float64               `json:"temperature,omitempty"`
+	MaxTokens        int                    `json:"maxTokens"`
+	StopSequences    []string               `json:"stopSequences,omitempty"`
+	Metadata         map[string]interface{} `json:"metadata,omitempty"`
 }
 
 type SamplingMessage struct {
@@ -254,10 +254,10 @@ type SamplingMessage struct {
 }
 
 type ModelPreferences struct {
-	Hints            []ModelHint `json:"hints,omitempty"`
-	CostPriority     *float64    `json:"costPriority,omitempty"`
-	SpeedPriority    *float64    `json:"speedPriority,omitempty"`
-	IntelligencePriority *float64 `json:"intelligencePriority,omitempty"`
+	Hints                []ModelHint `json:"hints,omitempty"`
+	CostPriority         *float64    `json:"costPriority,omitempty"`
+	SpeedPriority        *float64    `json:"speedPriority,omitempty"`
+	IntelligencePriority *float64    `json:"intelligencePriority,omitempty"`
 }
 
 type ModelHint struct {
@@ -265,10 +265,10 @@ type ModelHint struct {
 }
 
 type CreateMessageResult struct {
-	Role        string  `json:"role"`
-	Content     Content `json:"content"`
-	Model       string  `json:"model"`
-	StopReason  string  `json:"stopReason,omitempty"`
+	Role       string  `json:"role"`
+	Content    Content `json:"content"`
+	Model      string  `json:"model"`
+	StopReason string  `json:"stopReason,omitempty"`
 }
 
 // Pagination types
@@ -278,19 +278,18 @@ type PaginationParams struct {
 
 // Method names
 const (
-	MethodInitialize       = "initialize"
-	MethodPing             = "ping"
-	MethodListTools        = "tools/list"
-	MethodCallTool         = "tools/call"
-	MethodListResources    = "resources/list"
-	MethodReadResource     = "resources/read"
-	MethodSubscribe        = "resources/subscribe"
-	MethodUnsubscribe      = "resources/unsubscribe"
-	MethodListPrompts      = "prompts/list"
-	MethodGetPrompt        = "prompts/get"
-	MethodListRoots        = "roots/list"
-	MethodSetLevel         = "logging/setLevel"
-	MethodCreateMessage    = "sampling/createMessage"
-	MethodComplete         = "completion/complete"
+	MethodInitialize    = "initialize"
+	MethodPing          = "ping"
+	MethodListTools     = "tools/list"
+	MethodCallTool      = "tools/call"
+	MethodListResources = "resources/list"
+	MethodReadResource  = "resources/read"
+	MethodSubscribe     = "resources/subscribe"
+	MethodUnsubscribe   = "resources/unsubscribe"
+	MethodListPrompts   = "prompts/list"
+	MethodGetPrompt     = "prompts/get"
+	MethodListRoots     = "roots/list"
+	MethodSetLevel      = "logging/setLevel"
+	MethodCreateMessage = "sampling/createMessage"
+	MethodComplete      = "completion/complete"
 )
-

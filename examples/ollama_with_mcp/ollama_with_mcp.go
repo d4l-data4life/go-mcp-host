@@ -7,13 +7,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/d4l-data4life/go-mcp-host/pkg/config"
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm/ollama"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
-	"github.com/google/uuid"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 // This example demonstrates how to use Ollama with MCP tools
@@ -24,17 +23,28 @@ func main() {
 	config.SetupEnv()
 	config.SetupLogger()
 
-	// Connect to database
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		"localhost", "6000", "go-mcp-host", "postgres", "go-mcp-host")
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		fmt.Printf("Failed to connect to database: %v\n", err)
-		os.Exit(1)
+	// Note: This example doesn't use the database for simplicity,
+	// but in production you'd want to connect to persist conversations
+	// dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	// 	"localhost", "6000", "go-mcp-host", "postgres", "go-mcp-host")
+	// db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// if err != nil {
+	// 	fmt.Printf("Failed to connect to database: %v\n", err)
+	// 	os.Exit(1)
+	// }
+
+	// Configure weather MCP server
+	weatherConfig := config.MCPServerConfig{
+		Name:    "weather",
+		Type:    "stdio",
+		Command: "npx",
+		Args:    []string{"-y", "@h1deya/mcp-server-weather"},
+		Enabled: true,
 	}
 
 	// Create MCP manager
-	mcpManager := manager.NewManager(db, 1*time.Hour)
+	mcpServers := []config.MCPServerConfig{weatherConfig}
+	mcpManager := manager.NewManager(mcpServers)
 
 	// Create Ollama client
 	ollamaClient := ollama.NewClient(ollama.Config{
@@ -58,21 +68,13 @@ func main() {
 
 	// Create a conversation
 	conversationID := uuid.New()
+	userID := uuid.New()
 	fmt.Printf("\nConversation ID: %s\n", conversationID)
-
-	// Configure weather MCP server
-	weatherConfig := config.MCPServerConfig{
-		Name:    "weather",
-		Type:    "stdio",
-		Command: "npx",
-		Args:    []string{"-y", "@h1deya/mcp-server-weather"},
-		Enabled: true,
-	}
 
 	// Create MCP session
 	fmt.Println("\nInitializing weather MCP server...")
 	ctx := context.Background()
-	session, err := mcpManager.GetOrCreateSession(ctx, conversationID, weatherConfig)
+	session, err := mcpManager.GetOrCreateSession(ctx, conversationID, weatherConfig, "", userID)
 	if err != nil {
 		fmt.Printf("Failed to create MCP session: %v\n", err)
 		os.Exit(1)

@@ -32,7 +32,7 @@ func GetTestMockServer(t *testing.T) *server.Server {
 	corsOptions := config.CorsConfig([]string{"localhost"})
 	srv := server.NewServer("TEST_SERVER", cors.New(corsOptions), 1, 10*time.Second)
 
-	server.SetupRoutes(context.Background(), srv.Mux())
+	server.SetupRoutes(context.Background(), srv.Mux(), nil) // nil tokenValidator for tests
 	metrics.AddBuildInfoMetric()
 	return srv
 }

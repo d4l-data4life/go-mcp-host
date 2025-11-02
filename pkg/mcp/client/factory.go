@@ -1,10 +1,11 @@
 package client
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/d4l-data4life/go-mcp-host/pkg/config"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/transport"
-	"github.com/pkg/errors"
 )
 
 // Factory creates MCP clients based on configuration

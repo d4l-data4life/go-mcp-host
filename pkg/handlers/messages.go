@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/agent"
-	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
-	"github.com/d4l-data4life/go-mcp-host/pkg/models"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+
+	"github.com/d4l-data4life/go-mcp-host/pkg/agent"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-mcp-host/pkg/models"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
@@ -299,7 +300,9 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 		}
 
 		if req.Content == "" {
-			conn.WriteJSON(map[string]string{"error": "Message content is required"})
+			if err := conn.WriteJSON(map[string]string{"error": "Message content is required"}); err != nil {
+				logging.LogErrorf(err, "Failed to write error to WebSocket")
+			}
 			continue
 		}
 
@@ -313,10 +316,13 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 		h.db.Create(&userMessage)
 
 		// Send user message confirmation
-		conn.WriteJSON(map[string]interface{}{
+		if err := conn.WriteJSON(map[string]interface{}{
 			"type":    "user_message",
 			"message": userMessage,
-		})
+		}); err != nil {
+			logging.LogErrorf(err, "Failed to send user message confirmation")
+			continue
+		}
 
 		// Get message history
 		var messages []models.Message
@@ -338,7 +344,9 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 		})
 
 		if err != nil {
-			conn.WriteJSON(map[string]string{"error": "Failed to start agent"})
+			if writeErr := conn.WriteJSON(map[string]string{"error": "Failed to start agent"}); writeErr != nil {
+				logging.LogErrorf(writeErr, "Failed to write error to WebSocket")
+			}
 			continue
 		}
 
@@ -348,15 +356,21 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 			switch event.Type {
 			case agent.StreamEventTypeContent:
 				fullContent += event.Content
-				conn.WriteJSON(map[string]interface{}{
+				if err := conn.WriteJSON(map[string]interface{}{
 					"type":    "content",
 					"content": event.Content,
-				})
+				}); err != nil {
+					logging.LogErrorf(err, "Failed to send content stream")
+					return
+				}
 			case agent.StreamEventTypeToolStart:
-				conn.WriteJSON(map[string]interface{}{
+				if err := conn.WriteJSON(map[string]interface{}{
 					"type": "tool_start",
 					"tool": event.Tool,
-				})
+				}); err != nil {
+					logging.LogErrorf(err, "Failed to send tool start event")
+					return
+				}
 			case agent.StreamEventTypeToolComplete:
 				// Collect tool execution for metadata and forward to client
 				if event.Tool != nil {
@@ -372,10 +386,13 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 					}
 					streamedToolExecs = append(streamedToolExecs, entry)
 				}
-				conn.WriteJSON(map[string]interface{}{
+				if err := conn.WriteJSON(map[string]interface{}{
 					"type": "tool_complete",
 					"tool": event.Tool,
-				})
+				}); err != nil {
+					logging.LogErrorf(err, "Failed to send tool complete event")
+					return
+				}
 			case agent.StreamEventTypeDone:
 				// Save assistant message
 				logging.LogDebugf("Saving assistant message: content=%s", fullContent)
@@ -412,15 +429,20 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 					}
 				}
 
-				conn.WriteJSON(map[string]interface{}{
+				if err := conn.WriteJSON(map[string]interface{}{
 					"type":    "done",
 					"message": assistantMessage,
-				})
+				}); err != nil {
+					logging.LogErrorf(err, "Failed to send done event")
+					return
+				}
 			case agent.StreamEventTypeError:
-				conn.WriteJSON(map[string]interface{}{
+				if err := conn.WriteJSON(map[string]interface{}{
 					"type":  "error",
 					"error": event.Error.Error(),
-				})
+				}); err != nil {
+					logging.LogErrorf(err, "Failed to send error event")
+				}
 			}
 		}
 	}

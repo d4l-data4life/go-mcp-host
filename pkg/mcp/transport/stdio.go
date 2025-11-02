@@ -9,8 +9,9 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 	"github.com/pkg/errors"
+
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
@@ -178,8 +179,8 @@ func (t *StdioTransport) Close() error {
 
 	// Wait for process to exit
 	if t.cmd != nil && t.cmd.Process != nil {
-		t.cmd.Process.Kill()
-		t.cmd.Wait()
+		_ = t.cmd.Process.Kill()
+		_ = t.cmd.Wait()
 	}
 
 	logging.LogDebugf("Closed stdio transport")

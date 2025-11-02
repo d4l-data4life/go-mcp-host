@@ -4,9 +4,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
-	"github.com/google/uuid"
 )
 
 // ContextManager manages context selection and pruning for the agent
@@ -24,7 +25,11 @@ func NewContextManager(mcpManager *manager.Manager, maxContextTokens int) *Conte
 }
 
 // SelectRelevantResources finds resources relevant to the user's query
-func (cm *ContextManager) SelectRelevantResources(ctx context.Context, conversationID uuid.UUID, query string) ([]ResourceWithRelevance, error) {
+func (cm *ContextManager) SelectRelevantResources(
+	ctx context.Context,
+	conversationID uuid.UUID,
+	query string,
+) ([]ResourceWithRelevance, error) {
 	// Get all available resources
 	resourcesWithServer, err := cm.mcpManager.GetAllResources(ctx, conversationID)
 	if err != nil {
@@ -51,7 +56,12 @@ func (cm *ContextManager) SelectRelevantResources(ctx context.Context, conversat
 }
 
 // ReadRelevantResources reads the content of relevant resources
-func (cm *ContextManager) ReadRelevantResources(ctx context.Context, conversationID uuid.UUID, resources []ResourceWithRelevance, maxResources int) ([]ResourceContent, error) {
+func (cm *ContextManager) ReadRelevantResources(
+	ctx context.Context,
+	conversationID uuid.UUID,
+	resources []ResourceWithRelevance,
+	maxResources int,
+) ([]ResourceContent, error) {
 	if maxResources > len(resources) {
 		maxResources = len(resources)
 	}

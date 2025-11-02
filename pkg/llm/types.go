@@ -18,41 +18,41 @@ type Client interface {
 
 // ChatRequest represents a chat completion request
 type ChatRequest struct {
-	Model       string          `json:"model"`
-	Messages    []Message       `json:"messages"`
-	Tools       []Tool          `json:"tools,omitempty"`
-	Temperature *float64        `json:"temperature,omitempty"`
-	MaxTokens   *int            `json:"max_tokens,omitempty"`
-	TopP        *float64        `json:"top_p,omitempty"`
-	Stream      bool            `json:"stream,omitempty"`
-	Stop        []string        `json:"stop,omitempty"`
+	Model       string    `json:"model"`
+	Messages    []Message `json:"messages"`
+	Tools       []Tool    `json:"tools,omitempty"`
+	Temperature *float64  `json:"temperature,omitempty"`
+	MaxTokens   *int      `json:"max_tokens,omitempty"`
+	TopP        *float64  `json:"top_p,omitempty"`
+	Stream      bool      `json:"stream,omitempty"`
+	Stop        []string  `json:"stop,omitempty"`
 }
 
 // ChatResponse represents a chat completion response
 type ChatResponse struct {
-	ID      string   `json:"id"`
-	Model   string   `json:"model"`
-	Message Message  `json:"message"`
-	Usage   Usage    `json:"usage,omitempty"`
+	ID      string  `json:"id"`
+	Model   string  `json:"model"`
+	Message Message `json:"message"`
+	Usage   Usage   `json:"usage,omitempty"`
 }
 
 // StreamChunk represents a streaming response chunk
 type StreamChunk struct {
-	ID      string  `json:"id"`
-	Model   string  `json:"model"`
-	Delta   Delta   `json:"delta"`
-	Usage   Usage   `json:"usage,omitempty"`
-	Done    bool    `json:"done"`
-	Error   error   `json:"-"`
+	ID    string `json:"id"`
+	Model string `json:"model"`
+	Delta Delta  `json:"delta"`
+	Usage Usage  `json:"usage,omitempty"`
+	Done  bool   `json:"done"`
+	Error error  `json:"-"`
 }
 
 // Message represents a chat message
 type Message struct {
-	Role       string      `json:"role"` // system, user, assistant, tool
-	Content    string      `json:"content,omitempty"`
-	ToolCalls  []ToolCall  `json:"tool_calls,omitempty"`
-	ToolCallID string      `json:"tool_call_id,omitempty"`
-	Name       string      `json:"name,omitempty"`
+	Role       string     `json:"role"` // system, user, assistant, tool
+	Content    string     `json:"content,omitempty"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+	Name       string     `json:"name,omitempty"`
 }
 
 // Delta represents incremental content in a stream
@@ -97,11 +97,11 @@ type Usage struct {
 
 // Model represents an available LLM model
 type Model struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description,omitempty"`
-	Size        int64    `json:"size,omitempty"`
-	ModifiedAt  string   `json:"modified_at,omitempty"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Size        int64  `json:"size,omitempty"`
+	ModifiedAt  string `json:"modified_at,omitempty"`
 }
 
 // Role constants
@@ -116,4 +116,3 @@ const (
 const (
 	ToolTypeFunction = "function"
 )
-

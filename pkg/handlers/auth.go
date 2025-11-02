@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/models"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"github.com/d4l-data4life/go-mcp-host/pkg/models"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )

@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/config"
-	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/client"
-	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 	"github.com/google/uuid"
 	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
+
+	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/client"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
@@ -281,7 +282,11 @@ func (m *Manager) GetOrCreateSession(
 				session.LastAccessed = time.Now()
 				session.mu.Unlock()
 				m.mu.RUnlock()
-				logging.LogDebugf("Reusing MCP session with same bearer token: conversation=%s server=%s", conversationID, serverConfig.Name)
+				logging.LogDebugf(
+					"Reusing MCP session with same bearer token: conversation=%s server=%s",
+					conversationID,
+					serverConfig.Name,
+				)
 				return session, nil
 			}
 
@@ -321,7 +326,7 @@ func (m *Manager) GetOrCreateSession(
 	defer m.mu.Unlock()
 
 	// Double-check after acquiring write lock (only for non-bearer servers)
-	if !(serverConfig.Type == "http" && serverConfig.ForwardBearer) {
+	if serverConfig.Type != "http" || !serverConfig.ForwardBearer {
 		if session, exists := m.sessions[sessionKey]; exists {
 			session.mu.Lock()
 			session.LastAccessed = time.Now()
@@ -330,7 +335,12 @@ func (m *Manager) GetOrCreateSession(
 		}
 	}
 
-	logging.LogDebugf("Creating new MCP session: conversation=%s server=%s bearerToken=%v", conversationID, serverConfig.Name, bearerToken != "")
+	logging.LogDebugf(
+		"Creating new MCP session: conversation=%s server=%s bearerToken=%v",
+		conversationID,
+		serverConfig.Name,
+		bearerToken != "",
+	)
 
 	// Create MCP client with bearer if configured
 	mcpClient, err := m.createClientForUser(serverConfig, bearerToken)

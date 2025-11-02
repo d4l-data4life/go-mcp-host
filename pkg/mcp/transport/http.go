@@ -13,8 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 	"github.com/pkg/errors"
+
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
@@ -210,7 +211,7 @@ func (t *HTTPTransport) SendNotification(ctx context.Context, notification *prot
 	defer httpResp.Body.Close()
 
 	// Drain response body
-	io.Copy(io.Discard, httpResp.Body)
+	_, _ = io.Copy(io.Discard, httpResp.Body)
 
 	return nil
 }
