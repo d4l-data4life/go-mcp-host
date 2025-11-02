@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # The build.yaml workflow handles building, pushing, and publishing
+  # This workflow just creates the GitHub release
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          PREVIOUS_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || echo "")
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s" ${{ github.ref_name }})
+          else
+            COMMITS=$(git log --pretty=format:"- %s" ${PREVIOUS_TAG}...${{ github.ref_name }})
+          fi
+          
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            ## What's Changed
+            
+            ${{ steps.changelog.outputs.commits }}
+            
+            ## Docker Images
+            
+            Pull the Docker image:
+            ```bash
+            docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+            ```
+            
+            ## Helm Chart Installation
+            
+            ### Via GitHub Pages (Recommended)
+            
+            ```bash
+            # Add the Helm repository
+            helm repo add go-mcp-host https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+            helm repo update
+            
+            # Install the chart
+            helm install my-mcp-host go-mcp-host/go-mcp-host \
+              --version ${{ steps.version.outputs.version }} \
+              -f values.yaml
+            ```
+            
+            ### Via OCI Registry
+            
+            ```bash
+            # Install directly from OCI registry
+            helm install my-mcp-host \
+              oci://ghcr.io/${{ github.repository_owner }}/go-mcp-host \
+              --version ${{ steps.version.outputs.version }} \
+              -f values.yaml
+            ```
+            
+            ## Quick Start
+            
+            ### As a Standalone Service
+            
+            ```bash
+            helm install go-mcp-host go-mcp-host/go-mcp-host \
+              --set imageTag=ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }} \
+              -f examples/kubernetes/values.yaml
+            ```
+            
+            ### As a Go Library
+            
+            ```bash
+            go get github.com/d4l-data4life/go-mcp-host@${{ steps.version.outputs.version }}
+            ```
+            
+            ## Documentation
+            
+            - [README](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.version }}/README.md)
+            - [Deployment Guide](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.version }}/deploy/README.md)
+            - [Library Usage](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.version }}/docs/LIBRARY_USAGE.md)
+            
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.previous_tag.outputs.tag }}...${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          generate_release_notes: false
+

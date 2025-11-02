@@ -1,0 +1,45 @@
+# Local Kubernetes Deployment (Docker Desktop, minikube, kind)
+# This configuration is for local development and testing
+
+environment: local
+
+APP:
+  DEBUG: true
+  DEBUG_CORS: true
+  HOST: mcp-host.local  # Add this to /etc/hosts: 127.0.0.1 mcp-host.local
+  TLS: ""  # No TLS for local
+  PORT: 8080
+  CORS_HOSTS: "http://localhost:3000 http://localhost:3334 http://mcp-host.local:8080"
+  REMOTE_KEYS_URL: ""  # No remote auth for local
+
+DB_CONFIGMAP: go-mcp-host-db-connection
+DB_SECRET: go-mcp-host-db-credentials
+
+REPLICAS: 1
+
+# Database SSL - disabled for local
+SSLMode: disable
+SSLRootCertPath: ""
+
+# Use locally built image
+# Build with: make docker-build
+# Load into cluster: kind load docker-image <image>
+imageTag: go-mcp-host:latest
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# Optional: Deploy postgres alongside (not recommended for production)
+postgres:
+  enabled: true
+  image: postgres:16
+  port: 5432
+  storageClass: standard
+  storageSize: 1Gi
+

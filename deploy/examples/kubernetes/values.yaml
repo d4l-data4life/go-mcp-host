@@ -1,0 +1,51 @@
+# Kubernetes Deployment (Development/Staging)
+# This configuration is for non-production Kubernetes environments
+
+environment: development
+
+APP:
+  DEBUG: true
+  DEBUG_CORS: false
+  HOST: mcp-host-dev.example.com  # CHANGE_ME: Your domain
+  TLS: tls-mcp-host-dev  # CHANGE_ME: Your TLS secret name
+  PORT: 8080
+  CORS_HOSTS: "https://app-dev.example.com"  # CHANGE_ME: Your frontend URL
+  REMOTE_KEYS_URL: ""  # CHANGE_ME: Optional JWT provider URL
+
+DB_CONFIGMAP: go-mcp-host-db-connection
+DB_SECRET: go-mcp-host-db-credentials
+
+REPLICAS: 2
+
+# Database SSL - adjust based on your database provider
+SSLMode: require
+SSLRootCertPath: ""
+
+# CHANGE_ME: Your container registry and image
+imageTag: your-registry.io/go-mcp-host:latest
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# Use managed database service
+postgres:
+  enabled: false
+
+# Resource limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+

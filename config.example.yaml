@@ -1,0 +1,58 @@
+# MCP Host Configuration Example
+# Copy this file to config.yaml and adjust for your needs
+
+# MCP Servers Configuration
+mcp_servers:
+  # Example: Weather server
+  - name: weather
+    type: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@h1deya/mcp-server-weather"
+    enabled: true
+    description: "Weather information server"
+  
+  # Example: Local filesystem server (commented out)
+  # - name: filesystem
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - "-y"
+  #     - "@modelcontextprotocol/server-filesystem"
+  #     - "/Users/yourusername/Documents"  # Adjust to your allowed directory
+  #   enabled: false
+  #   description: "Local filesystem access for reading and writing files"
+
+  # Example: PostgreSQL database server (uncomment to enable)
+  # - name: postgres
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - "-y"
+  #     - "@modelcontextprotocol/server-postgres"
+  #     - "postgresql://user:password@localhost:5432/dbname"
+  #   enabled: false
+  #   description: "PostgreSQL database access"
+
+  # Example: Web search/puppeteer (uncomment to enable)
+  # - name: puppeteer
+  #   type: stdio
+  #   command: npx
+  #   args:
+  #     - "-y"
+  #     - "@modelcontextprotocol/server-puppeteer"
+  #   enabled: false
+  #   description: "Web browser automation and scraping"
+
+  # Example: Remote HTTP server (like Sentry)
+  # - name: sentry
+  #   type: http
+  #   url: "https://mcp.sentry.io"
+  #   headers:
+  #     Authorization: "Bearer YOUR_SENTRY_TOKEN"
+  #   enabled: false
+  #   description: "Sentry issue tracking integration"
+
+  # Add more MCP servers as needed
+

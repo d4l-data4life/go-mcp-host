@@ -1,0 +1,223 @@
+# go-mcp-host Makefile
+# 
+# This Makefile supports both local development and deployment.
+# Many variables can be overridden for customization:
+#
+# DOCKER_REGISTRY - Your container registry (default: docker.io/d4l-data4life)
+# PKG             - Your Go module path (default: github.com/d4l-data4life/go-mcp-host/pkg/config)
+# CONFIG_DIR      - External config directory (default: ./deploy)
+# ENVIRONMENT     - Deployment environment (default: local)
+# NAMESPACE       - Kubernetes namespace (default: default)
+#
+# Examples:
+#   make docker-build DOCKER_REGISTRY=myregistry.io/myorg
+#   make deploy CONFIG_DIR=~/my-configs ENVIRONMENT=prod NAMESPACE=production
+#   make run PORT=9090
+#
+# Run 'make help' to see all available commands.
+
+# Common Variables
+APP_VERSION ?= $(shell git describe --tags --always --dirty) # unavailable in Docker unless we copy `.git`
+ifeq ($(strip $(APP_VERSION)),)
+# works in Docker after running 'make write-build-info'
+# equired to run 'go build' with properly populated ldflags
+	APP_VERSION := $(file < VERSION)
+endif
+
+COMMIT ?= $(shell git rev-parse --short HEAD)
+ifeq ($(strip $(COMMIT)),)
+	COMMIT := $(file < COMMIT)
+endif
+
+BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
+ifeq ($(strip $(BRANCH)),)
+	BRANCH := $(file < BRANCH)
+endif
+
+USER=$(shell whoami)
+BINARY=go-mcp-host
+
+# Go Variables - Override PKG for your fork
+PKG ?= github.com/d4l-data4life/go-mcp-host/pkg/config
+LDFLAGS="-X '$(PKG).Version=$(APP_VERSION)' -X '$(PKG).Commit=$(COMMIT)' -X '$(PKG).Branch=$(BRANCH)' -X '$(PKG).BuildUser=$(USER)'"
+GOCMD=go
+GOBUILD=$(GOCMD) build -ldflags $(LDFLAGS)
+GOTEST=$(GOCMD) test
+SRC = cmd/api/*.go
+SRC_TESTDATA = cmd/testdata/*.go
+
+# Docker Variables - Override DOCKER_REGISTRY for your registry
+# Example: make docker-build DOCKER_REGISTRY=myregistry.io/myorg
+DOCKER_REGISTRY ?= docker.io/d4l-data4life
+DOCKER_IMAGE=$(DOCKER_REGISTRY)/$(BINARY)
+CONTAINER_NAME=$(BINARY)
+PORT ?= 8080
+
+# Test DB Variables
+TEST_DB_PORT=6000
+TEST_DB_IMAGE=postgres
+TEST_DB_CONTAINER_NAME=$(BINARY)-postgres
+TEST_DB_NAME = go-mcp-host
+TEST_DB_USER = go-mcp-host
+TEST_DB_PASSWORD = postgres
+
+# Deploy variables - Override for your deployment
+APP ?= $(BINARY)
+ENVIRONMENT ?= local
+KUBECONFIG ?= $(HOME)/.kube/config
+# Support external config directory
+CONFIG_DIR ?= $(shell pwd)/deploy
+VALUES_YAML ?= "$(CONFIG_DIR)/examples/$(ENVIRONMENT)/values.yaml"
+SECRETS_YAML ?= "$(CONFIG_DIR)/examples/$(ENVIRONMENT)/secrets.yaml"
+NAMESPACE ?= default
+
+## ----------------------------------------------------------------------
+## Help: Makefile for app: go-mcp-host
+## ----------------------------------------------------------------------
+
+.PHONY: help
+help: ## Show this help (default)
+	@grep -E '^([[[:alpha:]][[:graph:]]*[[:space:]]*)+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: version
+version: ## Display current version
+	@echo $(APP_VERSION)
+
+## ----------------------------------------------------------------------
+## Github Actions (github workflow relies on those)
+## ----------------------------------------------------------------------
+
+.PHONY: test-gh-action
+test-gh-action: .env ## Run tests natively in verbose mode
+	$(GOTEST) -timeout 300s -cover -covermode=atomic -v ./... 2>&1 | tee test-result.out
+
+.PHONY: docker-build db
+docker-build db: write-build-info ## Build Docker image
+	docker buildx build \
+		--cache-to type=gha,mode=max \
+		--cache-from type=gha \
+		--build-arg GITHUB_USER_TOKEN \
+		-t $(DOCKER_IMAGE):$(APP_VERSION) \
+		-f build/Dockerfile \
+		--target run \
+		--load \
+		.
+
+.PHONY: write-build-info
+write-build-info: ## Persist build parameters that require git
+	@echo "$(APP_VERSION)" > VERSION
+	@echo "$(COMMIT)" > COMMIT
+	@echo "$(BRANCH)" > BRANCH
+
+.PHONY: docker-push
+docker-push: ## Push Docker image to registry
+	docker push $(DOCKER_IMAGE):$(APP_VERSION)
+
+.PHONY: deploy
+deploy:   ## Deploy to kubernetes using Helm
+	sed -e 's/<github_release>/$(APP_VERSION)/g' deploy/helm-chart/Chart.versionless.yaml > deploy/helm-chart/Chart.yaml
+	helm upgrade --install $(APP) \
+		-f $(VALUES_YAML) \
+		-f $(SECRETS_YAML) \
+		--create-namespace --namespace $(NAMESPACE) \
+		--set imageTag=$(DOCKER_IMAGE):$(APP_VERSION) \
+		--wait \
+		deploy/helm-chart
+
+## ----------------------------------------------------------------------
+## Local Convenience
+## ----------------------------------------------------------------------
+
+.PHONY: clean
+clean: ## Remove compiled binary, versioned chart and docker containers
+	rm -f $(BINARY)
+	rm -f deploy/helm-chart/Chart.yaml
+	-docker rm -f $(CONTAINER_NAME)
+	-docker rm -f $(TEST_DB_CONTAINER_NAME)
+
+.env: ## Initialize .env file from .env.example and insert real paths
+	sed -E 's#PATH_PLACEHOLDER#$(shell pwd)#g' .env.example > .env
+
+.docker.env: .env ## Generate .docker.env file to be used for docker-run
+	sed -E 's#$(shell pwd)/test-keys#/keys#g' $? > $@
+
+.PHONY: local-test lt
+local-test lt: ## Run tests natively
+	$(GOTEST) -timeout 45s -cover -covermode=atomic ./...
+
+.PHONY: test
+test: lint unit-test-postgres ## Run all test activities sequentially
+
+.PHONY: unit-test-postgres
+unit-test-postgres: docker-database local-test docker-database-delete ## Run unit tests inside the Docker and uses Postgres DB
+
+.PHONY: lint
+lint:
+	@golangci-lint --version
+	golangci-lint run ./...
+
+.PHONY: docker-database ddb
+docker-database ddb: docker-database-delete ## Run database in Docker
+	docker run --name $(TEST_DB_CONTAINER_NAME) -d \
+		-e POSTGRES_DB=$(TEST_DB_NAME) \
+		-e POSTGRES_USER=$(TEST_DB_USER) \
+		-e POSTGRES_PASSWORD=$(TEST_DB_PASSWORD) \
+		-p $(TEST_DB_PORT):5432 $(TEST_DB_IMAGE)
+	@until docker container exec -t $(TEST_DB_CONTAINER_NAME) pg_isready; do \
+		>&2 echo "Postgres is unavailable - waiting for it... 😴"; \
+		sleep 1; \
+	done
+
+.PHONY: docker-database-delete ddd
+docker-database-delete ddd: ## Delete database in Docker
+	-docker rm -f $(TEST_DB_CONTAINER_NAME)
+
+.PHONY: docker-database-connect ddc
+docker-database-connect ddc: ## Connect to the database in Docker
+	docker container exec -it $(TEST_DB_CONTAINER_NAME) psql -h localhost -U $(TEST_DB_USER) -d $(TEST_DB_NAME)
+
+.PHONY: docker-database-pgcli ddp
+docker-database-pgcli ddp: ## Connect to local PostgreSQL database using pgcli
+	PGPASSWORD="$(TEST_DB_PASSWORD)" pgcli -h localhost -p $(TEST_DB_PORT) -U $(TEST_DB_USER) -d $(TEST_DB_NAME)
+
+.PHONY: docker-database-testdata ddt
+docker-databasetestdata ddt: .env ## Seed the database with test data
+	$(GOCMD) run $(SRC_TESTDATA)
+
+.PHONY: build
+build: ## Build app
+	$(GOBUILD) -o $(BINARY) $(SRC)
+
+.PHONY: run
+run: .env ## Run app natively
+	$(GOCMD) run $(SRC)
+
+.PHONY: docker-run dr
+docker-run dr: .docker.env ## Run app in Docker. Configure connection to a DB using GO_SVC_TEMPLATE_DB_HOST
+	-docker run --name $(TEST_DB_CONTAINER_NAME) -d \
+		-e POSTGRES_DB=$(TEST_DB_NAME) \
+		-e POSTGRES_USER=$(TEST_DB_USER) \
+		-e POSTGRES_PASSWORD=$(TEST_DB_PASSWORD) \
+		-p $(TEST_DB_PORT):5432 $(TEST_DB_IMAGE)
+	docker run --name $(CONTAINER_NAME) -t -d \
+		-e GO_SVC_TEMPLATE_DB_HOST=host.docker.internal \
+		--env-file .docker.env \
+		--mount type=bind,source=$$(pwd)/test-keys,target=/keys \
+		-p $(PORT):$(PORT) \
+		$(DOCKER_IMAGE):$(APP_VERSION)
+
+.PHONY: local-install li
+local-install li: shared-config  ## Deploy to local Kubernetes (check kubectl context beforehand)
+	kubectl config use-context docker-desktop
+	make deploy
+
+.PHONY: local-delete ld
+local-delete ld:    ## Delete local helm deployment
+	kubectl config use-context docker-desktop
+	helm delete $(APP) --namespace ${NAMESPACE}
+
+.PHONY: docker-prune
+docker-prune:       ## Delete local docker images of this repo except for the current version
+	docker images | grep $(DOCKER_IMAGE) | grep -v $(APP_VERSION) | awk '{print $$3}' | xargs docker rmi -f
+	docker ps --quiet --all --filter status=exited | xargs docker rm
+

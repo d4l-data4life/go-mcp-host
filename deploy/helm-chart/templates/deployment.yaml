@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}"
+spec:
+  replicas: {{ .Values.REPLICAS }}
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: "{{ .Release.Name }}"
+      app: "{{ .Release.Name }}"
+      role: deployment
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: "{{ .Release.Name }}"
+        app: "{{ .Release.Name }}"
+        role: deployment
+      annotations:
+        prometheus.io/scrape: "true"
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+      containers:
+      - name: "{{ .Chart.Name }}"
+        image: "{{ .Values.imageTag }}"
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          readOnlyRootFilesystem: true
+        ports:
+        - containerPort: {{ .Values.APP.PORT }}
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: 100m
+          limits:
+            memory: "256Mi"
+            cpu: 1000m
+        env:
+        - name: GO_SVC_TEMPLATE_DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: host
+        - name: GO_SVC_TEMPLATE_DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: port
+        - name: GO_SVC_TEMPLATE_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.DB_SECRET }}
+              key: password
+        - name: GO_SVC_TEMPLATE_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.DB_SECRET }}
+              key: username
+        - name: GO_SVC_TEMPLATE_DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: dbname
+        - name: GO_SVC_TEMPLATE_DB_SCHEMA
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: schema
+        - name: GO_SVC_TEMPLATE_DB_SSL_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: sslmode
+        - name: GO_SVC_TEMPLATE_DB_SSL_ROOT_CERT_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.DB_CONFIGMAP }}
+              key: sslRootCertPath
+        - name: GO_SVC_TEMPLATE_SERVICE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Chart.Name }}-secrets
+              key: go-mcp-host-secret
+        {{- range $key, $value := .Values.APP }}
+        - name: GO_SVC_TEMPLATE_{{ $key }}
+          value: "{{ $value }}"
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /checks/liveness
+            port: {{ .Values.APP.PORT }}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /checks/readiness
+            port: {{ .Values.APP.PORT }}
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        volumeMounts:
+        - mountPath: /keys
+          name: jwt-secret
+          readOnly: true
+      imagePullSecrets:
+      - name: gesundheitscloud-regsecret
+      volumes:
+        - name: jwt-secret
+          secret:
+            secretName: {{ .Chart.Name }}-jwt

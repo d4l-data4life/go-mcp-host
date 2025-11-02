@@ -1,0 +1,15 @@
+apiVersion: v2
+name: go-mcp-host
+version: <github_release>
+home: https://github.com/d4l-data4life/go-mcp-host/
+icon: https://avatars2.githubusercontent.com/u/25636481?v=3&s=200
+description: MCP Host - A Go-based Model Context Protocol host service with AI agent capabilities
+keywords:
+  - mcp
+  - model-context-protocol
+  - ai
+  - llm
+  - ollama
+maintainers:
+  - name: Data4Life
+    url: https://github.com/d4l-data4life

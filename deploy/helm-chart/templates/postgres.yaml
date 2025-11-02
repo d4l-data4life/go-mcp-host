@@ -1,0 +1,63 @@
+{{- if .Values.deployBackendMocks -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-{{ .Chart.Name }}
+  annotations:
+    ignore-check.kube-linter.io/no-read-only-root-fs: "This Postgres is used only for debugging and requires a writable filesystem"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-{{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: postgres-{{ .Chart.Name }}
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsNonRoot: true
+      containers:
+      - name: postgres
+        image: postgres:12.8
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 5432
+        resources:
+          requests:
+            memory: 50Mi
+            cpu: 300m
+          limits:
+            memory: 150Mi
+            cpu: 3000m
+        env:
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: {{ .Values.DB_SECRET }}
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: {{ .Values.DB_SECRET }}
+          - name: POSTGRES_DB
+            valueFrom:
+              configMapKeyRef:
+                key: dbname
+                name: {{ .Values.DB_CONFIGMAP }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-{{ .Chart.Name }}
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+      targetPort: 5432
+  selector:
+    app: postgres-{{ .Chart.Name }}
+  type: ClusterIP
+{{- end }}

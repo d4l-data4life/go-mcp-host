@@ -1,0 +1,242 @@
+name: Build and Publish
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GOPRIVATE: "github.com/d4l-data4life/*"
+  GITHUB_USER_TOKEN: ${{ secrets.CI_USER_GITHUB_TOKEN }}
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+    
+      - uses: d4l-data4life/github-actions/build-setup@v1
+        with:
+          setup-go: true
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.3.1
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: go-mcp-host
+          POSTGRES_USER: go-mcp-host
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6000:5432
+          
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: d4l-data4life/github-actions/build-setup@v1
+        with:
+          setup-go: true
+
+      - name: Test
+        run: |
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          make test-gh-action
+          go-junit-report -in test-result.out -out report.xml -set-exit-code
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: report.xml
+
+  build-and-push:
+    needs:
+      - lint
+      - test
+    runs-on: ubuntu-latest
+    # Only push on main, develop, or tags
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tags: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Alternative: Azure Container Registry
+      # - name: Log in to Azure Container Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: crsensorhub.azurecr.io
+      #     username: ${{ secrets.ACR_USERNAME }}
+      #     password: ${{ secrets.ACR_PASSWORD }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./build/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          target: run
+          build-args: |
+            GITHUB_USER_TOKEN=${{ secrets.CI_USER_GITHUB_TOKEN }}
+
+  publish-helm-chart:
+    needs:
+      - build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+      
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(git describe --tags --always --dirty)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+      
+      - name: Update Chart version
+        run: |
+          sed -i "s/<github_release>/${{ steps.version.outputs.version }}/g" deploy/helm-chart/Chart.versionless.yaml
+          cp deploy/helm-chart/Chart.versionless.yaml deploy/helm-chart/Chart.yaml
+      
+      - name: Package Helm chart
+        run: |
+          mkdir -p .helm-charts
+          helm package deploy/helm-chart -d .helm-charts
+      
+      - name: Publish Helm chart to GitHub Pages
+        run: |
+          # Create or update gh-pages branch
+          git fetch origin gh-pages || git checkout --orphan gh-pages
+          git checkout gh-pages || git checkout --orphan gh-pages
+          
+          # Copy packaged chart
+          cp .helm-charts/*.tgz .
+          
+          # Update index
+          helm repo index . --url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          
+          # Commit and push
+          git add *.tgz index.yaml
+          git commit -m "Publish Helm chart ${{ steps.version.outputs.version }}" || echo "No changes to commit"
+          git push origin gh-pages
+      
+      # Alternative: Publish to OCI registry (GitHub Container Registry)
+      - name: Publish Helm chart to GHCR (OCI)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password-stdin
+          helm push .helm-charts/*.tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner }}
+
+  create-release:
+    needs:
+      - build-and-push
+      - publish-helm-chart
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## Docker Images
+            
+            Pull with:
+            ```bash
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ```
+            
+            ## Helm Chart
+            
+            Install with:
+            ```bash
+            # Via GitHub Pages
+            helm repo add go-mcp-host https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+            helm install my-release go-mcp-host/go-mcp-host --version ${{ github.ref_name }}
+            
+            # Or via OCI
+            helm install my-release oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/go-mcp-host --version ${{ github.ref_name }}
+            ```

@@ -1,0 +1,82 @@
+# Default values for go-mcp-host Helm chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Application configuration
+APP:
+  # Debug mode - set to true for verbose logging
+  DEBUG: false
+  
+  # CORS debug mode - set to true for detailed CORS logging
+  DEBUG_CORS: false
+  
+  # Hostname for the service (required for ingress)
+  # Example: mcp-host.example.com
+  HOST: ""
+  
+  # TLS secret name for HTTPS (leave empty for HTTP)
+  # Example: tls-mcp-host-example-com
+  TLS: ""
+  
+  # Port the service listens on
+  PORT: 8080
+  
+  # CORS allowed origins (space-separated)
+  # Example: "https://app.example.com https://localhost:3000"
+  CORS_HOSTS: "http://localhost:3000"
+  
+  # Remote JWT keys URL for authentication (optional)
+  # For Azure AD: https://login.microsoftonline.com/common/discovery/keys
+  # Leave empty to disable remote JWT validation
+  REMOTE_KEYS_URL: ""
+
+# Database configuration
+# ConfigMap name containing database connection details
+DB_CONFIGMAP: go-mcp-host-db-connection
+
+# Secret name containing database credentials
+DB_SECRET: go-mcp-host-db-credentials
+
+# Number of pod replicas
+REPLICAS: 1
+
+# Database SSL configuration
+SSLMode: disable
+SSLRootCertPath: ""
+
+# Docker image configuration
+# Override with --set imageTag=<your-registry>/go-mcp-host:<version>
+imageTag: ""
+
+# Resource limits (optional)
+# resources:
+#   limits:
+#     cpu: 500m
+#     memory: 512Mi
+#   requests:
+#     cpu: 100m
+#     memory: 128Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  # Example annotations:
+  # cert-manager.io/cluster-issuer: letsencrypt-prod
+  # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+
+# PostgreSQL configuration (if using bundled postgres)
+postgres:
+  enabled: false
+  # If enabled, postgres will be deployed as a statefulset
+  # For production, use a managed database service instead
+  
+# Environment-specific overrides
+# These can be set in separate values files (values-dev.yaml, values-prod.yaml, etc.)
+environment: production
