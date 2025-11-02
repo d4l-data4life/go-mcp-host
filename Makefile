@@ -193,14 +193,14 @@ run: .env ## Run app natively
 	$(GOCMD) run $(SRC)
 
 .PHONY: docker-run dr
-docker-run dr: .docker.env ## Run app in Docker. Configure connection to a DB using GO_SVC_TEMPLATE_DB_HOST
+docker-run dr: .docker.env ## Run app in Docker. Configure connection to a DB using GO_MCP_HOST_DB_HOST
 	-docker run --name $(TEST_DB_CONTAINER_NAME) -d \
 		-e POSTGRES_DB=$(TEST_DB_NAME) \
 		-e POSTGRES_USER=$(TEST_DB_USER) \
 		-e POSTGRES_PASSWORD=$(TEST_DB_PASSWORD) \
 		-p $(TEST_DB_PORT):5432 $(TEST_DB_IMAGE)
 	docker run --name $(CONTAINER_NAME) -t -d \
-		-e GO_SVC_TEMPLATE_DB_HOST=host.docker.internal \
+		-e GO_MCP_HOST_DB_HOST=host.docker.internal \
 		--env-file .docker.env \
 		--mount type=bind,source=$$(pwd)/test-keys,target=/keys \
 		-p $(PORT):$(PORT) \

@@ -492,7 +492,7 @@ Assistant: "Your project directory contains the following files:
 
 ### 1. Enable Debug Logging
 ```bash
-export GO_SVC_TEMPLATE_DEBUG=true
+export GO_MCP_HOST_DEBUG=true
 ```
 
 ### 2. Test MCP Server Separately
