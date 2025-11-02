@@ -10,7 +10,7 @@ import (
 // Metric definitions
 // Ensure that his follows best practices for naming: https://prometheus.io/docs/practices/naming/
 var (
-	metricNamePrefix = "d4l_GO_SVC_TEMPLATE"
+	metricNamePrefix = "d4l_GO_MCP_HOST"
 )
 
 // AddBuildInfoMetric adds a static metric with the build information

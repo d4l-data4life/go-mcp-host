@@ -1,11 +1,11 @@
 openapi: "3.0.2"
 info:
-  title: GO_SVC_TEMPLATE RESTful(ish)Api
+  title: GO_MCP_HOST RESTful(ish)Api
   version: "1.0"
-  description: The API for GO_SVC_TEMPLATE.
+  description: The API for GO_MCP_HOST.
 servers:
   - url: https://go-mcp-host-dns.local/api/v1
-    description: GO_SVC_TEMPLATE RESTful(ish)Api
+    description: GO_MCP_HOST RESTful(ish)Api
 
 tags:
   - name: "Examples"

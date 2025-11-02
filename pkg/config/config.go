@@ -26,7 +26,7 @@ var (
 
 const (
 	// EnvPrefix is a prefix to all ENV variables used in this app
-	EnvPrefix = "GO_SVC_TEMPLATE"
+	EnvPrefix = "GO_MCP_HOST"
 	// APIPrefixV1 URL prefix in API version 1
 	APIPrefixV1 = "/api/v1"
 
