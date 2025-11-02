@@ -120,7 +120,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
       
       - name: Build and push Docker image
@@ -164,11 +164,7 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION=$(git describe --tags --always --dirty)
-          fi
+          VERSION=$(git describe --tag --always)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
       
@@ -204,39 +200,3 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password-stdin
           helm push .helm-charts/*.tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner }}
-
-  create-release:
-    needs:
-      - build-and-push
-      - publish-helm-chart
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          body: |
-            ## Docker Images
-            
-            Pull with:
-            ```bash
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            ```
-            
-            ## Helm Chart
-            
-            Install with:
-            ```bash
-            # Via GitHub Pages
-            helm repo add go-mcp-host https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
-            helm install my-release go-mcp-host/go-mcp-host --version ${{ github.ref_name }}
-            
-            # Or via OCI
-            helm install my-release oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/go-mcp-host --version ${{ github.ref_name }}
-            ```
