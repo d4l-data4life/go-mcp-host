@@ -6,6 +6,7 @@ metadata:
   name: {{ .Values.DB_CONFIGMAP }}
 data:
   dbname: "{{ .Values.DBName }}"
+  schema: "{{ .Values.DBSchema }}"
   host: "{{ .Values.Hostname }}"
   port: "{{ .Values.Port }}"
   sslmode: "{{ .Values.SSLMode }}"
