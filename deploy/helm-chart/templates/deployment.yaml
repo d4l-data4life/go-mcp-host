@@ -28,6 +28,7 @@ spec:
       - name: "{{ .Chart.Name }}"
         image: "{{ .Values.imageTag }}"
         imagePullPolicy: IfNotPresent
+        command: ["/app/go-mcp-host"]
         securityContext:
           readOnlyRootFilesystem: true
         ports:
