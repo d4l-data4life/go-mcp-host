@@ -51,18 +51,7 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 	dieEarly := make(chan struct{})
 	defer close(dieEarly)
 
-	// Get JWT secret from environment (base64-encoded)
-	jwtSecretB64 := viper.GetString("JWT_SECRET")
-	if jwtSecretB64 == "" {
-		logging.LogErrorf(nil, "JWT_SECRET environment variable is not set")
-		return dieEarly
-	}
-
-	jwtSecret, err := base64.StdEncoding.DecodeString(jwtSecretB64)
-	if err != nil {
-		logging.LogErrorf(err, "failed to decode JWT secret from base64")
-		return dieEarly
-	}
+	var jwtSecret []byte
 
 	// Initialize TokenValidator
 	var tokenValidator auth.TokenValidator
@@ -70,22 +59,30 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 	if remoteKeysURL != "" {
 		// Use remote token validator for external authentication
 		logging.LogInfof("Initializing remote token validator with URL: %s", remoteKeysURL)
+		var err error
 		tokenValidator, err = auth.NewRemoteKeyStore(context.Background(), remoteKeysURL)
 		if err != nil {
-			logging.LogErrorf(err, "failed to create remote key store - falling back to local JWT authentication")
-			// Fall back to local validator
-			tokenValidator, err = auth.NewLocalJWTValidator(jwtSecret)
-			if err != nil {
-				logging.LogErrorf(err, "failed to create local JWT validator")
-				return dieEarly
-			}
-			logging.LogInfof("Local JWT validator initialized successfully")
-		} else {
-			logging.LogInfof("Remote token validator initialized successfully")
+			logging.LogErrorf(err, "failed to create remote key store")
+			return dieEarly
 		}
+		logging.LogInfof("Remote token validator initialized successfully")
 	} else {
 		// Use local JWT validator for internal authentication
 		logging.LogInfof("REMOTE_KEYS_URL not configured - using local JWT authentication")
+
+		// Get JWT secret from environment (base64-encoded)
+		jwtSecretB64 := viper.GetString("JWT_SECRET")
+		if jwtSecretB64 == "" {
+			logging.LogErrorf(nil, "JWT_SECRET environment variable is not set")
+			return dieEarly
+		}
+
+		jwtSecret, err := base64.StdEncoding.DecodeString(jwtSecretB64)
+		if err != nil {
+			logging.LogErrorf(err, "failed to decode JWT secret from base64")
+			return dieEarly
+		}
+
 		tokenValidator, err = auth.NewLocalJWTValidator(jwtSecret)
 		if err != nil {
 			logging.LogErrorf(err, "failed to create local JWT validator")
