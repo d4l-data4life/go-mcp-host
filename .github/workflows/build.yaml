@@ -169,6 +169,13 @@ jobs:
         with:
           version: 'latest'
       
+      - name: Determine version
+        id: version
+        run: |
+          VERSION=$(git describe --tags --always)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
       - name: Update Chart version
         run: |
           sed -i "s/<github_release>/${{ steps.version.outputs.version }}/g" deploy/helm-chart/Chart.versionless.yaml
