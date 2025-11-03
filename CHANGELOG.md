@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- fix Helm chart issues
+- renamed all missing occurrences of GO_SVC_TEMPLATE -> GO_MCP_HOST
+
 ### Security
 
 ## [v1.0.0] - 2025-11-02
