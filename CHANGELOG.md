@@ -17,10 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+### Security
+
+## [v1.1.0] - 2025-11-03
+
+### Fixed
+
 - fix Helm chart issues
 - renamed all missing occurrences of GO_SVC_TEMPLATE -> GO_MCP_HOST
-
-### Security
 
 ## [v1.0.0] - 2025-11-02
 
@@ -38,5 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public Go library API for embedding in applications
 - Example programs demonstrating various usage patterns
 
-[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.1.0...HEAD
+[v1.1.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.0.0...v1.1.0
 [v1.0.0]: https://github.com/d4l-data4life/go-mcp-host/releases/tag/v1.0.0
