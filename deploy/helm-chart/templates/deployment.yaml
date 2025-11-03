@@ -22,7 +22,7 @@ spec:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       securityContext:
-        runAsUser: 1000
+        runAsUser: 65534
         runAsNonRoot: true
       containers:
       - name: "{{ .Chart.Name }}"
