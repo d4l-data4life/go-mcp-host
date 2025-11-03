@@ -46,6 +46,8 @@ spec:
             configMapKeyRef:
               name: {{ .Values.DB_CONFIGMAP }}
               key: host
+        - name: GO_MCP_HOST_PREFIX
+          value: "{{ .Values.APP.PREFIX }}"
         - name: GO_MCP_HOST_DB_PORT
           valueFrom:
             configMapKeyRef:

@@ -27,8 +27,10 @@ var (
 const (
 	// EnvPrefix is a prefix to all ENV variables used in this app
 	EnvPrefix = "GO_MCP_HOST"
-	// APIPrefixV1 URL prefix in API version 1
-	APIPrefixV1 = "/api/v1"
+	// Default prefix for external routes
+	DefaultPrefix = "/api"
+	// Prefix for internal routes
+	InternalPrefix = "/internal"
 
 	// ##### GENERAL VARIABLES
 	// Debug is a flag used to display debug messages
@@ -129,6 +131,7 @@ func SetupEnv() {
 	bindEnvVariable("DEBUG", Debug)
 	bindEnvVariable("HUMAN_READABLE_LOGS", HumanReadableLogs)
 	bindEnvVariable("DEBUG_CORS", DebugCORS)
+	bindEnvVariable("PREFIX", DefaultPrefix)
 	bindEnvVariable("PORT", DefaultPort)
 	bindEnvVariable("CORS_HOSTS", DefaultCorsHosts)
 	bindEnvVariable("HTTP_MAX_PARALLEL_REQUESTS", 8)
