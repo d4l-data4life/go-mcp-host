@@ -109,6 +109,13 @@ jobs:
       #     username: ${{ secrets.ACR_USERNAME }}
       #     password: ${{ secrets.ACR_PASSWORD }}
       
+      - name: Determine version
+        id: version
+        run: |
+          VERSION=$(git describe --tags --always)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -122,7 +129,8 @@ jobs:
             type=semver,pattern={{major}}
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
-      
+            type=raw,value=${{ steps.version.outputs.version }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -160,13 +168,6 @@ jobs:
         uses: azure/setup-helm@v4
         with:
           version: 'latest'
-      
-      - name: Determine version
-        id: version
-        run: |
-          VERSION=$(git describe --tag --always)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
       
       - name: Update Chart version
         run: |
