@@ -22,7 +22,7 @@ spec:
   - host: {{ .Values.APP.HOST }}
     http:
       paths:
-        - path: /api(/|$)(.*)
+        - path: {{ .Values.APP.PATH }}(/|$)(.*)
           pathType: Prefix
           backend:
             service:

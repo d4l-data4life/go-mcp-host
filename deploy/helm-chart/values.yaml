@@ -13,6 +13,10 @@ APP:
   # Hostname for the service (required for ingress)
   # Example: mcp-host.example.com
   HOST: ""
+
+  # Path for the service (required for ingress)
+  # Example: /api
+  PATH: "/api"
   
   # TLS secret name for HTTPS (leave empty for HTTP)
   # Example: tls-mcp-host-example-com
