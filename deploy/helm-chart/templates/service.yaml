@@ -1,7 +1,7 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: "{{ .Chart.Name }}"
+  name: "{{ .Release.Name }}"
   labels:
     app: "{{ .Release.Name }}"
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"

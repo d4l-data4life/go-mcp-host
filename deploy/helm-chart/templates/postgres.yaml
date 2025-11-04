@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres-{{ .Chart.Name }}
+  name: postgres-{{ .Release.Name }}
   annotations:
     ignore-check.kube-linter.io/no-read-only-root-fs: "This Postgres is used only for debugging and requires a writable filesystem"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: postgres-{{ .Chart.Name }}
+      app: postgres-{{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: postgres-{{ .Chart.Name }}
+        app: postgres-{{ .Release.Name }}
     spec:
       securityContext:
         runAsUser: 999
@@ -51,13 +51,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres-{{ .Chart.Name }}
+  name: postgres-{{ .Release.Name }}
 spec:
   ports:
     - port: 5432
       protocol: TCP
       targetPort: 5432
   selector:
-    app: postgres-{{ .Chart.Name }}
+    app: postgres-{{ .Release.Name }}
   type: ClusterIP
 {{- end }}

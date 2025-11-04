@@ -84,7 +84,7 @@ spec:
         - name: GO_MCP_HOST_SERVICE_SECRET
           valueFrom:
             secretKeyRef:
-              name: {{ .Chart.Name }}-secrets
+              name: {{ .Release.Name }}-secrets
               key: go-mcp-host-secret
         {{- range $key, $value := .Values.APP }}
         - name: GO_MCP_HOST_{{ $key }}
@@ -109,4 +109,4 @@ spec:
       volumes:
         - name: jwt-secret
           secret:
-            secretName: {{ .Chart.Name }}-jwt
+            secretName: {{ .Release.Name }}-jwt

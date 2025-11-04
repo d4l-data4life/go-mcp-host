@@ -14,7 +14,7 @@ metadata:
   labels:
     app: "{{ .Release.Name }}"
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-  name: "{{ .Chart.Name }}"
+  name: "{{ .Release.Name }}"
 spec:
   ingressClassName: nginx
   rules:
@@ -25,7 +25,7 @@ spec:
           pathType: Prefix
           backend:
             service:
-              name: {{ .Chart.Name }}
+              name: {{ .Release.Name }}
               port:
                 number: 80
   tls:
