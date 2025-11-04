@@ -21,10 +21,8 @@ func RegisterRoutes(
 	tokenValidator auth.TokenValidator,
 	jwtSecret []byte,
 ) {
-	prefix := viper.GetString("PREFIX")
-
 	// External routes (ingress routes)
-	r.Route(prefix, func(r chi.Router) {
+	r.Route(config.APIPrefixV1, func(r chi.Router) {
 		// Public routes (no authentication required)
 		authHandler := NewAuthHandler(db, jwtSecret)
 		r.Mount("/auth", authHandler.Routes())
