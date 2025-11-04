@@ -20,6 +20,10 @@ spec:
         prometheus.io/scrape: "true"
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if .Values.MCP_CONFIG_MAP }}
+        # Force pod restart when external MCP config changes
+        mcp-config-map: {{ .Values.MCP_CONFIG_MAP }}
+        {{- end }}
     spec:
       securityContext:
         runAsUser: 65534
@@ -106,7 +110,18 @@ spec:
         - mountPath: /keys
           name: jwt-secret
           readOnly: true
+        {{- if .Values.MCP_CONFIG_MAP }}
+        - mountPath: /app/config.yaml
+          name: mcp-config
+          subPath: config.yaml
+          readOnly: true
+        {{- end }}
       volumes:
         - name: jwt-secret
           secret:
             secretName: {{ .Release.Name }}-jwt
+        {{- if .Values.MCP_CONFIG_MAP }}
+        - name: mcp-config
+          configMap:
+            name: {{ .Values.MCP_CONFIG_MAP }}
+        {{- end }}

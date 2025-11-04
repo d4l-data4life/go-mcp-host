@@ -43,6 +43,9 @@ func NewClient(config Config) *Client {
 		config.Timeout = 5 * time.Minute
 	}
 
+	logging.LogDebugf("Initialized Ollama client with URL: %s (model: %s, timeout: %s)",
+		config.BaseURL, config.Model, config.Timeout)
+
 	return &Client{
 		baseURL: config.BaseURL,
 		model:   config.Model,

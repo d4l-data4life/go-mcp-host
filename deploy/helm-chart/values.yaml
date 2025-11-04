@@ -41,6 +41,12 @@ DB_CONFIGMAP: go-mcp-host-db-connection
 # Secret name containing database credentials
 DB_SECRET: go-mcp-host-db-credentials
 
+# MCP Configuration
+# Optional: ConfigMap name containing MCP configuration (config.yaml)
+# If set, the ConfigMap must have a key named "config.yaml"
+# Example: my-app-config
+MCP_CONFIG_MAP: ""
+
 # Number of pod replicas
 REPLICAS: 1
 
