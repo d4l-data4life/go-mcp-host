@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [v1.2.0] - 2025-11-05
+
+### Added
+
+- Added ability to edit and regenerate user messages
+
+### Fixed
+
+- Show error message if something goes wrong with the connection
+
 ## [v1.1.0] - 2025-11-03
 
 ### Fixed
@@ -46,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public Go library API for embedding in applications
 - Example programs demonstrating various usage patterns
 
-[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.2.0...HEAD
+[v1.2.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.1.0...v1.2.0
 [v1.1.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.0.0...v1.1.0
 [v1.0.0]: https://github.com/d4l-data4life/go-mcp-host/releases/tag/v1.0.0
