@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added ability to edit and regenerate user messages
-
 ### Changed
 
 ### Deprecated
@@ -19,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Show error message if something goes wrong with the connection
+- Fix linter issues
 
 ### Security
 
