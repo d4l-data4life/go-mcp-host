@@ -95,6 +95,10 @@ func (t *HTTPTransport) Send(ctx context.Context, request *protocol.JSONRPCReque
 	httpReq.Header.Set("Content-Type", "application/json")
 	for key, value := range t.headers {
 		httpReq.Header.Set(key, value)
+		// Debug log for Authorization header forwarding
+		if key == "Authorization" && len(value) > 5 {
+			logging.LogDebugf("Forwarding Authorization header (first 5 chars): %s...", value[:5])
+		}
 	}
 	// Per MCP HTTP spec, client must Accept both JSON responses and SSE
 	httpReq.Header.Set("Accept", "application/json, text/event-stream")
@@ -195,6 +199,10 @@ func (t *HTTPTransport) SendNotification(ctx context.Context, notification *prot
 	httpReq.Header.Set("Content-Type", "application/json")
 	for key, value := range t.headers {
 		httpReq.Header.Set(key, value)
+		// Debug log for Authorization header forwarding
+		if key == "Authorization" && len(value) > 5 {
+			logging.LogDebugf("Forwarding Authorization header (first 5 chars): %s...", value[:5])
+		}
 	}
 	// Ensure server can send either JSON or SSE compatible responses
 	httpReq.Header.Set("Accept", "application/json, text/event-stream")
