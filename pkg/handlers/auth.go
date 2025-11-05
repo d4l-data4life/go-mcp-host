@@ -228,6 +228,11 @@ func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 
 // generateJWT generates a JWT token for a user with proper claims and signing
 func generateJWT(userID uuid.UUID, jwtSecret []byte) (string, error) {
+	// Validate that jwtSecret is not empty
+	if len(jwtSecret) == 0 {
+		return "", errors.New("JWT secret is empty")
+	}
+
 	now := time.Now()
 
 	// Create a new JWT token with standard claims

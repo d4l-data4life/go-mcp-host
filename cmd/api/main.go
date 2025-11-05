@@ -77,7 +77,8 @@ func mainAPI(runCtx context.Context, svcName string) <-chan struct{} {
 			return dieEarly
 		}
 
-		jwtSecret, err := base64.StdEncoding.DecodeString(jwtSecretB64)
+		var err error
+		jwtSecret, err = base64.StdEncoding.DecodeString(jwtSecretB64)
 		if err != nil {
 			logging.LogErrorf(err, "failed to decode JWT secret from base64")
 			return dieEarly
