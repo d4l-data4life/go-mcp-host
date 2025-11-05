@@ -77,7 +77,7 @@ func (o *Orchestrator) Execute(ctx context.Context, request ChatRequest) (*ChatR
 		// Call LLM
 		response, err := o.llmClient.Chat(ctx, chatRequest)
 		if err != nil {
-			return nil, errors.Wrap(err, "LLM request failed")
+			return nil, fmt.Errorf("%w: %v", ErrLLMUnavailable, err)
 		}
 
 		totalTokens += response.Usage.TotalTokens
@@ -135,7 +135,7 @@ func (o *Orchestrator) Execute(ctx context.Context, request ChatRequest) (*ChatR
 		ToolsUsed:   toolExecutions,
 		Iterations:  iteration,
 		TotalTokens: totalTokens,
-		Error:       errors.New("max iterations reached"),
+		Error:       ErrMaxIterations,
 	}, nil
 }
 
@@ -189,9 +189,12 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 			// Stream LLM response
 			streamChan, err := o.llmClient.ChatStream(ctx, chatRequest)
 			if err != nil {
+				// Wrap with sentinel error for proper error detection
+				wrapped := fmt.Errorf("%w: %v", ErrLLMUnavailable, err)
+				logging.LogErrorf(wrapped, "Unable to start LLM streaming")
 				eventChan <- StreamEvent{
 					Type:  StreamEventTypeError,
-					Error: errors.Wrap(err, "LLM stream failed"),
+					Error: wrapped,
 					Done:  true,
 				}
 				return
@@ -292,7 +295,7 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 		eventChan <- StreamEvent{
 			Type:    StreamEventTypeError,
 			Content: "Maximum iterations reached",
-			Error:   errors.New("max iterations reached"),
+			Error:   ErrMaxIterations,
 			Done:    true,
 		}
 	}()
@@ -315,7 +318,7 @@ func (o *Orchestrator) executeTool(ctx context.Context, request ChatRequest, too
 	execution.ToolName = toolName
 
 	if serverName == "" {
-		execution.Error = errors.New("invalid tool name format")
+		execution.Error = ErrInvalidToolName
 		return execution, execution.Error
 	}
 
