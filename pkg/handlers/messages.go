@@ -293,223 +293,319 @@ func (h *MessagesHandler) StreamMessages(w http.ResponseWriter, r *http.Request)
 		var req SendMessageRequest
 		err := conn.ReadJSON(&req)
 		if err != nil {
-			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-				logging.LogDebugf("WebSocket closed normally")
-			} else {
-				logging.LogErrorf(err, "WebSocket read error")
-			}
+			h.handleWebSocketReadError(err)
 			break
 		}
 
-		// Validate input: content required unless messageId is present (regenerate case)
-		if req.Content == "" && req.MessageID == nil {
-			if err := conn.WriteJSON(map[string]interface{}{"type": "error", "error": "Message content is required"}); err != nil {
-				logging.LogErrorf(err, "Failed to write error to WebSocket")
-			}
-			_ = conn.WriteJSON(map[string]interface{}{"type": "done", "error": "Message content is required"})
+		// Validate input
+		if !h.validateStreamRequest(conn, &req) {
 			continue
 		}
 
-		var userMessage models.Message
-		var currentContent string
-		// Branch: edit/retry (messageId present) vs new message
-		if req.MessageID != nil {
-			// Load target user message and verify ownership
-			if err := h.db.Where("id = ? AND conversation_id = ? AND role = ?", *req.MessageID, convID, models.MessageRoleUser).First(&userMessage).Error; err != nil {
-				logging.LogErrorf(err, "Failed to load user message for edit/retry")
-				_ = conn.WriteJSON(map[string]interface{}{"type": "error", "error": "Message not found"})
-				_ = conn.WriteJSON(map[string]interface{}{"type": "done", "error": "Message not found"})
-				continue
-			}
-
-			// Update content if provided and different (edit case)
-			if req.Content != "" && req.Content != userMessage.Content {
-				if err := h.db.Model(&userMessage).Update("content", req.Content).Error; err != nil {
-					logging.LogErrorf(err, "Failed to update message content")
-					_ = conn.WriteJSON(map[string]interface{}{"type": "error", "error": "Failed to update message"})
-					_ = conn.WriteJSON(map[string]interface{}{"type": "done", "error": "Failed to update message"})
-					continue
-				}
-				userMessage.Content = req.Content
-			}
-			// If no content provided, use existing content (regenerate case)
-
-			// Clear persisted error in metadata if present
-			clearMessageError(h.db, &userMessage)
-
-			// Delete all subsequent messages (continue conversation from here)
-			if err := h.db.Where("conversation_id = ? AND created_at > ?", convID, userMessage.CreatedAt).Delete(&models.Message{}).Error; err != nil {
-				logging.LogErrorf(err, "Failed to delete subsequent messages")
-			}
-
-			// Acknowledge with current user message
-			if err := conn.WriteJSON(map[string]interface{}{
-				"type":    "user_message",
-				"message": userMessage,
-			}); err != nil {
-				logging.LogErrorf(err, "Failed to send user message confirmation (edit/retry)")
-				continue
-			}
-
-			currentContent = userMessage.Content
-		} else {
-			// Save new user message
-			userMessage = models.Message{
-				ID:             uuid.New(),
-				ConversationID: convID,
-				Role:           models.MessageRoleUser,
-				Content:        req.Content,
-			}
-			h.db.Create(&userMessage)
-
-			// Send user message confirmation
-			if err := conn.WriteJSON(map[string]interface{}{
-				"type":    "user_message",
-				"message": userMessage,
-			}); err != nil {
-				logging.LogErrorf(err, "Failed to send user message confirmation")
-				continue
-			}
-			currentContent = req.Content
-		}
-
-		// Build message history up to (but not including) the current user message
-		var messages []models.Message
-		h.db.Where("conversation_id = ? AND created_at < ?", convID, userMessage.CreatedAt).
-			Order("created_at ASC").
-			Find(&messages)
-
-		// Convert message history to agent format
-		agentMessages := h.convertToAgentMessages(messages)
-
-		// Stream agent response
-		streamChan, err := h.agent.ChatStream(context.Background(), agent.ChatRequest{
-			ConversationID: convID,
-			UserID:         userID,
-			BearerToken:    GetBearerTokenFromContext(r.Context()),
-			UserMessage:    currentContent,
-			Messages:       agentMessages,
-			Model:          conversation.Model,
-		})
-
-		if err != nil {
-			// Persist a short error to the user message, notify client and end
-			short := shortenUserError(err)
-			persistMessageError(h.db, &userMessage, short)
-			if writeErr := conn.WriteJSON(map[string]interface{}{
-				"type":  "error",
-				"error": short,
-			}); writeErr != nil {
-				logging.LogErrorf(writeErr, "Failed to write error to WebSocket")
-			}
-			_ = conn.WriteJSON(map[string]interface{}{
-				"type":  "done",
-				"error": short,
-			})
+		// Process user message (edit/retry or new)
+		userMessage, currentContent, ok := h.processUserMessage(conn, convID, &req)
+		if !ok {
 			continue
 		}
 
-		var fullContent string
-		var streamedToolExecs []map[string]interface{}
-		for event := range streamChan {
-			switch event.Type {
-			case agent.StreamEventTypeContent:
-				fullContent += event.Content
-				if err := conn.WriteJSON(map[string]interface{}{
-					"type":    "content",
-					"content": event.Content,
-				}); err != nil {
-					logging.LogErrorf(err, "Failed to send content stream")
-					return
-				}
-			case agent.StreamEventTypeToolStart:
-				if err := conn.WriteJSON(map[string]interface{}{
-					"type": "tool_start",
-					"tool": event.Tool,
-				}); err != nil {
-					logging.LogErrorf(err, "Failed to send tool start event")
-					return
-				}
-			case agent.StreamEventTypeToolComplete:
-				// Collect tool execution for metadata and forward to client
-				if event.Tool != nil {
-					entry := map[string]interface{}{
-						"serverName": event.Tool.ServerName,
-						"toolName":   event.Tool.ToolName,
-						"arguments":  event.Tool.Arguments,
-						"result":     event.Tool.Result,
-						"durationMs": event.Tool.Duration.Milliseconds(),
-					}
-					if event.Tool.Error != nil {
-						entry["error"] = event.Tool.Error.Error()
-					}
-					streamedToolExecs = append(streamedToolExecs, entry)
-				}
-				if err := conn.WriteJSON(map[string]interface{}{
-					"type": "tool_complete",
-					"tool": event.Tool,
-				}); err != nil {
-					logging.LogErrorf(err, "Failed to send tool complete event")
-					return
-				}
-			case agent.StreamEventTypeDone:
-				// Save assistant message
-				logging.LogDebugf("Saving assistant message: content=%s", fullContent)
-				metaJSON, _ := json.Marshal(map[string]interface{}{
-					"toolExecutions": streamedToolExecs,
-				})
-				assistantMessage := models.Message{
-					ID:             uuid.New(),
-					ConversationID: convID,
-					Role:           models.MessageRoleAssistant,
-					Content:        fullContent,
-					Metadata:       datatypes.JSON(metaJSON),
-				}
-				h.db.Create(&assistantMessage)
+		// Build and send agent response
+		h.streamAgentResponse(r.Context(), conn, convID, userID, &conversation, userMessage, currentContent, &req)
+	}
+}
 
-				// Auto-generate conversation title if this is the first message
-				if conversation.Title == "New Chat" || conversation.Title == "New Conversation" {
-					var messageCount int64
-					h.db.Model(&models.Message{}).Where("conversation_id = ?", convID).Count(&messageCount)
+// handleWebSocketReadError logs WebSocket read errors
+func (h *MessagesHandler) handleWebSocketReadError(err error) {
+	if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+		logging.LogDebugf("WebSocket closed normally")
+	} else {
+		logging.LogErrorf(err, "WebSocket read error")
+	}
+}
 
-					if messageCount == 2 {
-						go func() {
-							title := h.agent.GenerateChatTitle(context.Background(), req.Content)
-							if title != "" {
-								if err := h.db.Model(&models.Conversation{}).
-									Where("id = ?", convID).
-									Update("title", title).Error; err != nil {
-									logging.LogErrorf(err, "Failed to update conversation title")
-								} else {
-									logging.LogDebugf("Auto-generated title for conversation %s: %s", convID, title)
-								}
-							}
-						}()
-					}
-				}
+// validateStreamRequest validates the stream request and sends error if invalid
+func (h *MessagesHandler) validateStreamRequest(conn *websocket.Conn, req *SendMessageRequest) bool {
+	if req.Content == "" && req.MessageID == nil {
+		if err := conn.WriteJSON(map[string]interface{}{"type": "error", "error": "Message content is required"}); err != nil {
+			logging.LogErrorf(err, "Failed to write error to WebSocket")
+		}
+		_ = conn.WriteJSON(map[string]interface{}{"type": "done", "error": "Message content is required"})
+		return false
+	}
+	return true
+}
 
-				if err := conn.WriteJSON(map[string]interface{}{
-					"type":    "done",
-					"message": assistantMessage,
-				}); err != nil {
-					logging.LogErrorf(err, "Failed to send done event")
-					return
-				}
-			case agent.StreamEventTypeError:
-				short := shortenUserError(event.Error)
-				// Persist short error to user message
-				persistMessageError(h.db, &userMessage, short)
-				if err := conn.WriteJSON(map[string]interface{}{
-					"type":  "error",
-					"error": short,
-				}); err != nil {
-					logging.LogErrorf(err, "Failed to send error event")
-				}
-				_ = conn.WriteJSON(map[string]interface{}{
-					"type":  "done",
-					"error": short,
-				})
+// processUserMessage handles user message creation or editing
+func (h *MessagesHandler) processUserMessage(
+	conn *websocket.Conn,
+	convID uuid.UUID,
+	req *SendMessageRequest,
+) (models.Message, string, bool) {
+	if req.MessageID != nil {
+		return h.handleEditOrRetryMessage(conn, convID, req)
+	}
+	return h.handleNewMessage(conn, convID, req)
+}
+
+// handleEditOrRetryMessage handles editing or retrying an existing message
+func (h *MessagesHandler) handleEditOrRetryMessage(
+	conn *websocket.Conn,
+	convID uuid.UUID,
+	req *SendMessageRequest,
+) (models.Message, string, bool) {
+	var userMessage models.Message
+	// Load target user message and verify ownership
+	if err := h.db.Where("id = ? AND conversation_id = ? AND role = ?", *req.MessageID, convID, models.MessageRoleUser).First(&userMessage).Error; err != nil {
+		logging.LogErrorf(err, "Failed to load user message for edit/retry")
+		_ = conn.WriteJSON(map[string]interface{}{"type": "error", "error": "Message not found"})
+		_ = conn.WriteJSON(map[string]interface{}{"type": "done", "error": "Message not found"})
+		return models.Message{}, "", false
+	}
+
+	// Update content if provided and different (edit case)
+	if req.Content != "" && req.Content != userMessage.Content {
+		if err := h.db.Model(&userMessage).Update("content", req.Content).Error; err != nil {
+			logging.LogErrorf(err, "Failed to update message content")
+			_ = conn.WriteJSON(map[string]interface{}{"type": "error", "error": "Failed to update message"})
+			_ = conn.WriteJSON(map[string]interface{}{"type": "done", "error": "Failed to update message"})
+			return models.Message{}, "", false
+		}
+		userMessage.Content = req.Content
+	}
+
+	// Clear persisted error in metadata if present
+	clearMessageError(h.db, &userMessage)
+
+	// Delete all subsequent messages (continue conversation from here)
+	if err := h.db.Where("conversation_id = ? AND created_at > ?", convID, userMessage.CreatedAt).Delete(&models.Message{}).Error; err != nil {
+		logging.LogErrorf(err, "Failed to delete subsequent messages")
+	}
+
+	// Acknowledge with current user message
+	if err := conn.WriteJSON(map[string]interface{}{
+		"type":    "user_message",
+		"message": userMessage,
+	}); err != nil {
+		logging.LogErrorf(err, "Failed to send user message confirmation (edit/retry)")
+		return models.Message{}, "", false
+	}
+
+	return userMessage, userMessage.Content, true
+}
+
+// handleNewMessage creates and sends a new user message
+func (h *MessagesHandler) handleNewMessage(conn *websocket.Conn, convID uuid.UUID, req *SendMessageRequest) (models.Message, string, bool) {
+	userMessage := models.Message{
+		ID:             uuid.New(),
+		ConversationID: convID,
+		Role:           models.MessageRoleUser,
+		Content:        req.Content,
+	}
+	h.db.Create(&userMessage)
+
+	// Send user message confirmation
+	if err := conn.WriteJSON(map[string]interface{}{
+		"type":    "user_message",
+		"message": userMessage,
+	}); err != nil {
+		logging.LogErrorf(err, "Failed to send user message confirmation")
+		return models.Message{}, "", false
+	}
+
+	return userMessage, req.Content, true
+}
+
+// streamAgentResponse streams the agent's response through WebSocket
+func (h *MessagesHandler) streamAgentResponse(
+	ctx context.Context,
+	conn *websocket.Conn,
+	convID, userID uuid.UUID,
+	conversation *models.Conversation,
+	userMessage models.Message,
+	currentContent string,
+	req *SendMessageRequest,
+) {
+	// Build message history up to (but not including) the current user message
+	var messages []models.Message
+	h.db.Where("conversation_id = ? AND created_at < ?", convID, userMessage.CreatedAt).
+		Order("created_at ASC").
+		Find(&messages)
+
+	// Convert message history to agent format
+	agentMessages := h.convertToAgentMessages(messages)
+
+	// Stream agent response
+	streamChan, err := h.agent.ChatStream(context.Background(), agent.ChatRequest{
+		ConversationID: convID,
+		UserID:         userID,
+		BearerToken:    GetBearerTokenFromContext(ctx),
+		UserMessage:    currentContent,
+		Messages:       agentMessages,
+		Model:          conversation.Model,
+	})
+
+	if err != nil {
+		h.handleStreamError(conn, &userMessage, err)
+		return
+	}
+
+	h.processStreamEvents(conn, convID, conversation, userMessage, req, streamChan)
+}
+
+// handleStreamError handles errors when starting the stream
+func (h *MessagesHandler) handleStreamError(conn *websocket.Conn, userMessage *models.Message, err error) {
+	short := shortenUserError(err)
+	persistMessageError(h.db, userMessage, short)
+	if writeErr := conn.WriteJSON(map[string]interface{}{
+		"type":  "error",
+		"error": short,
+	}); writeErr != nil {
+		logging.LogErrorf(writeErr, "Failed to write error to WebSocket")
+	}
+	_ = conn.WriteJSON(map[string]interface{}{
+		"type":  "done",
+		"error": short,
+	})
+}
+
+// processStreamEvents processes events from the agent stream
+func (h *MessagesHandler) processStreamEvents(
+	conn *websocket.Conn,
+	convID uuid.UUID,
+	conversation *models.Conversation,
+	userMessage models.Message,
+	req *SendMessageRequest,
+	streamChan <-chan agent.StreamEvent,
+) {
+	var fullContent string
+	var streamedToolExecs []map[string]interface{}
+
+	for event := range streamChan {
+		switch event.Type {
+		case agent.StreamEventTypeContent:
+			fullContent += event.Content
+			if err := conn.WriteJSON(map[string]interface{}{
+				"type":    "content",
+				"content": event.Content,
+			}); err != nil {
+				logging.LogErrorf(err, "Failed to send content stream")
+				return
 			}
+		case agent.StreamEventTypeToolStart:
+			if err := conn.WriteJSON(map[string]interface{}{
+				"type": "tool_start",
+				"tool": event.Tool,
+			}); err != nil {
+				logging.LogErrorf(err, "Failed to send tool start event")
+				return
+			}
+		case agent.StreamEventTypeToolComplete:
+			streamedToolExecs = h.handleToolComplete(conn, event, streamedToolExecs)
+		case agent.StreamEventTypeDone:
+			h.handleStreamDone(conn, convID, conversation, fullContent, streamedToolExecs, req)
+		case agent.StreamEventTypeError:
+			h.handleStreamEventError(conn, &userMessage, event.Error)
+		}
+	}
+}
+
+// handleToolComplete handles tool completion events
+func (h *MessagesHandler) handleToolComplete(
+	conn *websocket.Conn,
+	event agent.StreamEvent,
+	streamedToolExecs []map[string]interface{},
+) []map[string]interface{} {
+	// Collect tool execution for metadata and forward to client
+	if event.Tool != nil {
+		entry := map[string]interface{}{
+			"serverName": event.Tool.ServerName,
+			"toolName":   event.Tool.ToolName,
+			"arguments":  event.Tool.Arguments,
+			"result":     event.Tool.Result,
+			"durationMs": event.Tool.Duration.Milliseconds(),
+		}
+		if event.Tool.Error != nil {
+			entry["error"] = event.Tool.Error.Error()
+		}
+		streamedToolExecs = append(streamedToolExecs, entry)
+	}
+	if err := conn.WriteJSON(map[string]interface{}{
+		"type": "tool_complete",
+		"tool": event.Tool,
+	}); err != nil {
+		logging.LogErrorf(err, "Failed to send tool complete event")
+	}
+	return streamedToolExecs
+}
+
+// handleStreamDone handles the stream completion event
+func (h *MessagesHandler) handleStreamDone(
+	conn *websocket.Conn,
+	convID uuid.UUID,
+	conversation *models.Conversation,
+	fullContent string,
+	streamedToolExecs []map[string]interface{},
+	req *SendMessageRequest,
+) {
+	// Save assistant message
+	logging.LogDebugf("Saving assistant message: content=%s", fullContent)
+	metaJSON, _ := json.Marshal(map[string]interface{}{
+		"toolExecutions": streamedToolExecs,
+	})
+	assistantMessage := models.Message{
+		ID:             uuid.New(),
+		ConversationID: convID,
+		Role:           models.MessageRoleAssistant,
+		Content:        fullContent,
+		Metadata:       datatypes.JSON(metaJSON),
+	}
+	h.db.Create(&assistantMessage)
+
+	// Auto-generate conversation title if this is the first message
+	h.maybeGenerateTitle(convID, conversation, req.Content)
+
+	if err := conn.WriteJSON(map[string]interface{}{
+		"type":    "done",
+		"message": assistantMessage,
+	}); err != nil {
+		logging.LogErrorf(err, "Failed to send done event")
+	}
+}
+
+// handleStreamEventError handles error events from the stream
+func (h *MessagesHandler) handleStreamEventError(conn *websocket.Conn, userMessage *models.Message, err error) {
+	short := shortenUserError(err)
+	persistMessageError(h.db, userMessage, short)
+	if writeErr := conn.WriteJSON(map[string]interface{}{
+		"type":  "error",
+		"error": short,
+	}); writeErr != nil {
+		logging.LogErrorf(writeErr, "Failed to send error event")
+	}
+	_ = conn.WriteJSON(map[string]interface{}{
+		"type":  "done",
+		"error": short,
+	})
+}
+
+// maybeGenerateTitle auto-generates a conversation title if needed
+func (h *MessagesHandler) maybeGenerateTitle(convID uuid.UUID, conversation *models.Conversation, content string) {
+	if conversation.Title == "New Chat" || conversation.Title == "New Conversation" {
+		var messageCount int64
+		h.db.Model(&models.Message{}).Where("conversation_id = ?", convID).Count(&messageCount)
+
+		if messageCount == 2 {
+			go func() {
+				title := h.agent.GenerateChatTitle(context.Background(), content)
+				if title != "" {
+					if err := h.db.Model(&models.Conversation{}).
+						Where("id = ?", convID).
+						Update("title", title).Error; err != nil {
+						logging.LogErrorf(err, "Failed to update conversation title")
+					} else {
+						logging.LogDebugf("Auto-generated title for conversation %s: %s", convID, title)
+					}
+				}
+			}()
 		}
 	}
 }
