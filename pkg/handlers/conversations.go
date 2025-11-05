@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/models"
@@ -113,7 +114,7 @@ func (h *ConversationsHandler) CreateConversation(w http.ResponseWriter, r *http
 		req.Title = "New Conversation"
 	}
 	if req.Model == "" {
-		req.Model = "llama3.2"
+		req.Model = viper.GetString("OLLAMA_DEFAULT_MODEL")
 	}
 
 	// Create conversation

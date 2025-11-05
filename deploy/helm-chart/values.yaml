@@ -33,6 +33,13 @@ APP:
   # For Azure AD: https://login.microsoftonline.com/common/discovery/keys
   # Leave empty to disable remote JWT validation
   REMOTE_KEYS_URL: ""
+  
+  # Ollama Configuration (optional - can also be set via MCP_CONFIG_MAP config.yaml)
+  # Base URL for Ollama API
+  # OLLAMA_BASE_URL: "http://localhost:11434"
+  
+  # Default model to use when client doesn't specify one
+  # OLLAMA_DEFAULT_MODEL: "llama3.2"
 
 # Database configuration
 # ConfigMap name containing database connection details

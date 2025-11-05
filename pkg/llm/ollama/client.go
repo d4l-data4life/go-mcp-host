@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 
@@ -34,10 +35,10 @@ type Config struct {
 // NewClient creates a new Ollama client
 func NewClient(config Config) *Client {
 	if config.BaseURL == "" {
-		config.BaseURL = "http://localhost:11434"
+		config.BaseURL = viper.GetString("OLLAMA_BASE_URL")
 	}
 	if config.Model == "" {
-		config.Model = "llama3.2"
+		config.Model = viper.GetString("OLLAMA_DEFAULT_MODEL")
 	}
 	if config.Timeout == 0 {
 		config.Timeout = 5 * time.Minute

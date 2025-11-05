@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
@@ -59,7 +60,7 @@ func NewAgent(db *gorm.DB, mcpManager *manager.Manager, llmClient llm.Client, cf
 		cfg.SystemPrompt = "You are a helpful AI assistant with access to various tools. Use them to answer user questions accurately."
 	}
 	if cfg.DefaultModel == "" {
-		cfg.DefaultModel = "llama3.2"
+		cfg.DefaultModel = viper.GetString("OLLAMA_DEFAULT_MODEL")
 	}
 
 	agent := &Agent{

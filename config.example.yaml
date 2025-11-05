@@ -7,6 +7,18 @@
 # Can also be set via GO_MCP_HOST_SERVICE_SECRET environment variable
 service_secret: "change-this-to-a-strong-random-secret"
 
+# Ollama Configuration
+# Base URL for Ollama API (default: http://localhost:11434)
+ollama_base_url: http://localhost:11434
+# Default model to use when none is specified (default: llama3.2)
+ollama_default_model: llama3.2
+
+# CORS Configuration - Add your frontend URLs here
+cors_hosts: "http://localhost:3334 http://localhost:3000"
+
+# Remote Keys URL for Azure AD authentication (leave empty for local development)
+remote_keys_url: ""
+
 # MCP Servers Configuration
 mcp_servers:
   # Example: Weather server

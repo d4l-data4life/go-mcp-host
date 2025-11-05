@@ -16,4 +16,3 @@ var (
 	// ErrToolExecutionFailed indicates a tool execution failed
 	ErrToolExecutionFailed = errors.New("tool execution failed")
 )
-
