@@ -612,11 +612,12 @@ func (h *MessagesHandler) maybeGenerateTitle(convID uuid.UUID, conversation *mod
 
 // convertToAgentMessages converts database messages to agent messages
 func (h *MessagesHandler) convertToAgentMessages(dbMessages []models.Message) []llm.Message {
-	// Convert all messages except the last one (which is the current user message that will be added by orchestrator)
-	// Also skip system messages as the orchestrator adds its own system prompt
+	// Convert all messages to agent format
+	// Skip system messages as the orchestrator adds its own system prompt
+	// The current user message is passed separately via ChatRequest.UserMessage
 	var agentMessages []llm.Message
 
-	for i := 0; i < len(dbMessages)-1; i++ {
+	for i := 0; i < len(dbMessages); i++ {
 		msg := dbMessages[i]
 
 		// Skip system messages
