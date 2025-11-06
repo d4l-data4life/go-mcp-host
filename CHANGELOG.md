@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [v1.3.0] - 2025-11-06
+
+### Fixed
+
+- Default model usage wasn't working properly
+
 ## [v1.2.1] - 2025-11-05
 
 ### Fixed
@@ -58,7 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public Go library API for embedding in applications
 - Example programs demonstrating various usage patterns
 
-[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.3.0...HEAD
+[v1.3.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.2.1...v1.3.0
 [v1.2.1]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.2.0...v1.2.1
 [v1.2.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.1.0...v1.2.0
 [v1.1.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.0.0...v1.1.0
