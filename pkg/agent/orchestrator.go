@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/helpers"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
@@ -385,7 +386,7 @@ func (o *Orchestrator) executeTool(
 
 	// Coerce/validate arguments to match the tool's input schema when possible
 	// This helps when the model emits strings for numbers/booleans, etc.
-	if schema := binding.Tool.InputSchema; schema != nil {
+	if schema := helpers.ToolInputSchemaToMap(binding.Tool); len(schema) > 0 {
 		logging.LogDebugf("Coercing args for %s.%s: before=%v schema=%v", binding.ServerName, binding.Tool.Name, args, schema)
 		args = coerceArgumentsToSchema(schema, args)
 		logging.LogDebugf("Coercing args for %s.%s: after=%v", binding.ServerName, binding.Tool.Name, args)

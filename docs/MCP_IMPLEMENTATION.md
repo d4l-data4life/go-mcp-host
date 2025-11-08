@@ -19,9 +19,10 @@ The MCP implementation is organized into three main layers:
          │                   │
 ┌────────▼────────┐  ┌───────▼────────┐
 │  Client Layer   │  │  Client Layer  │
-│ (pkg/mcp/client)│  │ (per server)   │
-│ - Tool calls    │  │ - Resource read│
-│ - Notifications │  │ - Prompts      │
+│ (mark3labs/     │  │ (per server)   │
+│  mcp-go/client) │  │ - Resource read│
+│ - Tool calls    │  │ - Prompts      │
+│ - Notifications │  │ - Streaming    │
 └────────┬────────┘  └───────┬────────┘
          │                   │
 ┌────────▼────────┐  ┌───────▼────────┐
@@ -32,112 +33,70 @@ The MCP implementation is organized into three main layers:
 
 ## Components
 
-### 1. Protocol Layer (`pkg/mcp/protocol/`)
+### 1. Protocol Layer (`github.com/mark3labs/mcp-go/mcp`)
 
-Defines all MCP protocol types according to the specification.
+Instead of maintaining our own protocol definitions, we now import the `mcp` package from [mark3labs/mcp-go](https://github.com/mark3labs/mcp-go). It contains the JSON-RPC primitives, typed MCP messages, and helpers (e.g., `mcp.Tool`, `mcp.Resource`, `mcp.InitializeRequest`, `mcp.ClientCapabilities`). This guarantees we stay aligned with the latest MCP specification without duplicating work.
 
-**Key Files:**
-- `types.go` - All JSON-RPC and MCP message types
+### 2. Transport Layer (`github.com/mark3labs/mcp-go/client/transport`)
 
-**Key Types:**
-- `JSONRPCRequest`, `JSONRPCResponse`, `JSONRPCNotification` - JSON-RPC 2.0 messages
-- `InitializeRequest/Result` - Connection initialization
-- `Tool`, `Resource`, `Prompt` - Core MCP primitives
-- `ClientCapabilities`, `ServerCapabilities` - Feature negotiation
+The upstream module also provides production-ready transports. We rely on:
 
-### 2. Transport Layer (`pkg/mcp/transport/`)
+- `transport.NewStdioWithOptions` for local processes launched via stdio.
+- `transport.NewStreamableHTTP` for HTTP/SSE servers (including bearer/OAuth helpers).
 
-Handles communication with MCP servers via different mechanisms.
-
-**Files:**
-- `transport.go` - Transport interface definition
-- `stdio.go` - Stdio transport implementation
-- `http.go` - HTTP/SSE transport implementation
-
-**Stdio Transport:**
 ```go
-// Creates a new process and communicates via stdin/stdout
-transport, err := transport.NewStdioTransport(
+// Stdio example
+trans := transport.NewStdioWithOptions(
     "npx",
-    []string{"-y", "@modelcontextprotocol/server-filesystem", "/tmp"},
     []string{"DEBUG=true"},
+    []string{"-y", "@modelcontextprotocol/server-filesystem", "/tmp"},
 )
-```
 
-Features:
-- Spawns process with `exec.Command`
-- Newline-delimited JSON messages
-- Background read loop for responses
-- Stderr monitoring for debugging
-- Automatic process cleanup
-
-**HTTP Transport:**
-```go
-// Connects to remote HTTP MCP server
-transport, err := transport.NewHTTPTransport(
+// HTTP example
+trans, err := transport.NewStreamableHTTP(
     "https://api.example.com/mcp",
-    map[string]string{"Authorization": "Bearer token"},
-    false, // TLS skip verify
+    transport.WithHTTPHeaders(map[string]string{"Authorization": "Bearer token"}),
+    transport.WithContinuousListening(),
 )
 ```
 
-Features:
-- HTTP POST for requests
-- Server-Sent Events (SSE) for notifications
-- Bearer token authentication
-- TLS configuration
-- Automatic reconnection
+### 3. Client Layer (`github.com/mark3labs/mcp-go/client`)
 
-### 3. Client Layer (`pkg/mcp/client/`)
+`mcp-go/client` replaces our previous in-repo client. It handles initialization, paging, notifications, sampling callbacks, etc. Example:
 
-Implements the MCP client that uses transports to communicate with servers.
-
-**Files:**
-- `client.go` - Core MCP client implementation
-- `factory.go` - Client creation from configuration
-
-**Client Usage:**
 ```go
-// Create client with transport
-config := client.ClientConfig{
-    ClientName:    "go-mcp-host",
-    ClientVersion: "1.0.0",
-    Capabilities: protocol.ClientCapabilities{
-        Roots: &protocol.RootsCapability{
-            ListChanged: true,
-        },
-    },
+trans := transport.NewStdioWithOptions("npx", nil, []string{"-y", "@modelcontextprotocol/server-filesystem"})
+cli := mcpclient.NewClient(trans, mcpclient.WithClientCapabilities(mcp.ClientCapabilities{
+    Roots:    &struct{ ListChanged bool }{ListChanged: true},
+    Sampling: &struct{}{},
+}))
+
+if err := cli.Start(ctx); err != nil {
+    log.Fatal(err)
 }
 
-client := client.NewClient(transport, config)
+if _, err := cli.Initialize(ctx, mcp.InitializeRequest{
+    Params: mcp.InitializeParams{
+        ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
+        ClientInfo:      mcp.Implementation{Name: "go-mcp-host", Version: "1.0.0"},
+        Capabilities:    cli.GetClientCapabilities(),
+    },
+}); err != nil {
+    log.Fatal(err)
+}
 
-// Initialize connection
-err := client.Initialize(ctx, config)
-
-// List available tools
-tools, err := client.ListTools(ctx)
-
-// Call a tool
-result, err := client.CallTool(ctx, "read_file", map[string]interface{}{
-    "path": "/tmp/test.txt",
-})
-
-// Set up notification handlers
-client.SetOnToolsListChanged(func() {
-    // Refresh tools when list changes
+tools, _ := cli.ListTools(ctx, mcp.ListToolsRequest{})
+result, _ := cli.CallTool(ctx, mcp.CallToolRequest{
+    Params: mcp.CallToolParams{
+        Name: "read_file",
+        Arguments: map[string]any{
+            "path": "/tmp/test.txt",
+        },
+    },
 })
 ```
 
-**Client Methods:**
-- `Initialize()` - Perform MCP handshake
-- `ListTools()` - Discover available tools
-- `CallTool()` - Execute a tool
-- `ListResources()` - Discover available resources
-- `ReadResource()` - Read resource contents
-- `ListPrompts()` - Discover available prompts
-- `GetPrompt()` - Get prompt template
-- `Ping()` - Health check
-- `Close()` - Close connection
+All low-level concerns (JSON-RPC framing, SSE parsing, notification fan-out) now live in this upstream package.
 
 ### 4. Manager Layer (`pkg/mcp/manager/`)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/render"
 	"gorm.io/gorm"
 
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/helpers"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
@@ -125,7 +126,7 @@ func (h *MCPServersHandler) ListTools(w http.ResponseWriter, r *http.Request) {
 			Name:        tool.Tool.Name,
 			Description: tool.Tool.Description,
 			Server:      tool.ServerName,
-			InputSchema: tool.Tool.InputSchema,
+			InputSchema: helpers.ToolInputSchemaToMap(tool.Tool),
 		})
 	}
 
@@ -152,7 +153,7 @@ func (h *MCPServersHandler) ListResources(w http.ResponseWriter, r *http.Request
 			URI:         resource.Resource.URI,
 			Name:        resource.Resource.Name,
 			Description: resource.Resource.Description,
-			MimeType:    resource.Resource.MimeType,
+			MimeType:    resource.Resource.MIMEType,
 			Server:      resource.ServerName,
 		})
 	}

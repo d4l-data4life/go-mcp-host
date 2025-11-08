@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/helpers"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 )
 
@@ -111,7 +112,7 @@ func (a *Agent) GetAvailableTools(ctx context.Context, userID uuid.UUID, bearerT
 			ServerName:  t.ServerName,
 			ToolName:    t.Tool.Name,
 			Description: t.Tool.Description,
-			InputSchema: t.Tool.InputSchema,
+			InputSchema: helpers.ToolInputSchemaToMap(t.Tool),
 		}
 	}
 
@@ -132,7 +133,7 @@ func (a *Agent) GetAvailableResources(ctx context.Context, userID uuid.UUID, bea
 			URI:         r.Resource.URI,
 			Name:        r.Resource.Name,
 			Description: r.Resource.Description,
-			MimeType:    r.Resource.MimeType,
+			MimeType:    r.Resource.MIMEType,
 		}
 	}
 
