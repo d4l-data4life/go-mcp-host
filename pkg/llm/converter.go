@@ -7,7 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/helpers"
+	schemautil "github.com/d4l-data4life/go-mcp-host/pkg/mcp/schemautil"
 )
 
 const toolNameSeparator = "__"
@@ -20,7 +20,7 @@ func QualifiedToolName(serverName, toolName string) string {
 // ConvertMCPToolToLLMTool converts an MCP tool to LLM function format
 func ConvertMCPToolToLLMTool(mcpTool mcp.Tool, serverName string) Tool {
 	// Clone schema (don't add "strict" as it confuses some models)
-	parameters := cloneMap(helpers.ToolInputSchemaToMap(mcpTool))
+	parameters := cloneMap(schemautil.ToolSchemaMap(mcpTool))
 
 	return Tool{
 		Type: ToolTypeFunction,
@@ -66,11 +66,12 @@ func ConvertMCPContentToString(contents []mcp.Content) string {
 		}
 
 		if embedded, ok := mcp.AsEmbeddedResource(content); ok {
-			switch resource := embedded.Resource.(type) {
-			case mcp.TextResourceContents:
-				appendLine(resource.Text)
-			case *mcp.TextResourceContents:
-				appendLine(resource.Text)
+			if textResource, ok := mcp.AsTextResourceContents(embedded.Resource); ok {
+				appendLine(textResource.Text)
+				continue
+			}
+			if blobResource, ok := mcp.AsBlobResourceContents(embedded.Resource); ok && blobResource.Blob != "" {
+				appendLine("[Binary resource]")
 			}
 		}
 	}

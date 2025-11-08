@@ -604,7 +604,7 @@ func (m *Manager) getSessionKey(conversationID uuid.UUID, serverName string) str
 
 func (m *Manager) getUserKey(userID uuid.UUID, serverName string) string {
 	key := fmt.Sprintf("%s:%s", userID.String(), serverName)
-	logging.LogDebugf("Generated cache key: %s", key)
+	// logging.LogDebugf("Generated cache key: %s", key)
 	return key
 }
 

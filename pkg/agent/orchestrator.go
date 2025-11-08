@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
-	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/helpers"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
+	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/schemautil"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
@@ -386,10 +386,24 @@ func (o *Orchestrator) executeTool(
 
 	// Coerce/validate arguments to match the tool's input schema when possible
 	// This helps when the model emits strings for numbers/booleans, etc.
-	if schema := helpers.ToolInputSchemaToMap(binding.Tool); len(schema) > 0 {
-		logging.LogDebugf("Coercing args for %s.%s: before=%v schema=%v", binding.ServerName, binding.Tool.Name, args, schema)
-		args = coerceArgumentsToSchema(schema, args)
-		logging.LogDebugf("Coercing args for %s.%s: after=%v", binding.ServerName, binding.Tool.Name, args)
+	// if schema := helpers.ToolInputSchemaToMap(binding.Tool); len(schema) > 0 {
+	// 	logging.LogDebugf("Coercing args for %s.%s: before=%v schema=%v", binding.ServerName, binding.Tool.Name, args, schema)
+	// 	args = coerceArgumentsToSchema(schema, args)
+	// 	logging.LogDebugf("Coercing args for %s.%s: after=%v", binding.ServerName, binding.Tool.Name, args)
+	// Use user cache instead of session tools since session may not exist yet
+	if toolsWithServer, err := o.mcpManager.ListAllToolsForUser(ctx, request.UserID, request.BearerToken); err == nil {
+		var schema map[string]interface{}
+		for _, tws := range toolsWithServer {
+			if tws.ServerName == binding.ServerName && tws.Tool.Name == binding.Tool.Name {
+				schema = schemautil.ToolSchemaMap(tws.Tool)
+				break
+			}
+		}
+		if schema != nil {
+			logging.LogDebugf("Coercing args for %s.%s: before=%v schema=%v", binding.ServerName, binding.Tool.Name, args, schema)
+			args = coerceArgumentsToSchema(schema, args)
+			logging.LogDebugf("Coercing args for %s.%s: after=%v", binding.ServerName, binding.Tool.Name, args)
+		}
 	}
 
 	execution.Arguments = args

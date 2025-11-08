@@ -201,23 +201,11 @@ func resourceContentToString(contents []mcp.ResourceContents) string {
 	}
 
 	for _, c := range contents {
-		switch rc := c.(type) {
-		case mcp.TextResourceContents:
-			if rc.Text != "" {
-				return rc.Text
-			}
-		case *mcp.TextResourceContents:
-			if rc.Text != "" {
-				return rc.Text
-			}
-		case mcp.BlobResourceContents:
-			if rc.Blob != "" {
-				return "[Binary content]"
-			}
-		case *mcp.BlobResourceContents:
-			if rc.Blob != "" {
-				return "[Binary content]"
-			}
+		if text, ok := mcp.AsTextResourceContents(c); ok && text.Text != "" {
+			return text.Text
+		}
+		if blob, ok := mcp.AsBlobResourceContents(c); ok && blob.Blob != "" {
+			return "[Binary content]"
 		}
 	}
 

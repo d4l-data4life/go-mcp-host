@@ -40,13 +40,5 @@ func ToolInputSchemaToMap(tool mcp.Tool) map[string]interface{} {
 		schema = map[string]interface{}{}
 	}
 
-	// Some LLM providers require object schemas to explicitly declare an empty
-	// properties map, even when the schema accepts no arguments.
-	if schemaType, ok := schema["type"].(string); ok && schemaType == "object" {
-		if _, hasProps := schema["properties"]; !hasProps {
-			schema["properties"] = map[string]interface{}{}
-		}
-	}
-
 	return schema
 }
