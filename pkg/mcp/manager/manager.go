@@ -2,6 +2,8 @@ package manager
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -31,6 +33,8 @@ type Manager struct {
 	serverCapsCache    *cache.Cache // key: serverName -> *mcp.ServerCapabilities
 	serverLocks        map[string]*sync.Mutex
 
+	userServerLocks map[string]*sync.Mutex // key: userID:serverName
+
 	clientName         string
 	clientVersion      string
 	clientCapabilities mcp.ClientCapabilities
@@ -38,15 +42,15 @@ type Manager struct {
 
 // SessionInfo holds information about an active MCP session
 type SessionInfo struct {
-	Client         *mcpclient.Client
-	ConversationID uuid.UUID
+	Client          *mcpclient.Client
+	ConversationID  uuid.UUID
 	UserID         uuid.UUID
-	ServerName     string
-	ServerConfig   config.MCPServerConfig
-	SessionID      uuid.UUID
-	BearerToken    string // Bearer token used to create this session (for HTTP servers with forwardBearer)
-	LastAccessed   time.Time
-	mu             sync.RWMutex
+	ServerName      string
+	ServerConfig    config.MCPServerConfig
+	SessionID       uuid.UUID
+	BearerTokenHash string // Hash of bearer token used to create this session
+	LastAccessed    time.Time
+	mu              sync.RWMutex
 }
 
 // NewMCPManager creates a new MCP manager
@@ -69,6 +73,7 @@ func NewMCPManager(serverConfigs []config.MCPServerConfig) *Manager {
 		userCacheTTL:       30 * time.Minute,
 		serverCapsCache:    cache.New(10*time.Minute, 5*time.Minute),
 		serverLocks:        make(map[string]*sync.Mutex),
+		userServerLocks:    make(map[string]*sync.Mutex),
 		clientName:         "go-mcp-host",
 		clientVersion:      config.Version,
 		clientCapabilities: clientCaps,
@@ -104,7 +109,7 @@ func (m *Manager) ListAllToolsForUser(ctx context.Context, userID uuid.UUID, bea
 		}
 
 		logging.LogDebugf("Fetching fresh tools for user %s server %s", userID, server.Name)
-		fetched, err := m.fetchToolsForUser(ctx, server, bearerToken)
+		fetched, err := m.fetchToolsForUser(ctx, userID, server, bearerToken)
 		if err != nil {
 			logging.LogWarningf(err, "Failed to fetch tools for server %s", server.Name)
 			continue
@@ -140,7 +145,7 @@ func (m *Manager) ListAllResourcesForUser(ctx context.Context, userID uuid.UUID,
 		}
 
 		logging.LogDebugf("Fetching fresh resources for user %s server %s", userID, server.Name)
-		fetched, err := m.fetchResourcesForUser(ctx, server, bearerToken)
+		fetched, err := m.fetchResourcesForUser(ctx, userID, server, bearerToken)
 		if err != nil {
 			logging.LogWarningf(err, "Failed to fetch resources for server %s", server.Name)
 			continue
@@ -191,8 +196,8 @@ func (m *Manager) ProbeServer(
 	return &capsCopy, nil
 }
 
-func (m *Manager) fetchToolsForUser(ctx context.Context, serverCfg config.MCPServerConfig, bearerToken string) ([]mcp.Tool, error) {
-	lock := m.getServerLock(serverCfg.Name)
+func (m *Manager) fetchToolsForUser(ctx context.Context, userID uuid.UUID, serverCfg config.MCPServerConfig, bearerToken string) ([]mcp.Tool, error) {
+	lock := m.getUserServerLock(userID, serverCfg.Name)
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -211,10 +216,11 @@ func (m *Manager) fetchToolsForUser(ctx context.Context, serverCfg config.MCPSer
 
 func (m *Manager) fetchResourcesForUser(
 	ctx context.Context,
+	userID uuid.UUID,
 	serverCfg config.MCPServerConfig,
 	bearerToken string,
 ) ([]mcp.Resource, error) {
-	lock := m.getServerLock(serverCfg.Name)
+	lock := m.getUserServerLock(userID, serverCfg.Name)
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -265,14 +271,15 @@ func (m *Manager) GetOrCreateSession(
 ) (*SessionInfo, error) {
 	if serverConfig.Type == "http" && serverConfig.ForwardBearer {
 		sessionKey := m.getSessionKey(conversationID, serverConfig.Name)
+		incomingHash := hashToken(bearerToken)
 
 		m.mu.RLock()
 		if session, exists := m.sessions[sessionKey]; exists {
 			session.mu.RLock()
-			sessionToken := session.BearerToken
+			sessionToken := session.BearerTokenHash
 			session.mu.RUnlock()
 
-			if sessionToken == bearerToken {
+			if sessionToken == incomingHash {
 				session.mu.Lock()
 				session.LastAccessed = time.Now()
 				session.mu.Unlock()
@@ -337,7 +344,9 @@ func (m *Manager) GetOrCreateSession(
 		return nil, errors.Wrapf(err, "failed to create MCP client for server %s", serverConfig.Name)
 	}
 
+	tokenHash := hashToken(bearerToken)
 	session := &SessionInfo{
+<<<<<<< HEAD
 		Client:         mcpClient,
 		ConversationID: conversationID,
 		UserID:         userID,
@@ -346,6 +355,15 @@ func (m *Manager) GetOrCreateSession(
 		SessionID:      uuid.New(),
 		BearerToken:    bearerToken,
 		LastAccessed:   time.Now(),
+=======
+		Client:          mcpClient,
+		ConversationID:  conversationID,
+		ServerName:      serverConfig.Name,
+		ServerConfig:    serverConfig,
+		SessionID:       uuid.New(),
+		BearerTokenHash: tokenHash,
+		LastAccessed:    time.Now(),
+>>>>>>> 4a2bc0a (use token hashing and individual user-locks)
 	}
 
 	m.registerNotificationHandlers(session)
@@ -617,7 +635,21 @@ func (m *Manager) getServerLock(serverName string) *sync.Mutex {
 	return m.serverLocks[serverName]
 }
 
+<<<<<<< HEAD
 // GetServerConfig returns the enabled configuration for the given server name.
+=======
+func (m *Manager) getUserServerLock(userID uuid.UUID, serverName string) *sync.Mutex {
+	key := fmt.Sprintf("%s:%s", userID.String(), serverName)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.userServerLocks[key] == nil {
+		m.userServerLocks[key] = &sync.Mutex{}
+	}
+	return m.userServerLocks[key]
+}
+
+// GetServerConfig returns the configured MCP server entry by name.
+>>>>>>> 4a2bc0a (use token hashing and individual user-locks)
 func (m *Manager) GetServerConfig(serverName string) (config.MCPServerConfig, bool) {
 	for _, server := range m.serverConfigs {
 		if server.Enabled && server.Name == serverName {
@@ -712,4 +744,12 @@ func cloneHeaders(headers map[string]string) map[string]string {
 		cloned[k] = v
 	}
 	return cloned
+}
+
+func hashToken(token string) string {
+	if token == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }

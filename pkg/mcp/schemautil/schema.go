@@ -34,12 +34,32 @@ func ToolSchemaJSON(tool mcp.Tool) json.RawMessage {
 func ToolSchemaMap(tool mcp.Tool) map[string]interface{} {
 	raw := ToolSchemaJSON(tool)
 	if len(raw) == 0 {
-		return nil
+		return defaultObjectSchema()
 	}
 
 	var schema map[string]interface{}
 	if err := json.Unmarshal(raw, &schema); err != nil {
-		return nil
+		return defaultObjectSchema()
 	}
+
+	if schema == nil {
+		return defaultObjectSchema()
+	}
+
+	// Ensure object schemas always expose a properties map; OpenAI rejects
+	// zero-argument tools that omit it.
+	if schemaType, ok := schema["type"].(string); ok && schemaType == "object" {
+		if props, hasProps := schema["properties"]; !hasProps || props == nil {
+			schema["properties"] = map[string]interface{}{}
+		}
+	}
+
 	return schema
+}
+
+func defaultObjectSchema() map[string]interface{} {
+	return map[string]interface{}{
+		"type":       "object",
+		"properties": map[string]interface{}{},
+	}
 }
