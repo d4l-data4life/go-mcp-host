@@ -8,10 +8,16 @@ import (
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
+const (
+	HTTPServerModeBatch  = "batch"
+	HTTPServerModeStream = "stream"
+)
+
 // MCPServerConfig represents configuration for an MCP server connection
 type MCPServerConfig struct {
 	Name          string            `yaml:"name"                  json:"name"`
 	Type          string            `yaml:"type"                  json:"type"` // "stdio" or "http"
+	Mode          string            `yaml:"mode,omitempty"        json:"mode,omitempty"` // "batch" (default) or "stream"
 	Command       string            `yaml:"command,omitempty"     json:"command,omitempty"`
 	Args          []string          `yaml:"args,omitempty"        json:"args,omitempty"`
 	Env           map[string]string `yaml:"env,omitempty"         json:"env,omitempty"`

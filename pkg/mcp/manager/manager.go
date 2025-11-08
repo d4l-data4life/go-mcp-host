@@ -746,15 +746,30 @@ func (m *Manager) createTransport(
 		if serverCfg.URL == "" {
 			return nil, errors.New("http transport requires URL")
 		}
+		mode := serverCfg.Mode
+		if mode == "" {
+			mode = config.HTTPServerModeBatch
+		}
 		headers := cloneHeaders(serverCfg.Headers)
 		if serverCfg.ForwardBearer && bearerToken != "" {
 			headers["Authorization"] = "Bearer " + bearerToken
 		}
-		opts := []mcptransport.StreamableHTTPCOption{
-			mcptransport.WithHTTPHeaders(headers),
-			mcptransport.WithContinuousListening(),
+		switch mode {
+		case config.HTTPServerModeBatch:
+			opts := []mcptransport.StreamableHTTPCOption{
+				mcptransport.WithHTTPHeaders(headers),
+				mcptransport.WithContinuousListening(),
+			}
+			return mcptransport.NewStreamableHTTP(serverCfg.URL, opts...)
+		case config.HTTPServerModeStream:
+			var opts []mcptransport.ClientOption
+			if len(headers) > 0 {
+				opts = append(opts, mcptransport.WithHeaders(headers))
+			}
+			return mcptransport.NewSSE(serverCfg.URL, opts...)
+		default:
+			return nil, errors.Errorf("unsupported http mode %q for server %s", serverCfg.Mode, serverCfg.Name)
 		}
-		return mcptransport.NewStreamableHTTP(serverCfg.URL, opts...)
 	default:
 		return nil, errors.Errorf("unsupported transport type: %s", serverCfg.Type)
 	}

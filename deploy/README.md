@@ -82,6 +82,7 @@ mcp_servers:
   - name: my-api
     type: http
     url: "https://api.mycompany.com/mcp"
+    mode: batch  # HTTP mode: batch (JSON) or stream (SSE)
     headers:
       Authorization: "Bearer YOUR_TOKEN"
     forwardBearer: false  # Set to true to forward user's bearer token

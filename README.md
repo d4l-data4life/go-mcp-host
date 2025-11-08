@@ -222,6 +222,7 @@ mcp_servers:
   - name: my-api
     type: http
     url: "https://api.example.com/mcp"
+    mode: batch  # HTTP mode: batch (JSON) or stream (SSE)
     headers:
       X-API-Key: "your-api-key"
     forwardBearer: true  # Forward user's bearer token
