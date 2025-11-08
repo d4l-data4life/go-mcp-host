@@ -21,6 +21,24 @@ import (
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
+const defaultListenRetryInterval = time.Second
+
+// Option configures optional Manager behavior.
+type Option func(*Manager)
+
+// WithReconnectPolicy sets the reconnect attempt/delay behavior for MCP sessions.
+func WithReconnectPolicy(attempts int, delay time.Duration) Option {
+	return func(m *Manager) {
+		if attempts < 0 {
+			attempts = 0
+		}
+		m.maxReconnectAttempts = attempts
+		if delay > 0 {
+			m.reconnectDelay = delay
+		}
+	}
+}
+
 // Manager manages MCP client sessions for conversations
 type Manager struct {
 	serverConfigs      []config.MCPServerConfig
@@ -35,26 +53,29 @@ type Manager struct {
 
 	userServerLocks map[string]*sync.Mutex // key: userID:serverName
 
-	clientName         string
-	clientVersion      string
-	clientCapabilities mcp.ClientCapabilities
+	clientName           string
+	clientVersion        string
+	clientCapabilities   mcp.ClientCapabilities
+	maxReconnectAttempts int
+	reconnectDelay       time.Duration
 }
 
 // SessionInfo holds information about an active MCP session
 type SessionInfo struct {
-	Client          *mcpclient.Client
-	ConversationID  uuid.UUID
-	UserID         uuid.UUID
-	ServerName      string
-	ServerConfig    config.MCPServerConfig
-	SessionID       uuid.UUID
-	BearerTokenHash string // Hash of bearer token used to create this session
-	LastAccessed    time.Time
-	mu              sync.RWMutex
+	Client           *mcpclient.Client
+	ConversationID   uuid.UUID
+	UserID           uuid.UUID
+	ServerName       string
+	ServerConfig     config.MCPServerConfig
+	SessionID        uuid.UUID
+	BearerTokenHash  string // Hash of bearer token used to create this session
+	LastAccessed     time.Time
+	mu               sync.RWMutex
+	reconnectTracker *reconnectTracker
 }
 
 // NewMCPManager creates a new MCP manager
-func NewMCPManager(serverConfigs []config.MCPServerConfig) *Manager {
+func NewMCPManager(serverConfigs []config.MCPServerConfig, opts ...Option) *Manager {
 	clientCaps := mcp.ClientCapabilities{
 		Roots: &struct {
 			ListChanged bool `json:"listChanged,omitempty"`
@@ -65,18 +86,24 @@ func NewMCPManager(serverConfigs []config.MCPServerConfig) *Manager {
 	}
 
 	m := &Manager{
-		serverConfigs:      serverConfigs,
-		sessions:           make(map[string]*SessionInfo),
-		sessionTimeout:     30 * time.Minute,
-		userToolsCache:     cache.New(30*time.Minute, 10*time.Minute),
-		userResourcesCache: cache.New(30*time.Minute, 10*time.Minute),
-		userCacheTTL:       30 * time.Minute,
-		serverCapsCache:    cache.New(10*time.Minute, 5*time.Minute),
-		serverLocks:        make(map[string]*sync.Mutex),
-		userServerLocks:    make(map[string]*sync.Mutex),
-		clientName:         "go-mcp-host",
-		clientVersion:      config.Version,
-		clientCapabilities: clientCaps,
+		serverConfigs:        serverConfigs,
+		sessions:             make(map[string]*SessionInfo),
+		sessionTimeout:       30 * time.Minute,
+		userToolsCache:       cache.New(30*time.Minute, 10*time.Minute),
+		userResourcesCache:   cache.New(30*time.Minute, 10*time.Minute),
+		userCacheTTL:         30 * time.Minute,
+		serverCapsCache:      cache.New(10*time.Minute, 5*time.Minute),
+		serverLocks:          make(map[string]*sync.Mutex),
+		userServerLocks:      make(map[string]*sync.Mutex),
+		clientName:           "go-mcp-host",
+		clientVersion:        config.Version,
+		clientCapabilities:   clientCaps,
+		maxReconnectAttempts: 0,
+		reconnectDelay:       defaultListenRetryInterval,
+	}
+
+	for _, opt := range opts {
+		opt(m)
 	}
 
 	go m.cleanupLoop()
@@ -221,7 +248,7 @@ func (m *Manager) ProbeServer(
 		}
 	}
 
-	cli, initResult, err := m.newInitializedClient(ctx, serverCfg, bearerToken)
+	cli, initResult, err := m.newInitializedClient(ctx, serverCfg, bearerToken, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +264,7 @@ func (m *Manager) fetchToolsForUser(ctx context.Context, userID uuid.UUID, serve
 	lock.Lock()
 	defer lock.Unlock()
 
-	cli, _, err := m.newInitializedClient(ctx, serverCfg, bearerToken)
+	cli, _, err := m.newInitializedClient(ctx, serverCfg, bearerToken, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +287,7 @@ func (m *Manager) fetchResourcesForUser(
 	lock.Lock()
 	defer lock.Unlock()
 
-	cli, _, err := m.newInitializedClient(ctx, serverCfg, bearerToken)
+	cli, _, err := m.newInitializedClient(ctx, serverCfg, bearerToken, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -277,8 +304,9 @@ func (m *Manager) newInitializedClient(
 	ctx context.Context,
 	serverCfg config.MCPServerConfig,
 	bearerToken string,
+	tracker *reconnectTracker,
 ) (*mcpclient.Client, *mcp.InitializeResult, error) {
-	trans, err := m.createTransport(serverCfg, bearerToken)
+	trans, err := m.createTransport(serverCfg, bearerToken, tracker)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -375,31 +403,27 @@ func (m *Manager) GetOrCreateSession(
 		bearerToken != "",
 	)
 
-	mcpClient, initResult, err := m.newInitializedClient(ctx, serverConfig, bearerToken)
+	var tracker *reconnectTracker
+	if serverConfig.Type == "http" && (m.maxReconnectAttempts > 0 || m.reconnectDelay != defaultListenRetryInterval) {
+		tracker = newReconnectTracker(m, conversationID, serverConfig.Name)
+	}
+
+	mcpClient, initResult, err := m.newInitializedClient(ctx, serverConfig, bearerToken, tracker)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create MCP client for server %s", serverConfig.Name)
 	}
 
 	tokenHash := hashToken(bearerToken)
 	session := &SessionInfo{
-<<<<<<< HEAD
-		Client:         mcpClient,
-		ConversationID: conversationID,
-		UserID:         userID,
-		ServerName:     serverConfig.Name,
-		ServerConfig:   serverConfig,
-		SessionID:      uuid.New(),
-		BearerToken:    bearerToken,
-		LastAccessed:   time.Now(),
-=======
-		Client:          mcpClient,
-		ConversationID:  conversationID,
-		ServerName:      serverConfig.Name,
-		ServerConfig:    serverConfig,
-		SessionID:       uuid.New(),
-		BearerTokenHash: tokenHash,
-		LastAccessed:    time.Now(),
->>>>>>> 4a2bc0a (use token hashing and individual user-locks)
+		Client:           mcpClient,
+		ConversationID:   conversationID,
+		UserID:           userID,
+		ServerName:       serverConfig.Name,
+		ServerConfig:     serverConfig,
+		SessionID:        uuid.New(),
+		BearerTokenHash:  tokenHash,
+		LastAccessed:     time.Now(),
+		reconnectTracker: tracker,
 	}
 
 	m.registerNotificationHandlers(session)
@@ -449,6 +473,10 @@ func (m *Manager) CloseSession(conversationID uuid.UUID, serverName string) erro
 	delete(m.sessions, sessionKey)
 	m.mu.Unlock()
 
+	if session.reconnectTracker != nil {
+		session.reconnectTracker.markClosed()
+	}
+
 	if err := session.Client.Close(); err != nil {
 		logging.LogErrorf(err, "Failed to close MCP client")
 		return err
@@ -467,6 +495,10 @@ func (m *Manager) CloseAllSessionsForConversation(conversationID uuid.UUID) erro
 	for key, session := range m.sessions {
 		if session.ConversationID == conversationID {
 			delete(m.sessions, key)
+
+			if session.reconnectTracker != nil {
+				session.reconnectTracker.markClosed()
+			}
 
 			if err := session.Client.Close(); err != nil {
 				errs = append(errs, err)
@@ -646,6 +678,9 @@ func (m *Manager) cleanupInactiveSessions() {
 
 		if now.Sub(lastAccessed) > m.sessionTimeout {
 			delete(m.sessions, key)
+			if session.reconnectTracker != nil {
+				session.reconnectTracker.markClosed()
+			}
 			session.Client.Close()
 			logging.LogDebugf("Cleaned up inactive MCP session: conversation=%s server=%s", session.ConversationID, session.ServerName)
 		}
@@ -671,9 +706,6 @@ func (m *Manager) getServerLock(serverName string) *sync.Mutex {
 	return m.serverLocks[serverName]
 }
 
-<<<<<<< HEAD
-// GetServerConfig returns the enabled configuration for the given server name.
-=======
 func (m *Manager) getUserServerLock(userID uuid.UUID, serverName string) *sync.Mutex {
 	key := fmt.Sprintf("%s:%s", userID.String(), serverName)
 	m.mu.Lock()
@@ -685,7 +717,6 @@ func (m *Manager) getUserServerLock(userID uuid.UUID, serverName string) *sync.M
 }
 
 // GetServerConfig returns the configured MCP server entry by name.
->>>>>>> 4a2bc0a (use token hashing and individual user-locks)
 func (m *Manager) GetServerConfig(serverName string) (config.MCPServerConfig, bool) {
 	for _, server := range m.serverConfigs {
 		if server.Enabled && server.Name == serverName {
@@ -733,6 +764,7 @@ func (m *Manager) buildInitializeRequest() mcp.InitializeRequest {
 func (m *Manager) createTransport(
 	serverCfg config.MCPServerConfig,
 	bearerToken string,
+	tracker *reconnectTracker,
 ) (mcptransport.Interface, error) {
 	switch serverCfg.Type {
 	case "stdio":
@@ -754,17 +786,25 @@ func (m *Manager) createTransport(
 		if serverCfg.ForwardBearer && bearerToken != "" {
 			headers["Authorization"] = "Bearer " + bearerToken
 		}
+		logger := m.newTransportLogger(serverCfg.Name, tracker)
+
 		switch mode {
 		case config.HTTPServerModeBatch:
 			opts := []mcptransport.StreamableHTTPCOption{
 				mcptransport.WithHTTPHeaders(headers),
 				mcptransport.WithContinuousListening(),
 			}
+			if logger != nil {
+				opts = append(opts, mcptransport.WithHTTPLogger(logger))
+			}
 			return mcptransport.NewStreamableHTTP(serverCfg.URL, opts...)
 		case config.HTTPServerModeStream:
 			var opts []mcptransport.ClientOption
 			if len(headers) > 0 {
 				opts = append(opts, mcptransport.WithHeaders(headers))
+			}
+			if logger != nil {
+				opts = append(opts, mcptransport.WithSSELogger(logger))
 			}
 			return mcptransport.NewSSE(serverCfg.URL, opts...)
 		default:
@@ -803,4 +843,11 @@ func hashToken(token string) string {
 	}
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+func (m *Manager) newTransportLogger(serverName string, tracker *reconnectTracker) *transportLogger {
+	return &transportLogger{
+		serverName: serverName,
+		tracker:    tracker,
+	}
 }
