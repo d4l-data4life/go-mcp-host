@@ -91,73 +91,109 @@ func (m *Manager) GetConfiguredServers() []config.MCPServerConfig {
 
 // ListAllToolsForUser returns all tools for all enabled servers, scoped by user (short-lived clients + cache)
 func (m *Manager) ListAllToolsForUser(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ToolWithServer, error) {
-	var results []ToolWithServer
+	var (
+		results []ToolWithServer
+		mu      sync.Mutex
+		wg      sync.WaitGroup
+	)
+
 	for _, server := range m.serverConfigs {
 		if !server.Enabled {
 			continue
 		}
-		key := m.getUserKey(userID, server.Name)
 
-		if tools, found := m.userToolsCache.Get(key); found {
-			if toolList, ok := tools.([]mcp.Tool); ok {
-				logging.LogDebugf("Using cached tools for user %s server %s: %d tools", userID, server.Name, len(toolList))
-				for _, t := range toolList {
-					results = append(results, ToolWithServer{Tool: t, ServerName: server.Name})
+		server := server
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			key := m.getUserKey(userID, server.Name)
+
+			if tools, found := m.userToolsCache.Get(key); found {
+				if toolList, ok := tools.([]mcp.Tool); ok {
+					logging.LogDebugf("Using cached tools for user %s server %s: %d tools", userID, server.Name, len(toolList))
+					mu.Lock()
+					for _, t := range toolList {
+						results = append(results, ToolWithServer{Tool: t, ServerName: server.Name})
+					}
+					mu.Unlock()
+					return
 				}
-				continue
 			}
-		}
 
-		logging.LogDebugf("Fetching fresh tools for user %s server %s", userID, server.Name)
-		fetched, err := m.fetchToolsForUser(ctx, userID, server, bearerToken)
-		if err != nil {
-			logging.LogWarningf(err, "Failed to fetch tools for server %s", server.Name)
-			continue
-		}
+			logging.LogDebugf("Fetching fresh tools for user %s server %s", userID, server.Name)
+			fetched, err := m.fetchToolsForUser(ctx, userID, server, bearerToken)
+			if err != nil {
+				logging.LogWarningf(err, "Failed to fetch tools for server %s", server.Name)
+				return
+			}
 
-		m.userToolsCache.Set(key, fetched, m.userCacheTTL)
-		logging.LogDebugf("Cached tools for user %s server %s: %d tools", userID, server.Name, len(fetched))
+			m.userToolsCache.Set(key, fetched, m.userCacheTTL)
+			logging.LogDebugf("Cached tools for user %s server %s: %d tools", userID, server.Name, len(fetched))
 
-		for _, t := range fetched {
-			results = append(results, ToolWithServer{Tool: t, ServerName: server.Name})
-		}
+			mu.Lock()
+			for _, t := range fetched {
+				results = append(results, ToolWithServer{Tool: t, ServerName: server.Name})
+			}
+			mu.Unlock()
+		}()
 	}
+
+	wg.Wait()
 	return results, nil
 }
 
 // ListAllResourcesForUser returns all resources for all enabled servers, scoped by user (short-lived clients + cache)
 func (m *Manager) ListAllResourcesForUser(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ResourceWithServer, error) {
-	var results []ResourceWithServer
+	var (
+		results []ResourceWithServer
+		mu      sync.Mutex
+		wg      sync.WaitGroup
+	)
+
 	for _, server := range m.serverConfigs {
 		if !server.Enabled {
 			continue
 		}
-		key := m.getUserKey(userID, server.Name)
 
-		if resources, found := m.userResourcesCache.Get(key); found {
-			if resourceList, ok := resources.([]mcp.Resource); ok {
-				logging.LogDebugf("Using cached resources for user %s server %s: %d resources", userID, server.Name, len(resourceList))
-				for _, r := range resourceList {
-					results = append(results, ResourceWithServer{Resource: r, ServerName: server.Name})
+		server := server
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			key := m.getUserKey(userID, server.Name)
+
+			if resources, found := m.userResourcesCache.Get(key); found {
+				if resourceList, ok := resources.([]mcp.Resource); ok {
+					logging.LogDebugf("Using cached resources for user %s server %s: %d resources", userID, server.Name, len(resourceList))
+					mu.Lock()
+					for _, r := range resourceList {
+						results = append(results, ResourceWithServer{Resource: r, ServerName: server.Name})
+					}
+					mu.Unlock()
+					return
 				}
-				continue
 			}
-		}
 
-		logging.LogDebugf("Fetching fresh resources for user %s server %s", userID, server.Name)
-		fetched, err := m.fetchResourcesForUser(ctx, userID, server, bearerToken)
-		if err != nil {
-			logging.LogWarningf(err, "Failed to fetch resources for server %s", server.Name)
-			continue
-		}
+			logging.LogDebugf("Fetching fresh resources for user %s server %s", userID, server.Name)
+			fetched, err := m.fetchResourcesForUser(ctx, userID, server, bearerToken)
+			if err != nil {
+				logging.LogWarningf(err, "Failed to fetch resources for server %s", server.Name)
+				return
+			}
 
-		m.userResourcesCache.Set(key, fetched, m.userCacheTTL)
-		logging.LogDebugf("Cached resources for user %s server %s: %d resources", userID, server.Name, len(fetched))
+			m.userResourcesCache.Set(key, fetched, m.userCacheTTL)
+			logging.LogDebugf("Cached resources for user %s server %s: %d resources", userID, server.Name, len(fetched))
 
-		for _, r := range fetched {
-			results = append(results, ResourceWithServer{Resource: r, ServerName: server.Name})
-		}
+			mu.Lock()
+			for _, r := range fetched {
+				results = append(results, ResourceWithServer{Resource: r, ServerName: server.Name})
+			}
+			mu.Unlock()
+		}()
 	}
+
+	wg.Wait()
 	return results, nil
 }
 
