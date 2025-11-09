@@ -35,6 +35,9 @@ type Config struct {
 	// OpenAIAPIKey optionally overrides the API key for the OpenAI-compatible endpoint.
 	OpenAIAPIKey string
 
+	// OpenAIModel is the default model to use for the LLM client.
+	OpenAIDefaultModel string
+
 	// LLMClient allows providing a fully custom llm.Client implementation.
 	LLMClient llm.Client
 
@@ -64,7 +67,7 @@ type Config struct {
 //	})
 func NewHost(ctx context.Context, cfg Config) (*Host, error) {
 	// Create MCP manager
-	mcpManager := manager.NewManager(cfg.MCPServers)
+	mcpManager := manager.NewMCPManager(cfg.MCPServers)
 	openAIConfig := config.GetOpenAIConfig()
 
 	// Set agent defaults if not provided
@@ -80,6 +83,9 @@ func NewHost(ctx context.Context, cfg Config) (*Host, error) {
 		apiKey := cfg.OpenAIAPIKey
 		if apiKey == "" {
 			apiKey = openAIConfig.APIKey
+		}
+		if agentConfig.DefaultModel == "" {
+			agentConfig.DefaultModel = cfg.OpenAIDefaultModel
 		}
 		llmClient = llmopenai.NewClient(llmopenai.Config{
 			APIKey:  apiKey,

@@ -9,7 +9,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/config"
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 
@@ -397,15 +396,8 @@ func (o *Orchestrator) executeTool(
 	logging.LogDebugf("Executing tool: %s.%s with args: %v", binding.ServerName, binding.Tool.Name, args)
 
 	// Ensure session exists for this server (just-in-time creation)
-	mcpCfg := config.GetMCPConfig()
-	var serverCfg config.MCPServerConfig
-	for _, s := range mcpCfg.Servers {
-		if s.Enabled && s.Name == binding.ServerName {
-			serverCfg = s
-			break
-		}
-	}
-	if serverCfg.Name == "" {
+	serverCfg, ok := o.mcpManager.GetServerConfig(binding.ServerName)
+	if !ok {
 		execution.Error = errors.Errorf("unknown or disabled server: %s", binding.ServerName)
 		return execution, execution.Error
 	}

@@ -51,8 +51,8 @@ type SessionInfo struct {
 	mu             sync.RWMutex
 }
 
-// NewManager creates a new MCP manager
-func NewManager(serverConfigs []config.MCPServerConfig) *Manager {
+// NewMCPManager creates a new MCP manager
+func NewMCPManager(serverConfigs []config.MCPServerConfig) *Manager {
 	factory := client.NewFactory("go-mcp-host", config.Version)
 
 	m := &Manager{
@@ -657,6 +657,16 @@ func (m *Manager) getServerLock(serverName string) *sync.Mutex {
 		m.serverLocks[serverName] = &sync.Mutex{}
 	}
 	return m.serverLocks[serverName]
+}
+
+// GetServerConfig returns the enabled configuration for the given server name.
+func (m *Manager) GetServerConfig(serverName string) (config.MCPServerConfig, bool) {
+	for _, server := range m.serverConfigs {
+		if server.Enabled && server.Name == serverName {
+			return server, true
+		}
+	}
+	return config.MCPServerConfig{}, false
 }
 
 // GetCacheStats returns cache statistics for debugging

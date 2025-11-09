@@ -36,7 +36,7 @@ func SetupRoutes(ctx context.Context, mux *chi.Mux, tokenValidator auth.TokenVal
 		}
 	}
 
-	mcpManager := manager.NewManager(mcpConfig.Servers)
+	mcpManager := manager.NewMCPManager(mcpConfig.Servers)
 
 	// Initialize LLM client (OpenAI-compatible for both OpenAI and Ollama endpoints)
 	var llmClient llm.Client

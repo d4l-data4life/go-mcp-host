@@ -56,8 +56,9 @@ func main() {
 				Description: "Weather information",
 			},
 		},
-		OpenAIBaseURL: "http://localhost:11434",
-		DB:            db,
+		OpenAIBaseURL:      "http://localhost:11434",
+		OpenAIDefaultModel: "llama3.2",
+		DB:                 db,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create MCP Host: %v", err)
@@ -90,7 +91,7 @@ func main() {
 	}
 
 	fmt.Printf("🚀 Server starting on port %s\n", port)
-	fmt.Printf("   Try: curl -X POST http://localhost:%s/api/chat -d '{\"message\":\"What's the weather in Paris?\"}'\n", port)
+	fmt.Printf("   Try: curl -X POST http://localhost:%s/api/chat -d '{\"message\":\"What is the weather in NYC?\"}'\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 
@@ -112,7 +113,7 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 		</style>
 	</head>
 	<body>
-		<h1>🤖 MCP Host Demo</h1>
+		<h1>MCP Host Demo</h1>
 		<p>This is a simple web application with embedded go-mcp-host functionality.</p>
 		
 		<div class="chat-box">

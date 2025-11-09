@@ -149,7 +149,7 @@ Manages multiple MCP clients per conversation with lifecycle and caching.
 **Manager Usage:**
 ```go
 // Create manager
-manager := manager.NewManager(db, 1*time.Hour) // 1 hour session timeout
+manager := manager.NewMCPManager(db, 1*time.Hour) // 1 hour session timeout
 
 // Get or create session for conversation
 session, err := manager.GetOrCreateSession(ctx, conversationID, serverConfig)
@@ -292,7 +292,7 @@ func main() {
     var db *gorm.DB
     
     // Create manager
-    mcpManager := manager.NewManager(db, 1*time.Hour)
+    mcpManager := manager.NewMCPManager(db, 1*time.Hour)
     
     // Configure filesystem server
     serverConfig := config.MCPServerConfig{

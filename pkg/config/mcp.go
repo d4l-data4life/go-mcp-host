@@ -65,18 +65,8 @@ func GetMCPConfig() MCPConfig {
 func GetMCPServers() []MCPServerConfig {
 	var servers []MCPServerConfig
 	if err := viper.UnmarshalKey("mcp_servers", &servers); err != nil {
-		// Log the error and return default configuration
-		fmt.Printf("Warning: Failed to unmarshal mcp_servers from config: %v\n", err)
-		return []MCPServerConfig{
-			{
-				Name:        "filesystem",
-				Type:        "stdio",
-				Command:     "npx",
-				Args:        []string{"-y", "@modelcontextprotocol/server-filesystem", "/tmp"},
-				Enabled:     false,
-				Description: "Local filesystem access",
-			},
-		}
+		logging.LogErrorf(err, "Failed to unmarshal MCP servers configuration")
+		return nil
 	}
 	fmt.Printf("Loaded %d MCP servers from configuration\n", len(servers))
 	for i, s := range servers {
