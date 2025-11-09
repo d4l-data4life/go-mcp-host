@@ -188,21 +188,38 @@ jobs:
       
       - name: Publish Helm chart to GitHub Pages
         run: |
-          # Create or update gh-pages branch
-          git fetch origin gh-pages || git checkout --orphan gh-pages
-          git checkout gh-pages || git checkout --orphan gh-pages
-          
+          # Stash any uncommitted changes to avoid conflicts
+          git stash push -m "Uncommitted changes before helm publish" || true
+
+          # Fetch gh-pages branch if it exists
+          git fetch origin gh-pages 2>/dev/null || true
+
+          # Create or switch to gh-pages branch
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            # Branch exists remotely, checkout and reset to remote
+            git checkout gh-pages
+            git reset --hard origin/gh-pages
+          else
+            # Branch doesn't exist, create orphan branch
+            git checkout --orphan gh-pages
+            git rm -rf . 2>/dev/null || true
+          fi
+
           # Copy packaged chart
           cp .helm-charts/*.tgz .
-          
+
           # Remove .helm-charts directory to avoid indexing it
           rm -rf .helm-charts
-          
+
           # Update index
           helm repo index . --url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
-          
-          # Commit and push
+
+          # Commit and force push
           git add *.tgz index.yaml
           git commit -m "Publish Helm chart ${{ steps.version.outputs.version }}" || echo "No changes to commit"
-          git push origin gh-pages
+          git push --force origin gh-pages
+
+          # Restore stashed changes
+          git checkout main 2>/dev/null || git checkout develop 2>/dev/null || git checkout $(git symbolic-ref --short HEAD)
+          git stash pop || true
       
