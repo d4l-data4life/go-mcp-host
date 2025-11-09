@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
@@ -310,14 +311,38 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 }
 
 func logLLMRequest(label string, req llm.ChatRequest) {
-	payload, err := json.MarshalIndent(req, "", "  ")
-	if err != nil {
-		logging.LogDebugf("LLM request (%s) marshal error: %v", label, err)
-		logging.LogDebugf("LLM request (%s) summary: model=%s messages=%d tools=%d stream=%v",
-			label, req.Model, len(req.Messages), len(req.Tools), req.Stream)
+	if viper.GetBool("VERBOSE") {
+		payload, _ := json.MarshalIndent(req, "", "  ")
+		logging.LogDebugf("LLM request (%s):\n%s", label, string(payload))
 		return
 	}
-	logging.LogDebugf("LLM request (%s):\n%s", label, string(payload))
+
+	temperature := "nil"
+	if req.Temperature != nil {
+		temperature = fmt.Sprintf("%0.2f", *req.Temperature)
+	}
+
+	maxTokens := "nil"
+	if req.MaxTokens != nil {
+		maxTokens = fmt.Sprintf("%d", *req.MaxTokens)
+	}
+
+	topP := "nil"
+	if req.TopP != nil {
+		topP = fmt.Sprintf("%0.2f", *req.TopP)
+	}
+
+	logging.LogDebugf(
+		"LLM request (%s): model=%s messages=%v tools=%d stream=%v temperature=%s maxTokens=%s topP=%s",
+		label,
+		req.Model,
+		req.Messages,
+		len(req.Tools),
+		req.Stream,
+		temperature,
+		maxTokens,
+		topP,
+	)
 }
 
 // prepareToolContext fetches available tools and builds both LLM tool definitions and a reverse lookup map.
