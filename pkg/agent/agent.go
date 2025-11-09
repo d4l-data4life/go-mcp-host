@@ -98,9 +98,9 @@ func (a *Agent) CloseConversation(conversationID uuid.UUID) error {
 	return a.mcpManager.CloseAllSessionsForConversation(conversationID)
 }
 
-// GetAvailableTools returns all available tools for a conversation
-func (a *Agent) GetAvailableTools(ctx context.Context, conversationID uuid.UUID) ([]ToolInfo, error) {
-	toolsWithServer, err := a.mcpManager.GetAllTools(ctx, conversationID)
+// GetAvailableTools returns all available tools for a user (short-lived clients + cache)
+func (a *Agent) GetAvailableTools(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ToolInfo, error) {
+	toolsWithServer, err := a.mcpManager.ListAllToolsForUser(ctx, userID, bearerToken)
 	if err != nil {
 		return nil, err
 	}
@@ -118,9 +118,9 @@ func (a *Agent) GetAvailableTools(ctx context.Context, conversationID uuid.UUID)
 	return tools, nil
 }
 
-// GetAvailableResources returns all available resources for a conversation
-func (a *Agent) GetAvailableResources(ctx context.Context, conversationID uuid.UUID) ([]ResourceInfo, error) {
-	resourcesWithServer, err := a.mcpManager.GetAllResources(ctx, conversationID)
+// GetAvailableResources returns all available resources for a user (short-lived clients + cache)
+func (a *Agent) GetAvailableResources(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ResourceInfo, error) {
+	resourcesWithServer, err := a.mcpManager.ListAllResourcesForUser(ctx, userID, bearerToken)
 	if err != nil {
 		return nil, err
 	}

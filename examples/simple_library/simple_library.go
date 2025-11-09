@@ -123,7 +123,7 @@ func main() {
 
 	// Example 3: List available tools
 	fmt.Println("=== Example 3: List Available Tools ===")
-	tools, err := host.GetAvailableTools(context.Background(), conversationID)
+	tools, err := host.GetAvailableTools(context.Background(), userID, "")
 	if err != nil {
 		log.Printf("Error getting tools: %v", err)
 	} else {

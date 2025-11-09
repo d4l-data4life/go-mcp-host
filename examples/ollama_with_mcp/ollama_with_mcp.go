@@ -84,8 +84,8 @@ func main() {
 	// Wait a moment for tools to be discovered
 	time.Sleep(2 * time.Second)
 
-	// Get all available tools
-	toolsWithServer, err := mcpManager.GetAllTools(ctx, conversationID)
+	// Get all available tools for the current user (cached per server)
+	toolsWithServer, err := mcpManager.ListAllToolsForUser(ctx, userID, "")
 	if err != nil {
 		fmt.Printf("Failed to get tools: %v\n", err)
 		os.Exit(1)

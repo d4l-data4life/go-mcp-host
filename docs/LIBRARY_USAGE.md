@@ -225,15 +225,15 @@ for event := range stream {
 
 ---
 
-#### `GetAvailableTools(ctx context.Context, conversationID uuid.UUID) ([]ToolInfo, error)`
+#### `GetAvailableTools(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ToolInfo, error)`
 
-Lists all tools available for a conversation.
+Lists all tools available to a specific user, using the short-lived per-user cache.
 
 ---
 
-#### `GetAvailableResources(ctx context.Context, conversationID uuid.UUID) ([]ResourceInfo, error)`
+#### `GetAvailableResources(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ResourceInfo, error)`
 
-Lists all resources available for a conversation.
+Lists all resources available to a specific user, using the short-lived per-user cache.
 
 ---
 

@@ -227,10 +227,10 @@ func (s *Server) handleChatStream(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListTools(w http.ResponseWriter, r *http.Request) {
-	// For demo purposes, create a temporary conversation
-	conversationID := uuid.New()
+	// For demo purposes, create a temporary user identity
+	userID := uuid.New()
 
-	tools, err := s.host.GetAvailableTools(r.Context(), conversationID)
+	tools, err := s.host.GetAvailableTools(r.Context(), userID, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

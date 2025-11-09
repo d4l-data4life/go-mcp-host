@@ -149,7 +149,7 @@ func main() {
 
 	// Example 3: List available tools
 	fmt.Println("\n=== Available Tools ===")
-	tools, err := aiAgent.GetAvailableTools(context.Background(), conversationID)
+	tools, err := aiAgent.GetAvailableTools(context.Background(), userID, "")
 	if err != nil {
 		fmt.Printf("Error getting tools: %v\n", err)
 	} else {

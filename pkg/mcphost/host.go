@@ -190,14 +190,14 @@ func (h *Host) ChatStream(ctx context.Context, req ChatRequest) (<-chan StreamEv
 	return hostStream, nil
 }
 
-// GetAvailableTools returns all available tools for a conversation.
-func (h *Host) GetAvailableTools(ctx context.Context, conversationID uuid.UUID) ([]ToolInfo, error) {
-	return h.agent.GetAvailableTools(ctx, conversationID)
+// GetAvailableTools returns all available tools for a user.
+func (h *Host) GetAvailableTools(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ToolInfo, error) {
+	return h.agent.GetAvailableTools(ctx, userID, bearerToken)
 }
 
-// GetAvailableResources returns all available resources for a conversation.
-func (h *Host) GetAvailableResources(ctx context.Context, conversationID uuid.UUID) ([]ResourceInfo, error) {
-	return h.agent.GetAvailableResources(ctx, conversationID)
+// GetAvailableResources returns all available resources for a user.
+func (h *Host) GetAvailableResources(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ResourceInfo, error) {
+	return h.agent.GetAvailableResources(ctx, userID, bearerToken)
 }
 
 // CloseConversation cleans up resources for a conversation.
