@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -36,16 +37,9 @@ func (o *Orchestrator) Execute(ctx context.Context, request ChatRequest) (*ChatR
 	// Build initial messages
 	messages := o.buildMessages(request)
 
-	// Get available tools (short-lived clients, no sessions yet)
-	toolsWithServer, err := o.mcpManager.ListAllToolsForUser(ctx, request.UserID, request.BearerToken)
+	llmTools, toolLookup, err := o.prepareToolContext(ctx, request)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get tools")
-	}
-
-	// Convert to LLM format
-	llmTools := make([]llm.Tool, 0, len(toolsWithServer))
-	for _, t := range toolsWithServer {
-		llmTools = append(llmTools, llm.ConvertMCPToolToLLMTool(t.Tool, t.ServerName))
+		return nil, err
 	}
 
 	logging.LogDebugf("Starting agent loop: tools=%d max_iterations=%d",
@@ -73,6 +67,8 @@ func (o *Orchestrator) Execute(ctx context.Context, request ChatRequest) (*ChatR
 		if chatRequest.Model == "" {
 			chatRequest.Model = o.config.DefaultModel
 		}
+
+		logLLMRequest("chat", chatRequest)
 
 		// Call LLM
 		response, err := o.llmClient.Chat(ctx, chatRequest)
@@ -102,24 +98,13 @@ func (o *Orchestrator) Execute(ctx context.Context, request ChatRequest) (*ChatR
 
 		// Execute tool calls
 		for _, toolCall := range response.Message.ToolCalls {
-			execution, err := o.executeTool(ctx, request, toolCall)
+			execution, content := o.handleToolCall(ctx, request, toolCall, toolLookup)
 			toolExecutions = append(toolExecutions, execution)
-
-			if err != nil {
-				// Add error as tool result
-				messages = append(messages, llm.Message{
-					Role:       llm.RoleTool,
-					ToolCallID: toolCall.ID,
-					Content:    fmt.Sprintf("Error: %v", err),
-				})
-			} else {
-				// Add successful result as tool result
-				messages = append(messages, llm.Message{
-					Role:       llm.RoleTool,
-					ToolCallID: toolCall.ID,
-					Content:    execution.Result,
-				})
-			}
+			messages = append(messages, llm.Message{
+				Role:       llm.RoleTool,
+				ToolCallID: toolCall.ID,
+				Content:    content,
+			})
 		}
 
 		// Continue loop to get LLM's response to tool results
@@ -149,21 +134,14 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 		// Build initial messages
 		messages := o.buildMessages(request)
 
-		// Get available tools (short-lived clients, no sessions yet)
-		toolsWithServer, err := o.mcpManager.ListAllToolsForUser(ctx, request.UserID, request.BearerToken)
+		llmTools, toolLookup, err := o.prepareToolContext(ctx, request)
 		if err != nil {
 			eventChan <- StreamEvent{
 				Type:  StreamEventTypeError,
-				Error: errors.Wrap(err, "failed to get tools"),
+				Error: err,
 				Done:  true,
 			}
 			return
-		}
-
-		// Convert to LLM format
-		llmTools := make([]llm.Tool, 0, len(toolsWithServer))
-		for _, t := range toolsWithServer {
-			llmTools = append(llmTools, llm.ConvertMCPToolToLLMTool(t.Tool, t.ServerName))
 		}
 
 		iteration := 0
@@ -186,6 +164,8 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 				chatRequest.Model = o.config.DefaultModel
 			}
 
+			logLLMRequest("chat-stream", chatRequest)
+
 			// Stream LLM response
 			streamChan, err := o.llmClient.ChatStream(ctx, chatRequest)
 			if err != nil {
@@ -201,8 +181,9 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 			}
 
 			// Collect full response
-			var fullContent string
-			var toolCalls []llm.ToolCall
+			var contentBuilder strings.Builder
+			var assistantMsg llm.Message
+			assistantMsgSet := false
 
 			for chunk := range streamChan {
 				if chunk.Error != nil {
@@ -216,7 +197,7 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 
 				// Stream content
 				if chunk.Delta.Content != "" {
-					fullContent += chunk.Delta.Content
+					contentBuilder.WriteString(chunk.Delta.Content)
 					eventChan <- StreamEvent{
 						Type:    StreamEventTypeContent,
 						Content: chunk.Delta.Content,
@@ -224,9 +205,9 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 					}
 				}
 
-				// Collect tool calls
-				if len(chunk.Delta.ToolCalls) > 0 {
-					toolCalls = append(toolCalls, chunk.Delta.ToolCalls...)
+				if chunk.Message != nil {
+					assistantMsg = *chunk.Message
+					assistantMsgSet = true
 				}
 
 				if chunk.Done {
@@ -234,13 +215,19 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 				}
 			}
 
+			finalContent := contentBuilder.String()
+
 			// Add assistant message to history
-			assistantMsg := llm.Message{
-				Role:      llm.RoleAssistant,
-				Content:   fullContent,
-				ToolCalls: toolCalls,
+			if !assistantMsgSet {
+				assistantMsg = llm.Message{
+					Role:    llm.RoleAssistant,
+					Content: finalContent,
+				}
+			} else if assistantMsg.Content == "" {
+				assistantMsg.Content = finalContent
 			}
 			messages = append(messages, assistantMsg)
+			toolCalls := assistantMsg.ToolCalls
 
 			// Check if done
 			if len(toolCalls) == 0 {
@@ -253,24 +240,43 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 
 			// Execute tool calls
 			for _, toolCall := range toolCalls {
-				// Notify tool start (include parsed server and tool names for UI)
-				{
-					serverName, toolName := llm.ParseToolName(toolCall.Function.Name)
+				binding, ok := toolLookup[toolCall.Function.Name]
+				if !ok {
+					invalid := ToolExecution{
+						ToolName: toolCall.Function.Name,
+						Error:    ErrInvalidToolName,
+					}
 					eventChan <- StreamEvent{
 						Type: StreamEventTypeToolStart,
-						Tool: &ToolExecution{
-							ServerName: serverName,
-							ToolName:   toolName,
-						},
+						Tool: &invalid,
 					}
+					eventChan <- StreamEvent{
+						Type: StreamEventTypeToolComplete,
+						Tool: &invalid,
+					}
+					messages = append(messages, llm.Message{
+						Role:       llm.RoleTool,
+						ToolCallID: toolCall.ID,
+						Content:    fmt.Sprintf("Error: %v", ErrInvalidToolName),
+					})
+					continue
 				}
 
-				execution, err := o.executeTool(ctx, request, toolCall)
+				start := ToolExecution{
+					ServerName: binding.ServerName,
+					ToolName:   binding.Tool.Name,
+				}
+				eventChan <- StreamEvent{
+					Type: StreamEventTypeToolStart,
+					Tool: &start,
+				}
 
-				// Notify tool complete
+				execution, err := o.executeTool(ctx, request, toolCall, binding)
+
+				completed := execution
 				eventChan <- StreamEvent{
 					Type: StreamEventTypeToolComplete,
-					Tool: &execution,
+					Tool: &completed,
 				}
 
 				if err != nil {
@@ -303,23 +309,72 @@ func (o *Orchestrator) ExecuteStream(ctx context.Context, request ChatRequest) (
 	return eventChan, nil
 }
 
+func logLLMRequest(label string, req llm.ChatRequest) {
+	payload, err := json.MarshalIndent(req, "", "  ")
+	if err != nil {
+		logging.LogDebugf("LLM request (%s) marshal error: %v", label, err)
+		logging.LogDebugf("LLM request (%s) summary: model=%s messages=%d tools=%d stream=%v",
+			label, req.Model, len(req.Messages), len(req.Tools), req.Stream)
+		return
+	}
+	logging.LogDebugf("LLM request (%s):\n%s", label, string(payload))
+}
+
+// prepareToolContext fetches available tools and builds both LLM tool definitions and a reverse lookup map.
+func (o *Orchestrator) prepareToolContext(ctx context.Context, request ChatRequest) ([]llm.Tool, map[string]manager.ToolWithServer, error) {
+	toolsWithServer, err := o.mcpManager.ListAllToolsForUser(ctx, request.UserID, request.BearerToken)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to get tools")
+	}
+
+	llmTools := make([]llm.Tool, 0, len(toolsWithServer))
+	lookup := make(map[string]manager.ToolWithServer, len(toolsWithServer))
+
+	for _, t := range toolsWithServer {
+		llmTool := llm.ConvertMCPToolToLLMTool(t.Tool, t.ServerName)
+		llmTools = append(llmTools, llmTool)
+		lookup[llmTool.Function.Name] = t
+	}
+
+	return llmTools, lookup, nil
+}
+
+// handleToolCall executes a tool and returns its execution record plus the message content to append.
+func (o *Orchestrator) handleToolCall(
+	ctx context.Context,
+	request ChatRequest,
+	toolCall llm.ToolCall,
+	toolLookup map[string]manager.ToolWithServer,
+) (ToolExecution, string) {
+	binding, ok := toolLookup[toolCall.Function.Name]
+	if !ok {
+		execution := ToolExecution{
+			ToolName: toolCall.Function.Name,
+			Error:    ErrInvalidToolName,
+		}
+		logging.LogWarningf(ErrInvalidToolName, "Unknown tool requested by LLM: %s", toolCall.Function.Name)
+		return execution, fmt.Sprintf("Error: %v", ErrInvalidToolName)
+	}
+
+	execution, err := o.executeTool(ctx, request, toolCall, binding)
+	if err != nil {
+		return execution, fmt.Sprintf("Error: %v", err)
+	}
+	return execution, execution.Result
+}
+
 // executeTool executes a single tool call
-func (o *Orchestrator) executeTool(ctx context.Context, request ChatRequest, toolCall llm.ToolCall) (ToolExecution, error) {
+func (o *Orchestrator) executeTool(
+	ctx context.Context,
+	request ChatRequest,
+	toolCall llm.ToolCall,
+	binding manager.ToolWithServer,
+) (ToolExecution, error) {
 	startTime := time.Now()
 
 	execution := ToolExecution{
-		ToolName: toolCall.Function.Name,
-	}
-
-	// Parse server and tool name
-	serverName, toolName := llm.ParseToolName(toolCall.Function.Name)
-	execution.ServerName = serverName
-	// Store parsed tool name (without server prefix) for cleaner UI display
-	execution.ToolName = toolName
-
-	if serverName == "" {
-		execution.Error = ErrInvalidToolName
-		return execution, execution.Error
+		ServerName: binding.ServerName,
+		ToolName:   binding.Tool.Name,
 	}
 
 	// Parse arguments
@@ -331,37 +386,27 @@ func (o *Orchestrator) executeTool(ctx context.Context, request ChatRequest, too
 
 	// Coerce/validate arguments to match the tool's input schema when possible
 	// This helps when the model emits strings for numbers/booleans, etc.
-	// Use user cache instead of session tools since session may not exist yet
-	if toolsWithServer, err := o.mcpManager.ListAllToolsForUser(ctx, request.UserID, request.BearerToken); err == nil {
-		var schema map[string]interface{}
-		for _, tws := range toolsWithServer {
-			if tws.ServerName == serverName && tws.Tool.Name == toolName {
-				schema = tws.Tool.InputSchema
-				break
-			}
-		}
-		if schema != nil {
-			logging.LogDebugf("Coercing args for %s.%s: before=%v schema=%v", serverName, toolName, args, schema)
-			args = coerceArgumentsToSchema(schema, args)
-			logging.LogDebugf("Coercing args for %s.%s: after=%v", serverName, toolName, args)
-		}
+	if schema := binding.Tool.InputSchema; schema != nil {
+		logging.LogDebugf("Coercing args for %s.%s: before=%v schema=%v", binding.ServerName, binding.Tool.Name, args, schema)
+		args = coerceArgumentsToSchema(schema, args)
+		logging.LogDebugf("Coercing args for %s.%s: after=%v", binding.ServerName, binding.Tool.Name, args)
 	}
 
 	execution.Arguments = args
 
-	logging.LogDebugf("Executing tool: %s.%s with args: %v", serverName, toolName, args)
+	logging.LogDebugf("Executing tool: %s.%s with args: %v", binding.ServerName, binding.Tool.Name, args)
 
 	// Ensure session exists for this server (just-in-time creation)
 	mcpCfg := config.GetMCPConfig()
 	var serverCfg config.MCPServerConfig
 	for _, s := range mcpCfg.Servers {
-		if s.Enabled && s.Name == serverName {
+		if s.Enabled && s.Name == binding.ServerName {
 			serverCfg = s
 			break
 		}
 	}
 	if serverCfg.Name == "" {
-		execution.Error = errors.Errorf("unknown or disabled server: %s", serverName)
+		execution.Error = errors.Errorf("unknown or disabled server: %s", binding.ServerName)
 		return execution, execution.Error
 	}
 	if _, err := o.mcpManager.GetOrCreateSession(ctx, request.ConversationID, serverCfg, request.BearerToken, request.UserID); err != nil {
@@ -374,12 +419,12 @@ func (o *Orchestrator) executeTool(ctx context.Context, request ChatRequest, too
 	defer cancel()
 
 	// Execute via MCP manager
-	result, err := o.mcpManager.CallTool(toolCtx, request.ConversationID, serverName, toolName, args)
+	result, err := o.mcpManager.CallTool(toolCtx, request.ConversationID, binding.ServerName, binding.Tool.Name, args)
 	execution.Duration = time.Since(startTime)
 
 	if err != nil {
 		execution.Error = err
-		logging.LogErrorf(err, "Tool execution failed: %s.%s", serverName, toolName)
+		logging.LogErrorf(err, "Tool execution failed: %s.%s", binding.ServerName, binding.Tool.Name)
 		return execution, err
 	}
 
@@ -387,7 +432,7 @@ func (o *Orchestrator) executeTool(ctx context.Context, request ChatRequest, too
 	execution.Result = llm.ConvertMCPContentToString(result.Content)
 
 	logging.LogDebugf("Tool execution complete: %s.%s duration=%v result_len=%d",
-		serverName, toolName, execution.Duration, len(execution.Result))
+		binding.ServerName, binding.Tool.Name, execution.Duration, len(execution.Result))
 
 	return execution, nil
 }

@@ -41,9 +41,12 @@ type StreamChunk struct {
 	ID    string `json:"id"`
 	Model string `json:"model"`
 	Delta Delta  `json:"delta"`
-	Usage Usage  `json:"usage,omitempty"`
-	Done  bool   `json:"done"`
-	Error error  `json:"-"`
+	// Message contains the full assistant message when streaming reaches a
+	// terminal chunk so that callers no longer need to re-assemble content.
+	Message *Message `json:"message,omitempty"`
+	Usage   Usage    `json:"usage,omitempty"`
+	Done    bool     `json:"done"`
+	Error   error    `json:"-"`
 }
 
 // Message represents a chat message
@@ -80,6 +83,7 @@ type ToolCall struct {
 	ID       string           `json:"id"`
 	Type     string           `json:"type"` // "function"
 	Function ToolCallFunction `json:"function"`
+	Index    int              `json:"-"`
 }
 
 // ToolCallFunction represents the function part of a tool call

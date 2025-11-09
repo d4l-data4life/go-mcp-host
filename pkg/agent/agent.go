@@ -48,7 +48,7 @@ type Config struct {
 func NewAgent(db *gorm.DB, mcpManager *manager.Manager, llmClient llm.Client, cfg Config) *Agent {
 	// Set defaults
 	if cfg.MaxIterations == 0 {
-		cfg.MaxIterations = 10
+		cfg.MaxIterations = 50
 	}
 	if cfg.MaxContextTokens == 0 {
 		cfg.MaxContextTokens = 8192

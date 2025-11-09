@@ -129,6 +129,7 @@ func SetupEnv() {
 	viper.SetEnvPrefix(EnvPrefix)
 	// General
 	bindEnvVariable("DEBUG", Debug)
+	bindEnvVariable("VERBOSE", false)
 	bindEnvVariable("HUMAN_READABLE_LOGS", HumanReadableLogs)
 	bindEnvVariable("DEBUG_CORS", DebugCORS)
 	bindEnvVariable("PORT", DefaultPort)

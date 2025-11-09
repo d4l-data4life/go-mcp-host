@@ -97,9 +97,14 @@ func main() {
 	}
 
 	// Convert MCP tools to LLM format
-	var llmTools []llm.Tool
+	var (
+		llmTools   []llm.Tool
+		toolLookup = make(map[string]manager.ToolWithServer, len(toolsWithServer))
+	)
 	for _, t := range toolsWithServer {
-		llmTools = append(llmTools, llm.ConvertMCPToolToLLMTool(t.Tool, t.ServerName))
+		llmTool := llm.ConvertMCPToolToLLMTool(t.Tool, t.ServerName)
+		llmTools = append(llmTools, llmTool)
+		toolLookup[llmTool.Function.Name] = t
 	}
 
 	// Create a chat request with tools
@@ -140,8 +145,14 @@ func main() {
 		for _, toolCall := range response.Message.ToolCalls {
 			fmt.Printf("\n  Tool: %s\n", toolCall.Function.Name)
 
-			// Parse server and tool name
-			serverName, toolName := llm.ParseToolName(toolCall.Function.Name)
+			// Resolve server/tool names from lookup map
+			binding, ok := toolLookup[toolCall.Function.Name]
+			if !ok {
+				fmt.Printf("  Error: unknown tool %s\n", toolCall.Function.Name)
+				continue
+			}
+			serverName := binding.ServerName
+			toolName := binding.Tool.Name
 			fmt.Printf("  Server: %s\n", serverName)
 			fmt.Printf("  Method: %s\n", toolName)
 

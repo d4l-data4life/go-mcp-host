@@ -69,15 +69,6 @@ func NewHost(ctx context.Context, cfg Config) (*Host, error) {
 
 	// Set agent defaults if not provided
 	agentConfig := cfg.AgentConfig
-	if agentConfig.MaxIterations == 0 {
-		agentConfig.MaxIterations = 10
-	}
-	if agentConfig.SystemPrompt == "" {
-		agentConfig.SystemPrompt = "You are a helpful AI assistant with access to various tools. Use them to answer user questions accurately."
-	}
-	if agentConfig.DefaultModel == "" {
-		agentConfig.DefaultModel = openAIConfig.DefaultModel
-	}
 
 	// Create LLM client
 	llmClient := cfg.LLMClient

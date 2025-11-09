@@ -2,6 +2,7 @@ package openai
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -88,13 +89,14 @@ func (c *Client) Chat(ctx context.Context, request llm.ChatRequest) (*llm.ChatRe
 	if err != nil {
 		return nil, err
 	}
+	logChatParams(params)
 
 	resp, err := c.openai.Chat.Completions.New(ctx, params)
 	if err != nil {
-		return nil, errors.Wrap(err, "openai chat completion failed")
+		return nil, errors.Wrap(err, "LLM chat completion failed")
 	}
 	if resp == nil || len(resp.Choices) == 0 {
-		return nil, errors.New("openai returned an empty response")
+		return nil, errors.New("LLM returned an empty response")
 	}
 
 	message := convertFromAPIMessage(resp.Choices[0].Message)
@@ -117,9 +119,11 @@ func (c *Client) ChatStream(ctx context.Context, request llm.ChatRequest) (<-cha
 	if err != nil {
 		return nil, err
 	}
+	logChatParams(params)
 
 	stream := c.openai.Chat.Completions.NewStreaming(ctx, params)
 	chunkChan := make(chan llm.StreamChunk, 10)
+	accumulator := openai.ChatCompletionAccumulator{}
 
 	go func() {
 		defer close(chunkChan)
@@ -127,31 +131,42 @@ func (c *Client) ChatStream(ctx context.Context, request llm.ChatRequest) (<-cha
 
 		for stream.Next() {
 			chunk := stream.Current()
-			if len(chunk.Choices) == 0 {
-				if chunk.Usage.TotalTokens > 0 {
-					chunkChan <- llm.StreamChunk{
-						ID:    chunk.ID,
-						Model: chunk.Model,
-						Usage: convertUsage(chunk.Usage),
-						Done:  true,
+			if !accumulator.AddChunk(chunk) {
+				err := errors.New("failed to accumulate streaming chunk")
+				logging.LogErrorf(err, "LLM streaming accumulator rejected chunk")
+				chunkChan <- llm.StreamChunk{
+					Error: err,
+					Done:  true,
+				}
+				return
+			}
+
+			for _, choice := range chunk.Choices {
+				var message *llm.Message
+				if choice.FinishReason != "" {
+					if int(choice.Index) < len(accumulator.ChatCompletion.Choices) {
+						msg := convertFromAPIMessage(accumulator.ChatCompletion.Choices[choice.Index].Message)
+						message = &msg
+					} else {
+						logging.LogWarningf(nil, "LLM streaming finished without matching choice index: %d", choice.Index)
 					}
 				}
-				continue
-			}
-			for _, choice := range chunk.Choices {
+
 				chunkChan <- llm.StreamChunk{
-					ID:    chunk.ID,
-					Model: chunk.Model,
-					Delta: convertChunkDelta(choice.Delta),
-					Usage: convertUsage(chunk.Usage),
-					Done:  choice.FinishReason != "",
+					ID:      chunk.ID,
+					Model:   chunk.Model,
+					Delta:   convertChunkDelta(choice.Delta),
+					Message: message,
+					Usage:   convertUsage(chunk.Usage),
+					Done:    choice.FinishReason != "",
 				}
 			}
 		}
 
 		if err := stream.Err(); err != nil {
+			logging.LogErrorf(err, "LLM streaming error")
 			chunkChan <- llm.StreamChunk{
-				Error: errors.Wrap(err, "openai streaming error"),
+				Error: errors.Wrap(err, "LLM streaming error"),
 				Done:  true,
 			}
 		}
@@ -168,7 +183,7 @@ func (c *Client) ListModels(ctx context.Context) ([]llm.Model, error) {
 	}
 
 	if resp == nil || len(resp.Data) == 0 {
-		return nil, errors.New("openai returned no models")
+		return nil, errors.New("LLM returned no models")
 	}
 
 	models := make([]llm.Model, len(resp.Data))
@@ -308,9 +323,8 @@ func convertFromAPIMessage(msg openai.ChatCompletionMessage) llm.Message {
 
 func convertChunkDelta(delta openai.ChatCompletionChunkChoiceDelta) llm.Delta {
 	return llm.Delta{
-		Role:      delta.Role,
-		Content:   delta.Content,
-		ToolCalls: convertChunkToolCalls(delta.ToolCalls),
+		Role:    delta.Role,
+		Content: delta.Content,
 	}
 }
 
@@ -331,29 +345,7 @@ func convertAPIToolCalls(toolCalls []openai.ChatCompletionMessageToolCall) []llm
 				Name:      tc.Function.Name,
 				Arguments: tc.Function.Arguments,
 			},
-		}
-	}
-	return result
-}
-
-func convertChunkToolCalls(toolCalls []openai.ChatCompletionChunkChoiceDeltaToolCall) []llm.ToolCall {
-	if len(toolCalls) == 0 {
-		return nil
-	}
-
-	result := make([]llm.ToolCall, len(toolCalls))
-	for i, tc := range toolCalls {
-		id := tc.ID
-		if id == "" {
-			id = fmt.Sprintf("call_%d", i)
-		}
-		result[i] = llm.ToolCall{
-			ID:   id,
-			Type: llm.ToolTypeFunction,
-			Function: llm.ToolCallFunction{
-				Name:      tc.Function.Name,
-				Arguments: tc.Function.Arguments,
-			},
+			Index: i,
 		}
 	}
 	return result
@@ -377,4 +369,16 @@ func normalizeBaseURL(raw string) string {
 		trimmed += "/v1"
 	}
 	return trimmed
+}
+
+func logChatParams(params openai.ChatCompletionNewParams) {
+	if !viper.GetBool("VERBOSE") {
+		return
+	}
+	payload, err := json.MarshalIndent(params, "", "  ")
+	if err != nil {
+		logging.LogDebugf("OpenAI chat params (marshal error: %v): %+v", err, params)
+		return
+	}
+	logging.LogDebugf("OpenAI chat params:\n%s", string(payload))
 }
