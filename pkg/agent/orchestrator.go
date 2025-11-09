@@ -317,31 +317,13 @@ func logLLMRequest(label string, req llm.ChatRequest) {
 		return
 	}
 
-	temperature := "nil"
-	if req.Temperature != nil {
-		temperature = fmt.Sprintf("%0.2f", *req.Temperature)
-	}
-
-	maxTokens := "nil"
-	if req.MaxTokens != nil {
-		maxTokens = fmt.Sprintf("%d", *req.MaxTokens)
-	}
-
-	topP := "nil"
-	if req.TopP != nil {
-		topP = fmt.Sprintf("%0.2f", *req.TopP)
-	}
-
 	logging.LogDebugf(
-		"LLM request (%s): model=%s messages=%v tools=%d stream=%v temperature=%s maxTokens=%s topP=%s",
+		"LLM request (%s): model=%s messages=%v tools=%d stream=%v",
 		label,
 		req.Model,
 		req.Messages,
 		len(req.Tools),
 		req.Stream,
-		temperature,
-		maxTokens,
-		topP,
 	)
 }
 

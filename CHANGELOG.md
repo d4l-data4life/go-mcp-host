@@ -9,12 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- support for OpenAI API and Ollama via the same ENV variables
-
 ### Changed
 
-- refactored MCP custom client to use the MCP SDK from https://github.com/modelcontextprotocol/go-sdk
-- refactored LLM client to use the OpenAI SDK from https://github.com/openai/openai-go
+- renamed `OLLAMA_BASE_URL` ->`OPENAI_BASE_URL`
+- renamed `OLLAMA_DEFAULT_MODEL` ->`OPENAI_DEFAULT_MODEL`
 
 ### Deprecated
 
@@ -22,10 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- default model usage wasn't working properly
-- chat summary wasn't working properly in stream mode
-- refactored tool and resource caching
-- fixed examples
+- linter issue
 
 ### Security
 
