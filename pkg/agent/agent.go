@@ -60,7 +60,7 @@ func NewAgent(db *gorm.DB, mcpManager *manager.Manager, llmClient llm.Client, cf
 		cfg.SystemPrompt = "You are a helpful AI assistant with access to various tools. Use them to answer user questions accurately."
 	}
 	if cfg.DefaultModel == "" {
-		cfg.DefaultModel = viper.GetString("OLLAMA_DEFAULT_MODEL")
+		cfg.DefaultModel = viper.GetString("OPENAI_DEFAULT_MODEL")
 	}
 
 	agent := &Agent{

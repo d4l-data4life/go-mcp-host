@@ -115,7 +115,7 @@ make run-migrations  # Or use go-migrate directly
 
 Ensure Ollama is accessible from your cluster:
 
-- **In-cluster:** `http://ollama.default.svc.cluster.local:11434`
+- **In-cluster:** Point `OPENAI_BASE_URL` at `http://ollama.default.svc.cluster.local:11434` if you're running Ollama inside the cluster.
 - **External:** Use ingress or LoadBalancer service
 
 ### Example Deployments
@@ -206,4 +206,3 @@ helm upgrade --install go-mcp-host ./helm-chart \
 For issues and questions:
 - GitHub Issues: https://github.com/d4l-data4life/go-mcp-host/issues
 - Documentation: https://github.com/d4l-data4life/go-mcp-host/docs
-

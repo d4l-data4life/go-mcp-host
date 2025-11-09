@@ -9,7 +9,7 @@ keywords:
   - model-context-protocol
   - ai
   - llm
-  - ollama
+  - openai
 maintainers:
   - name: Data4Life
     url: https://github.com/d4l-data4life

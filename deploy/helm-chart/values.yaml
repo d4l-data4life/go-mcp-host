@@ -36,10 +36,10 @@ APP:
   
   # Ollama Configuration (optional - can also be set via MCP_CONFIG_MAP config.yaml)
   # Base URL for Ollama API
-  # OLLAMA_BASE_URL: "http://localhost:11434"
+  # OPENAI_BASE_URL: "https://api.openai.com/v1"
   
   # Default model to use when client doesn't specify one
-  # OLLAMA_DEFAULT_MODEL: "llama3.2"
+  # OPENAI_DEFAULT_MODEL: "gpt-4o-mini"
 
 # Database configuration
 # ConfigMap name containing database connection details

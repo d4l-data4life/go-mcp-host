@@ -11,12 +11,12 @@ import (
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/config"
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
-	"github.com/d4l-data4life/go-mcp-host/pkg/llm/ollama"
+	llmopenai "github.com/d4l-data4life/go-mcp-host/pkg/llm/openai"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 )
 
-// This example demonstrates how to use Ollama with MCP tools
-// It shows the complete flow: MCP tools → LLM → Tool execution → Response
+// This example demonstrates how to use an OpenAI-compatible endpoint (like Ollama)
+// with MCP tools. It shows the complete flow: MCP tools → LLM → Tool execution → Response
 
 func main() {
 	// Setup configuration
@@ -46,22 +46,22 @@ func main() {
 	mcpServers := []config.MCPServerConfig{weatherConfig}
 	mcpManager := manager.NewManager(mcpServers)
 
-	// Create Ollama client
-	ollamaClient := ollama.NewClient(ollama.Config{
-		BaseURL: "http://localhost:11434",
+	// Create OpenAI-compatible client pointed at the local Ollama endpoint
+	ollamaClient := llmopenai.NewClient(llmopenai.Config{
+		BaseURL: "http://localhost:11434", // Ollama's default
 		Model:   "llama3.2",
 		Timeout: 5 * time.Minute,
 	})
 
-	// Test Ollama connection
-	fmt.Println("Testing Ollama connection...")
+	// Test connection
+	fmt.Println("Testing OpenAI-compatible endpoint...")
 	models, err := ollamaClient.ListModels(context.Background())
 	if err != nil {
-		fmt.Printf("Failed to connect to Ollama: %v\n", err)
+		fmt.Printf("Failed to connect to the endpoint: %v\n", err)
 		fmt.Println("Make sure Ollama is running: ollama serve")
 		os.Exit(1)
 	}
-	fmt.Printf("Connected to Ollama. Available models: %d\n", len(models))
+	fmt.Printf("Connected successfully. Available models: %d\n", len(models))
 	for _, model := range models {
 		fmt.Printf("  - %s\n", model.Name)
 	}

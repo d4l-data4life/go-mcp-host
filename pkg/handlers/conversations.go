@@ -114,7 +114,7 @@ func (h *ConversationsHandler) CreateConversation(w http.ResponseWriter, r *http
 		req.Title = "New Conversation"
 	}
 	if req.Model == "" {
-		req.Model = viper.GetString("OLLAMA_DEFAULT_MODEL")
+		req.Model = viper.GetString("OPENAI_DEFAULT_MODEL")
 	}
 
 	// Create conversation

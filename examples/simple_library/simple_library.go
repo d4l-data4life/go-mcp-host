@@ -55,8 +55,8 @@ func main() {
 				Description: "Sequential thinking server for complex reasoning",
 			},
 		},
-		LLMEndpoint: "http://localhost:11434",
-		DB:          db,
+		OpenAIBaseURL: "http://localhost:11434",
+		DB:            db,
 		// Optional: Customize agent behavior
 		AgentConfig: mcphost.Config{}.AgentConfig, // Uses defaults
 	})

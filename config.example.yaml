@@ -7,11 +7,13 @@
 # Can also be set via GO_MCP_HOST_SERVICE_SECRET environment variable
 service_secret: "change-this-to-a-strong-random-secret"
 
-# Ollama Configuration
-# Base URL for Ollama API (default: http://localhost:11434)
-ollama_base_url: http://localhost:11434
-# Default model to use when none is specified (default: llama3.2)
-ollama_default_model: llama3.2
+# OpenAI-Compatible LLM Configuration
+# Base URL for the API (default: https://api.openai.com/v1). Point this at Ollama to use it locally.
+openai_base_url: https://api.openai.com/v1
+# API key for OpenAI (leave empty when using a local Ollama instance)
+openai_api_key: ""
+# Default model to use when none is specified (default: gpt-4o-mini)
+openai_default_model: gpt-4o-mini
 
 # CORS Configuration - Add your frontend URLs here
 cors_hosts: "http://localhost:3334 http://localhost:3000"
@@ -73,4 +75,3 @@ mcp_servers:
   #   description: "Sentry issue tracking integration"
 
   # Add more MCP servers as needed
-

@@ -56,8 +56,8 @@ func main() {
 				Description: "Weather information",
 			},
 		},
-		LLMEndpoint: "http://localhost:11434",
-		DB:          db,
+		OpenAIBaseURL: "http://localhost:11434",
+		DB:            db,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create MCP Host: %v", err)

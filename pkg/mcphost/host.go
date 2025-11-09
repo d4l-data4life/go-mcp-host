@@ -10,7 +10,7 @@ import (
 	"github.com/d4l-data4life/go-mcp-host/pkg/agent"
 	"github.com/d4l-data4life/go-mcp-host/pkg/config"
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
-	"github.com/d4l-data4life/go-mcp-host/pkg/llm/ollama"
+	llmopenai "github.com/d4l-data4life/go-mcp-host/pkg/llm/openai"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 )
 
@@ -28,9 +28,15 @@ type Config struct {
 	// MCPServers is the list of MCP servers to connect to
 	MCPServers []config.MCPServerConfig
 
-	// LLMEndpoint is the URL of your Ollama (or OpenAI-compatible) LLM endpoint
-	// Example: "http://localhost:11434"
-	LLMEndpoint string
+	// OpenAIBaseURL is the base URL of your OpenAI-compatible endpoint.
+	// Example: "https://api.openai.com/v1" or "http://localhost:11434/v1" for Ollama.
+	OpenAIBaseURL string
+
+	// OpenAIAPIKey optionally overrides the API key for the OpenAI-compatible endpoint.
+	OpenAIAPIKey string
+
+	// LLMClient allows providing a fully custom llm.Client implementation.
+	LLMClient llm.Client
 
 	// Database connection (required for conversation persistence)
 	DB *gorm.DB
@@ -53,17 +59,13 @@ type Config struct {
 //	            Enabled: true,
 //	        },
 //	    },
-//	    LLMEndpoint: "http://localhost:11434",
+//	    OpenAIBaseURL: "http://localhost:11434",
 //	    DB:          db,
 //	})
 func NewHost(ctx context.Context, cfg Config) (*Host, error) {
 	// Create MCP manager
 	mcpManager := manager.NewManager(cfg.MCPServers)
-
-	// Create LLM client
-	llmClient := ollama.NewClient(ollama.Config{
-		BaseURL: cfg.LLMEndpoint,
-	})
+	openAIConfig := config.GetOpenAIConfig()
 
 	// Set agent defaults if not provided
 	agentConfig := cfg.AgentConfig
@@ -72,6 +74,27 @@ func NewHost(ctx context.Context, cfg Config) (*Host, error) {
 	}
 	if agentConfig.SystemPrompt == "" {
 		agentConfig.SystemPrompt = "You are a helpful AI assistant with access to various tools. Use them to answer user questions accurately."
+	}
+	if agentConfig.DefaultModel == "" {
+		agentConfig.DefaultModel = openAIConfig.DefaultModel
+	}
+
+	// Create LLM client
+	llmClient := cfg.LLMClient
+	if llmClient == nil {
+		baseURL := cfg.OpenAIBaseURL
+		if baseURL == "" {
+			baseURL = openAIConfig.BaseURL
+		}
+		apiKey := cfg.OpenAIAPIKey
+		if apiKey == "" {
+			apiKey = openAIConfig.APIKey
+		}
+		llmClient = llmopenai.NewClient(llmopenai.Config{
+			APIKey:  apiKey,
+			BaseURL: baseURL,
+			Model:   agentConfig.DefaultModel,
+		})
 	}
 
 	// Create agent

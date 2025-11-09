@@ -129,7 +129,7 @@ func main() {
                 Description: "Weather information server",
             },
         },
-        LLMEndpoint: "http://localhost:11434",
+        OpenAIBaseURL: "http://localhost:11434",
         DB:          db,
     })
     if err != nil {
@@ -229,6 +229,19 @@ mcp_servers:
     description: "My custom MCP server"
 ```
 
+### LLM Configuration
+
+go-mcp-host speaks the OpenAI Chat Completions API natively. Configure the following environment variables (or matching config.yaml keys):
+
+- `OPENAI_API_KEY`
+- `OPENAI_BASE_URL` (defaults to `https://api.openai.com/v1`)
+- `OPENAI_DEFAULT_MODEL` (defaults to `gpt-4o-mini`)
+- `OPENAI_TEMPERATURE`, `OPENAI_MAX_TOKENS`, `OPENAI_TOP_P`, `OPENAI_REQUEST_TIMEOUT`
+
+**Using Ollama:** run `ollama serve` locally, then set `OPENAI_BASE_URL="http://localhost:11434"` (the Go SDK automatically appends `/v1`) and leave `OPENAI_API_KEY` empty. Any OpenAI-compatible provider can be used in the same way.
+
+Library users can bypass the built-in client by supplying a custom `llm.Client` through `mcphost.Config.LLMClient`.
+
 ### Environment Variables
 
 Key environment variables:
@@ -238,6 +251,7 @@ Key environment variables:
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` - Database connection
 - `REMOTE_KEYS_URL` - JWT validation endpoint (optional)
 - `DEBUG` - Enable debug logging
+- `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_DEFAULT_MODEL` - LLM configuration
 
 See [config.example.yaml](config.example.yaml) for all options.
 
@@ -365,7 +379,7 @@ Apache License 2.0 - see [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 - Built with [go-svc](https://github.com/d4l-data4life/go-svc) framework
-- Powered by [Ollama](https://ollama.ai/)
+- Powered by the official [OpenAI Go SDK](https://github.com/openai/openai-go) and compatible endpoints such as [Ollama](https://ollama.ai/)
 - Implements [Model Context Protocol](https://modelcontextprotocol.io/)
 
 ## Support

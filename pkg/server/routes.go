@@ -9,7 +9,8 @@ import (
 	"github.com/d4l-data4life/go-mcp-host/pkg/auth"
 	"github.com/d4l-data4life/go-mcp-host/pkg/config"
 	"github.com/d4l-data4life/go-mcp-host/pkg/handlers"
-	"github.com/d4l-data4life/go-mcp-host/pkg/llm/ollama"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	llmopenai "github.com/d4l-data4life/go-mcp-host/pkg/llm/openai"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 
 	"github.com/d4l-data4life/go-svc/pkg/db"
@@ -30,21 +31,23 @@ func SetupRoutes(ctx context.Context, mux *chi.Mux, tokenValidator auth.TokenVal
 		logging.LogErrorf(err, "Failed to load MCP config, using defaults")
 		mcpConfig = &config.FullMCPConfig{
 			Servers: []config.MCPServerConfig{},
-			Ollama:  config.GetOllamaConfig(),
+			OpenAI:  config.GetOpenAIConfig(),
 			Agent:   config.GetAgentConfig(),
 		}
 	}
 
 	mcpManager := manager.NewManager(mcpConfig.Servers)
 
-	// Initialize Ollama client
-	ollamaClient := ollama.NewClient(ollama.Config{
-		BaseURL: mcpConfig.Ollama.BaseURL,
-		Model:   mcpConfig.Ollama.DefaultModel,
+	// Initialize LLM client (OpenAI-compatible for both OpenAI and Ollama endpoints)
+	var llmClient llm.Client
+	llmClient = llmopenai.NewClient(llmopenai.Config{
+		APIKey:  mcpConfig.OpenAI.APIKey,
+		BaseURL: mcpConfig.OpenAI.BaseURL,
+		Model:   mcpConfig.OpenAI.DefaultModel,
 	})
 
 	// Initialize Agent
-	agentInstance := agent.NewAgent(database, mcpManager, ollamaClient, agent.Config{
+	agentInstance := agent.NewAgent(database, mcpManager, llmClient, agent.Config{
 		MaxIterations: mcpConfig.Agent.MaxIterations,
 		DefaultModel:  mcpConfig.Agent.DefaultModel,
 	})
