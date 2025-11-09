@@ -10,8 +10,10 @@ import (
 
 // GenerateChatTitle generates a short, descriptive title for a conversation based on the user's first message
 func (a *Agent) GenerateChatTitle(ctx context.Context, userMessage string) string {
+	logging.LogDebugf("Starting title generation for user message: %s", userMessage)
+
 	// Create a prompt to generate a short title
-	systemPrompt := `You are a title generator. Generate a short, descriptive title (max 6 words) for a chat conversation based on the user's first message. 
+	systemPrompt := `You are a title generator. Generate a short, descriptive title (max 6 words) for a chat conversation based on the user's first message.
 Return ONLY the title text, no quotes, no explanations, no punctuation at the end.
 Keep it concise and relevant to the main topic of the message.
 
@@ -49,29 +51,36 @@ Title: React Hooks Best Practices`
 		Stream:      false,
 	}
 
+	logging.LogDebugf("Sending title generation request to LLM model: %s", a.config.DefaultModel)
 	response, err := a.llmClient.Chat(ctx, req)
 	if err != nil {
-		logging.LogErrorf(err, "Failed to generate chat title")
+		logging.LogErrorf(err, "Failed to generate chat title - LLM request failed")
 		return "" // Return empty to keep default
 	}
 
 	// Clean up the title
-	title := strings.TrimSpace(response.Message.Content)
+	rawTitle := response.Message.Content
+	logging.LogDebugf("Raw title from LLM: %q", rawTitle)
+
+	title := strings.TrimSpace(rawTitle)
 
 	// Remove quotes if present
 	title = strings.Trim(title, `"'`)
+	logging.LogDebugf("Title after quote trimming: %q", title)
 
 	// Truncate if too long
 	if len(title) > 60 {
+		logging.LogDebugf("Title too long (%d chars), truncating to 60 chars", len(title))
 		title = title[:57] + "..."
 	}
 
 	// If title is empty or too short, return empty to keep default
 	if len(title) < 3 {
+		logging.LogDebugf("Title too short (%d chars), keeping default title", len(title))
 		return ""
 	}
 
-	logging.LogDebugf("Generated chat title: %s", title)
+	logging.LogDebugf("Successfully generated chat title: %q", title)
 	return title
 }
 

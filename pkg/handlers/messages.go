@@ -231,20 +231,27 @@ func (h *MessagesHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		h.db.Model(&models.Message{}).Where("conversation_id = ?", convID).Count(&messageCount)
 
 		if messageCount == 2 {
+			logging.LogDebugf("Starting async title generation for conversation %s with first message: %s", convID, req.Content)
 			// Generate title based on user's first message
 			go func() {
+				logging.LogDebugf("Async title generation goroutine started for conversation %s", convID)
 				title := h.agent.GenerateChatTitle(context.Background(), req.Content)
 				if title != "" {
+					logging.LogDebugf("Updating conversation %s title from %q to %q", convID, conversation.Title, title)
 					// Update conversation title
 					if err := h.db.Model(&models.Conversation{}).
 						Where("id = ?", convID).
 						Update("title", title).Error; err != nil {
-						logging.LogErrorf(err, "Failed to update conversation title")
+						logging.LogErrorf(err, "Failed to update conversation title for %s", convID)
 					} else {
-						logging.LogDebugf("Auto-generated title for conversation %s: %s", convID, title)
+						logging.LogDebugf("Successfully updated title for conversation %s: %s", convID, title)
 					}
+				} else {
+					logging.LogDebugf("Title generation returned empty title for conversation %s, keeping default", convID)
 				}
 			}()
+		} else {
+			logging.LogDebugf("Skipping title generation for conversation %s: message_count=%d (expected 2)", convID, messageCount)
 		}
 	}
 
@@ -561,7 +568,7 @@ func (h *MessagesHandler) handleStreamDone(
 	h.db.Create(&assistantMessage)
 
 	// Auto-generate conversation title if this is the first message
-	h.maybeGenerateTitle(convID, conversation, req.Content)
+	h.maybeGenerateTitle(convID, conversation, req.Content, conn)
 
 	if err := conn.WriteJSON(map[string]interface{}{
 		"type":    "done",
@@ -588,25 +595,50 @@ func (h *MessagesHandler) handleStreamEventError(conn *websocket.Conn, userMessa
 }
 
 // maybeGenerateTitle auto-generates a conversation title if needed
-func (h *MessagesHandler) maybeGenerateTitle(convID uuid.UUID, conversation *models.Conversation, content string) {
+func (h *MessagesHandler) maybeGenerateTitle(convID uuid.UUID, conversation *models.Conversation, content string, conn *websocket.Conn) {
+	logging.LogDebugf("Checking streaming title generation for conversation %s: current_title=%q", convID, conversation.Title)
+
 	if conversation.Title == "New Chat" || conversation.Title == "New Conversation" {
 		var messageCount int64
 		h.db.Model(&models.Message{}).Where("conversation_id = ?", convID).Count(&messageCount)
+		logging.LogDebugf("Streaming title check for conversation %s: message_count=%d", convID, messageCount)
 
 		if messageCount == 2 {
+			logging.LogDebugf("Starting streaming async title generation for conversation %s with first message: %s", convID, content)
 			go func() {
+				logging.LogDebugf("Streaming async title generation goroutine started for conversation %s", convID)
 				title := h.agent.GenerateChatTitle(context.Background(), content)
 				if title != "" {
+					logging.LogDebugf("Streaming: updating conversation %s title from %q to %q", convID, conversation.Title, title)
 					if err := h.db.Model(&models.Conversation{}).
 						Where("id = ?", convID).
 						Update("title", title).Error; err != nil {
-						logging.LogErrorf(err, "Failed to update conversation title")
+						logging.LogErrorf(err, "Streaming: failed to update conversation title for %s", convID)
 					} else {
-						logging.LogDebugf("Auto-generated title for conversation %s: %s", convID, title)
+						logging.LogDebugf("Streaming: successfully updated title for conversation %s: %s", convID, title)
+
+						// Send live title update via WebSocket
+						if conn != nil {
+							logging.LogDebugf("Streaming: sending live title update to client for conversation %s: %s", convID, title)
+							if err := conn.WriteJSON(map[string]interface{}{
+								"type":  "title_update",
+								"title": title,
+							}); err != nil {
+								logging.LogErrorf(err, "Streaming: failed to send title update to client for conversation %s", convID)
+							} else {
+								logging.LogDebugf("Streaming: successfully sent title update to client for conversation %s", convID)
+							}
+						}
 					}
+				} else {
+					logging.LogDebugf("Streaming: title generation returned empty title for conversation %s, keeping default", convID)
 				}
 			}()
+		} else {
+			logging.LogDebugf("Streaming: skipping title generation for conversation %s: message_count=%d (expected 2)", convID, messageCount)
 		}
+	} else {
+		logging.LogDebugf("Streaming: skipping title generation for conversation %s: title already set to %q", convID, conversation.Title)
 	}
 }
 
