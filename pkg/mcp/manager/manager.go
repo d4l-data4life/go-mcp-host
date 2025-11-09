@@ -41,18 +41,17 @@ type Manager struct {
 type SessionInfo struct {
 	Client         *client.Client
 	ConversationID uuid.UUID
+	UserID         uuid.UUID
 	ServerName     string
 	ServerConfig   config.MCPServerConfig
 	SessionID      uuid.UUID
 	BearerToken    string // Bearer token used to create this session (for HTTP servers with forwardBearer)
-	Tools          []protocol.Tool
-	Resources      []protocol.Resource
 	LastAccessed   time.Time
 	mu             sync.RWMutex
 }
 
-// NewManager creates a new MCP manager
-func NewManager(serverConfigs []config.MCPServerConfig) *Manager {
+// NewMCPManager creates a new MCP manager
+func NewMCPManager(serverConfigs []config.MCPServerConfig) *Manager {
 	factory := client.NewFactory("go-mcp-host", config.Version)
 
 	m := &Manager{
@@ -76,16 +75,6 @@ func NewManager(serverConfigs []config.MCPServerConfig) *Manager {
 // GetConfiguredServers returns the list of configured MCP servers
 func (m *Manager) GetConfiguredServers() []config.MCPServerConfig {
 	return m.serverConfigs
-}
-
-// ListAllTools lists all tools from all enabled servers for a conversation
-func (m *Manager) ListAllTools(ctx context.Context, conversationID uuid.UUID, _ string) ([]ToolWithServer, error) {
-	return m.GetAllTools(ctx, conversationID)
-}
-
-// ListAllResources lists all resources from all enabled servers for a conversation
-func (m *Manager) ListAllResources(ctx context.Context, conversationID uuid.UUID, _ string) ([]ResourceWithServer, error) {
-	return m.GetAllResources(ctx, conversationID)
 }
 
 // ListAllToolsForUser returns all tools for all enabled servers, scoped by user (short-lived clients + cache)
@@ -262,7 +251,7 @@ func (m *Manager) GetOrCreateSession(
 	conversationID uuid.UUID,
 	serverConfig config.MCPServerConfig,
 	bearerToken string,
-	_ uuid.UUID,
+	userID uuid.UUID,
 ) (*SessionInfo, error) {
 	// For HTTP servers with forwardBearer, don't cache sessions since bearer token may change
 	// Instead, check if session exists AND verify it has the same bearer token
@@ -369,6 +358,7 @@ func (m *Manager) GetOrCreateSession(
 	session := &SessionInfo{
 		Client:         mcpClient,
 		ConversationID: conversationID,
+		UserID:         userID,
 		ServerName:     serverConfig.Name,
 		ServerConfig:   serverConfig,
 		SessionID:      uuid.New(),  // Generate UUID for internal tracking
@@ -466,29 +456,6 @@ func (m *Manager) CloseAllSessionsForConversation(conversationID uuid.UUID) erro
 	return nil
 }
 
-// GetAllTools returns all tools from all active sessions for a conversation
-func (m *Manager) GetAllTools(_ context.Context, conversationID uuid.UUID) ([]ToolWithServer, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	var allTools []ToolWithServer
-
-	for _, session := range m.sessions {
-		if session.ConversationID == conversationID {
-			session.mu.RLock()
-			for _, tool := range session.Tools {
-				allTools = append(allTools, ToolWithServer{
-					Tool:       tool,
-					ServerName: session.ServerName,
-				})
-			}
-			session.mu.RUnlock()
-		}
-	}
-
-	return allTools, nil
-}
-
 // CallTool calls a tool on the appropriate server
 func (m *Manager) CallTool(
 	ctx context.Context,
@@ -518,29 +485,6 @@ func (m *Manager) CallTool(
 	session.mu.Unlock()
 
 	return result, nil
-}
-
-// GetAllResources returns all resources from all active sessions for a conversation
-func (m *Manager) GetAllResources(_ context.Context, conversationID uuid.UUID) ([]ResourceWithServer, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	var allResources []ResourceWithServer
-
-	for _, session := range m.sessions {
-		if session.ConversationID == conversationID {
-			session.mu.RLock()
-			for _, resource := range session.Resources {
-				allResources = append(allResources, ResourceWithServer{
-					Resource:   resource,
-					ServerName: session.ServerName,
-				})
-			}
-			session.mu.RUnlock()
-		}
-	}
-
-	return allResources, nil
 }
 
 // ReadResource reads a resource from the appropriate server
@@ -582,9 +526,11 @@ func (m *Manager) refreshTools(ctx context.Context, session *SessionInfo) {
 		return
 	}
 
-	session.mu.Lock()
-	session.Tools = tools
-	session.mu.Unlock()
+	if session.UserID != uuid.Nil {
+		cacheKey := m.getUserKey(session.UserID, session.ServerName)
+		m.userToolsCache.Set(cacheKey, tools, m.userCacheTTL)
+		logging.LogDebugf("Updated cached tools for user %s server %s: %d tools", session.UserID, session.ServerName, len(tools))
+	}
 
 	logging.LogDebugf("Refreshed tools for server %s: %d tools", session.ServerName, len(tools))
 }
@@ -598,9 +544,16 @@ func (m *Manager) refreshResources(ctx context.Context, session *SessionInfo) {
 		return
 	}
 
-	session.mu.Lock()
-	session.Resources = resources
-	session.mu.Unlock()
+	if session.UserID != uuid.Nil {
+		cacheKey := m.getUserKey(session.UserID, session.ServerName)
+		m.userResourcesCache.Set(cacheKey, resources, m.userCacheTTL)
+		logging.LogDebugf(
+			"Updated cached resources for user %s server %s: %d resources",
+			session.UserID,
+			session.ServerName,
+			len(resources),
+		)
+	}
 
 	logging.LogDebugf("Refreshed resources for server %s: %d resources", session.ServerName, len(resources))
 }
@@ -657,6 +610,16 @@ func (m *Manager) getServerLock(serverName string) *sync.Mutex {
 		m.serverLocks[serverName] = &sync.Mutex{}
 	}
 	return m.serverLocks[serverName]
+}
+
+// GetServerConfig returns the enabled configuration for the given server name.
+func (m *Manager) GetServerConfig(serverName string) (config.MCPServerConfig, bool) {
+	for _, server := range m.serverConfigs {
+		if server.Enabled && server.Name == serverName {
+			return server, true
+		}
+	}
+	return config.MCPServerConfig{}, false
 }
 
 // GetCacheStats returns cache statistics for debugging

@@ -23,9 +23,12 @@ func RegisterRoutes(
 ) {
 	// External routes (ingress routes)
 	r.Route(config.APIPrefixV1, func(r chi.Router) {
-		// Public routes (no authentication required)
-		authHandler := NewAuthHandler(db, jwtSecret)
-		r.Mount("/auth", authHandler.Routes())
+		// If run with JWT secret, we'll also manage login and registration
+		if len(jwtSecret) > 0 {
+			// Public routes (no authentication required)
+			authHandler := NewAuthHandler(db, jwtSecret)
+			r.Mount("/auth", authHandler.Routes())
+		}
 
 		// Protected routes (authentication required)
 		r.Group(func(r chi.Router) {

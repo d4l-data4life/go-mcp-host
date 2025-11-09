@@ -60,7 +60,7 @@ func main() {
                 Enabled: true,
             },
         },
-        LLMEndpoint: "http://localhost:11434",
+        OpenAIBaseURL: "http://localhost:11434",
         DB:          db,
     })
     if err != nil {
@@ -225,15 +225,15 @@ for event := range stream {
 
 ---
 
-#### `GetAvailableTools(ctx context.Context, conversationID uuid.UUID) ([]ToolInfo, error)`
+#### `GetAvailableTools(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ToolInfo, error)`
 
-Lists all tools available for a conversation.
+Lists all tools available to a specific user, using the short-lived per-user cache.
 
 ---
 
-#### `GetAvailableResources(ctx context.Context, conversationID uuid.UUID) ([]ResourceInfo, error)`
+#### `GetAvailableResources(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ResourceInfo, error)`
 
-Lists all resources available for a conversation.
+Lists all resources available to a specific user, using the short-lived per-user cache.
 
 ---
 
@@ -319,7 +319,7 @@ host, err := mcphost.NewHost(ctx, mcphost.Config{
     },
 
     // LLM endpoint
-    LLMEndpoint: "http://localhost:11434",
+    OpenAIBaseURL: "http://localhost:11434",
 
     // Database connection
     DB: db,
@@ -582,4 +582,3 @@ See the [examples/](../examples/) directory for complete, runnable examples:
 - GitHub Issues: [Report bugs](https://github.com/d4l-data4life/go-mcp-host/issues)
 - Documentation: [Full docs](https://github.com/d4l-data4life/go-mcp-host/docs)
 - Examples: [Code examples](https://github.com/d4l-data4life/go-mcp-host/examples)
-

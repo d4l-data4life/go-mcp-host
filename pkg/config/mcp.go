@@ -22,8 +22,9 @@ type MCPServerConfig struct {
 	Description   string            `yaml:"description,omitempty" json:"description,omitempty"`
 }
 
-// OllamaConfig represents configuration for Ollama LLM
-type OllamaConfig struct {
+// OpenAIConfig represents configuration for OpenAI models
+type OpenAIConfig struct {
+	APIKey         string  `yaml:"apiKey"         json:"apiKey"`
 	BaseURL        string  `yaml:"baseUrl"        json:"baseUrl"`
 	DefaultModel   string  `yaml:"defaultModel"   json:"defaultModel"`
 	Temperature    float64 `yaml:"temperature"    json:"temperature"`
@@ -64,18 +65,8 @@ func GetMCPConfig() MCPConfig {
 func GetMCPServers() []MCPServerConfig {
 	var servers []MCPServerConfig
 	if err := viper.UnmarshalKey("mcp_servers", &servers); err != nil {
-		// Log the error and return default configuration
-		fmt.Printf("Warning: Failed to unmarshal mcp_servers from config: %v\n", err)
-		return []MCPServerConfig{
-			{
-				Name:        "filesystem",
-				Type:        "stdio",
-				Command:     "npx",
-				Args:        []string{"-y", "@modelcontextprotocol/server-filesystem", "/tmp"},
-				Enabled:     false,
-				Description: "Local filesystem access",
-			},
-		}
+		logging.LogErrorf(err, "Failed to unmarshal MCP servers configuration")
+		return nil
 	}
 	fmt.Printf("Loaded %d MCP servers from configuration\n", len(servers))
 	for i, s := range servers {
@@ -84,15 +75,24 @@ func GetMCPServers() []MCPServerConfig {
 	return servers
 }
 
-// GetOllamaConfig returns Ollama configuration from viper
-func GetOllamaConfig() OllamaConfig {
-	return OllamaConfig{
-		BaseURL:        viper.GetString("OLLAMA_BASE_URL"),
-		DefaultModel:   viper.GetString("OLLAMA_DEFAULT_MODEL"),
-		Temperature:    viper.GetFloat64("OLLAMA_TEMPERATURE"),
-		MaxTokens:      viper.GetInt("OLLAMA_MAX_TOKENS"),
-		TopP:           viper.GetFloat64("OLLAMA_TOP_P"),
-		RequestTimeout: viper.GetString("OLLAMA_REQUEST_TIMEOUT"),
+// GetOpenAIConfig returns OpenAI configuration from viper
+func GetOpenAIConfig() OpenAIConfig {
+	defaultModel := viper.GetString("OPENAI_DEFAULT_MODEL")
+	if defaultModel == "" {
+		defaultModel = "gpt-4o-mini"
+	}
+	baseURL := viper.GetString("OPENAI_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://api.openai.com/v1"
+	}
+	return OpenAIConfig{
+		APIKey:         viper.GetString("OPENAI_API_KEY"),
+		BaseURL:        baseURL,
+		DefaultModel:   defaultModel,
+		Temperature:    viper.GetFloat64("OPENAI_TEMPERATURE"),
+		MaxTokens:      viper.GetInt("OPENAI_MAX_TOKENS"),
+		TopP:           viper.GetFloat64("OPENAI_TOP_P"),
+		RequestTimeout: viper.GetString("OPENAI_REQUEST_TIMEOUT"),
 	}
 }
 
@@ -102,19 +102,20 @@ func GetAgentConfig() AgentConfig {
 		MaxIterations:        viper.GetInt("AGENT_MAX_ITERATIONS"),
 		MaxContextTokens:     viper.GetInt("AGENT_MAX_CONTEXT_TOKENS"),
 		ToolExecutionTimeout: viper.GetString("AGENT_TOOL_EXECUTION_TIMEOUT"),
-		DefaultModel:         viper.GetString("OLLAMA_DEFAULT_MODEL"),
+		DefaultModel:         viper.GetString("OPENAI_DEFAULT_MODEL"),
 	}
 }
 
 // SetupMCPEnv configures MCP-related environment variables
 func SetupMCPEnv() {
-	// Ollama configuration
-	bindEnvVariable("OLLAMA_BASE_URL", "http://localhost:11434")
-	bindEnvVariable("OLLAMA_DEFAULT_MODEL", "llama3.2")
-	bindEnvVariable("OLLAMA_TEMPERATURE", 0.7)
-	bindEnvVariable("OLLAMA_MAX_TOKENS", 4096)
-	bindEnvVariable("OLLAMA_TOP_P", 0.9)
-	bindEnvVariable("OLLAMA_REQUEST_TIMEOUT", "300s")
+	// OpenAI configuration
+	bindEnvVariable("OPENAI_API_KEY", "")
+	bindEnvVariable("OPENAI_BASE_URL", "https://api.openai.com/v1")
+	bindEnvVariable("OPENAI_DEFAULT_MODEL", "gpt-4o-mini")
+	bindEnvVariable("OPENAI_TEMPERATURE", 0.7)
+	bindEnvVariable("OPENAI_MAX_TOKENS", 4096)
+	bindEnvVariable("OPENAI_TOP_P", 1.0)
+	bindEnvVariable("OPENAI_REQUEST_TIMEOUT", "120s")
 
 	// MCP configuration
 	bindEnvVariable("MCP_SESSION_TIMEOUT", "1h")
@@ -135,7 +136,7 @@ func SetupMCPEnv() {
 // FullMCPConfig combines all MCP-related configurations
 type FullMCPConfig struct {
 	Servers []MCPServerConfig
-	Ollama  OllamaConfig
+	OpenAI  OpenAIConfig
 	Agent   AgentConfig
 }
 
@@ -149,7 +150,7 @@ func LoadMCPConfig() (*FullMCPConfig, error) {
 
 	cfg := &FullMCPConfig{
 		Servers: GetMCPServers(),
-		Ollama:  GetOllamaConfig(),
+		OpenAI:  GetOpenAIConfig(),
 		Agent:   GetAgentConfig(),
 	}
 

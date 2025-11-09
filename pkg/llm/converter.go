@@ -2,9 +2,17 @@ package llm
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
 )
+
+const toolNameSeparator = "__"
+
+// QualifiedToolName returns the canonical tool identifier (<server>__<tool>)
+func QualifiedToolName(serverName, toolName string) string {
+	return fmt.Sprintf("%s%s%s", serverName, toolNameSeparator, toolName)
+}
 
 // ConvertMCPToolToLLMTool converts an MCP tool to LLM function format
 func ConvertMCPToolToLLMTool(mcpTool protocol.Tool, serverName string) Tool {
@@ -14,7 +22,7 @@ func ConvertMCPToolToLLMTool(mcpTool protocol.Tool, serverName string) Tool {
 	return Tool{
 		Type: ToolTypeFunction,
 		Function: ToolFunction{
-			Name:        serverName + ":" + mcpTool.Name, // Prefix with server name using ':' for clarity
+			Name:        QualifiedToolName(serverName, mcpTool.Name),
 			Description: mcpTool.Description,
 			Parameters:  parameters,
 		},
@@ -28,25 +36,6 @@ func ConvertMCPToolsToLLMTools(mcpTools []protocol.Tool, serverName string) []To
 		llmTools[i] = ConvertMCPToolToLLMTool(mcpTool, serverName)
 	}
 	return llmTools
-}
-
-// ParseToolName extracts server name and tool name from a combined tool name
-// Preferred format: "serverName:toolName". Falls back to "serverName_toolName" for backward compatibility.
-func ParseToolName(combinedName string) (serverName, toolName string) {
-	// Prefer colon separator
-	for i := 0; i < len(combinedName); i++ {
-		if combinedName[i] == ':' {
-			return combinedName[:i], combinedName[i+1:]
-		}
-	}
-	// Fallback: support underscore separator to handle older names
-	for i := 0; i < len(combinedName); i++ {
-		if combinedName[i] == '_' {
-			return combinedName[:i], combinedName[i+1:]
-		}
-	}
-	// If no separator found, return empty server name
-	return "", combinedName
 }
 
 // ConvertMCPContentToString converts MCP content array to a single string

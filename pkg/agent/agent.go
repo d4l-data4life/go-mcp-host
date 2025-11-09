@@ -48,7 +48,7 @@ type Config struct {
 func NewAgent(db *gorm.DB, mcpManager *manager.Manager, llmClient llm.Client, cfg Config) *Agent {
 	// Set defaults
 	if cfg.MaxIterations == 0 {
-		cfg.MaxIterations = 10
+		cfg.MaxIterations = 50
 	}
 	if cfg.MaxContextTokens == 0 {
 		cfg.MaxContextTokens = 8192
@@ -60,7 +60,7 @@ func NewAgent(db *gorm.DB, mcpManager *manager.Manager, llmClient llm.Client, cf
 		cfg.SystemPrompt = "You are a helpful AI assistant with access to various tools. Use them to answer user questions accurately."
 	}
 	if cfg.DefaultModel == "" {
-		cfg.DefaultModel = viper.GetString("OLLAMA_DEFAULT_MODEL")
+		cfg.DefaultModel = viper.GetString("OPENAI_DEFAULT_MODEL")
 	}
 
 	agent := &Agent{
@@ -98,9 +98,9 @@ func (a *Agent) CloseConversation(conversationID uuid.UUID) error {
 	return a.mcpManager.CloseAllSessionsForConversation(conversationID)
 }
 
-// GetAvailableTools returns all available tools for a conversation
-func (a *Agent) GetAvailableTools(ctx context.Context, conversationID uuid.UUID) ([]ToolInfo, error) {
-	toolsWithServer, err := a.mcpManager.GetAllTools(ctx, conversationID)
+// GetAvailableTools returns all available tools for a user (short-lived clients + cache)
+func (a *Agent) GetAvailableTools(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ToolInfo, error) {
+	toolsWithServer, err := a.mcpManager.ListAllToolsForUser(ctx, userID, bearerToken)
 	if err != nil {
 		return nil, err
 	}
@@ -118,9 +118,9 @@ func (a *Agent) GetAvailableTools(ctx context.Context, conversationID uuid.UUID)
 	return tools, nil
 }
 
-// GetAvailableResources returns all available resources for a conversation
-func (a *Agent) GetAvailableResources(ctx context.Context, conversationID uuid.UUID) ([]ResourceInfo, error) {
-	resourcesWithServer, err := a.mcpManager.GetAllResources(ctx, conversationID)
+// GetAvailableResources returns all available resources for a user (short-lived clients + cache)
+func (a *Agent) GetAvailableResources(ctx context.Context, userID uuid.UUID, bearerToken string) ([]ResourceInfo, error) {
+	resourcesWithServer, err := a.mcpManager.ListAllResourcesForUser(ctx, userID, bearerToken)
 	if err != nil {
 		return nil, err
 	}

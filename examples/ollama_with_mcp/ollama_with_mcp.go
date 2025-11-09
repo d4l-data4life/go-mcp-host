@@ -11,12 +11,12 @@ import (
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/config"
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
-	"github.com/d4l-data4life/go-mcp-host/pkg/llm/ollama"
+	llmopenai "github.com/d4l-data4life/go-mcp-host/pkg/llm/openai"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
 )
 
-// This example demonstrates how to use Ollama with MCP tools
-// It shows the complete flow: MCP tools → LLM → Tool execution → Response
+// This example demonstrates how to use an OpenAI-compatible endpoint (like Ollama)
+// with MCP tools. It shows the complete flow: MCP tools → LLM → Tool execution → Response
 
 func main() {
 	// Setup configuration
@@ -44,24 +44,24 @@ func main() {
 
 	// Create MCP manager
 	mcpServers := []config.MCPServerConfig{weatherConfig}
-	mcpManager := manager.NewManager(mcpServers)
+	mcpManager := manager.NewMCPManager(mcpServers)
 
-	// Create Ollama client
-	ollamaClient := ollama.NewClient(ollama.Config{
-		BaseURL: "http://localhost:11434",
+	// Create OpenAI-compatible client pointed at the local Ollama endpoint
+	ollamaClient := llmopenai.NewClient(llmopenai.Config{
+		BaseURL: "http://localhost:11434", // Ollama's default
 		Model:   "llama3.2",
 		Timeout: 5 * time.Minute,
 	})
 
-	// Test Ollama connection
-	fmt.Println("Testing Ollama connection...")
+	// Test connection
+	fmt.Println("Testing OpenAI-compatible endpoint...")
 	models, err := ollamaClient.ListModels(context.Background())
 	if err != nil {
-		fmt.Printf("Failed to connect to Ollama: %v\n", err)
+		fmt.Printf("Failed to connect to the endpoint: %v\n", err)
 		fmt.Println("Make sure Ollama is running: ollama serve")
 		os.Exit(1)
 	}
-	fmt.Printf("Connected to Ollama. Available models: %d\n", len(models))
+	fmt.Printf("Connected successfully. Available models: %d\n", len(models))
 	for _, model := range models {
 		fmt.Printf("  - %s\n", model.Name)
 	}
@@ -84,8 +84,8 @@ func main() {
 	// Wait a moment for tools to be discovered
 	time.Sleep(2 * time.Second)
 
-	// Get all available tools
-	toolsWithServer, err := mcpManager.GetAllTools(ctx, conversationID)
+	// Get all available tools for the current user (cached per server)
+	toolsWithServer, err := mcpManager.ListAllToolsForUser(ctx, userID, "")
 	if err != nil {
 		fmt.Printf("Failed to get tools: %v\n", err)
 		os.Exit(1)
@@ -97,9 +97,14 @@ func main() {
 	}
 
 	// Convert MCP tools to LLM format
-	var llmTools []llm.Tool
+	var (
+		llmTools   []llm.Tool
+		toolLookup = make(map[string]manager.ToolWithServer, len(toolsWithServer))
+	)
 	for _, t := range toolsWithServer {
-		llmTools = append(llmTools, llm.ConvertMCPToolToLLMTool(t.Tool, t.ServerName))
+		llmTool := llm.ConvertMCPToolToLLMTool(t.Tool, t.ServerName)
+		llmTools = append(llmTools, llmTool)
+		toolLookup[llmTool.Function.Name] = t
 	}
 
 	// Create a chat request with tools
@@ -140,8 +145,14 @@ func main() {
 		for _, toolCall := range response.Message.ToolCalls {
 			fmt.Printf("\n  Tool: %s\n", toolCall.Function.Name)
 
-			// Parse server and tool name
-			serverName, toolName := llm.ParseToolName(toolCall.Function.Name)
+			// Resolve server/tool names from lookup map
+			binding, ok := toolLookup[toolCall.Function.Name]
+			if !ok {
+				fmt.Printf("  Error: unknown tool %s\n", toolCall.Function.Name)
+				continue
+			}
+			serverName := binding.ServerName
+			toolName := binding.Tool.Name
 			fmt.Printf("  Server: %s\n", serverName)
 			fmt.Printf("  Method: %s\n", toolName)
 

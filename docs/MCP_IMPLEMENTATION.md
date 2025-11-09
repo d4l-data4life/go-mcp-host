@@ -149,19 +149,19 @@ Manages multiple MCP clients per conversation with lifecycle and caching.
 **Manager Usage:**
 ```go
 // Create manager
-manager := manager.NewManager(db, 1*time.Hour) // 1 hour session timeout
+manager := manager.NewMCPManager(db, 1*time.Hour) // 1 hour session timeout
 
-// Get or create session for conversation
-session, err := manager.GetOrCreateSession(ctx, conversationID, serverConfig)
+// Get or create session for conversation (bearer token optional)
+session, err := manager.GetOrCreateSession(ctx, conversationID, serverConfig, bearerToken, userID)
 
-// Get all tools from all servers in conversation
-tools, err := manager.GetAllTools(ctx, conversationID)
+// Get all tools available to the user (cached per server)
+tools, err := manager.ListAllToolsForUser(ctx, userID, bearerToken)
 
 // Call a tool on a specific server
 result, err := manager.CallTool(ctx, conversationID, serverName, toolName, args)
 
-// Get all resources
-resources, err := manager.GetAllResources(ctx, conversationID)
+// Get all resources available to the user (cached per server)
+resources, err := manager.ListAllResourcesForUser(ctx, userID, bearerToken)
 
 // Read a resource
 content, err := manager.ReadResource(ctx, conversationID, serverName, resourceURI)
@@ -237,9 +237,9 @@ The manager persists sessions and caches in PostgreSQL:
 
 The agent will use the MCP manager to:
 
-1. **Gather Tools**: Get all available tools from all servers
+1. **Gather Tools**: Get all available tools for the active user
    ```go
-   tools, err := mcpManager.GetAllTools(ctx, conversationID)
+   tools, err := mcpManager.ListAllToolsForUser(ctx, userID, bearerToken)
    ```
 
 2. **Format for LLM**: Convert MCP tools to OpenAI function format
@@ -262,7 +262,7 @@ The agent will use the MCP manager to:
 
 4. **Gather Context**: Read relevant resources for LLM context
    ```go
-   resources, err := mcpManager.GetAllResources(ctx, conversationID)
+   resources, err := mcpManager.ListAllResourcesForUser(ctx, userID, bearerToken)
    for _, res := range resources {
        if isRelevant(res.Resource, userQuery) {
            content, _ := mcpManager.ReadResource(ctx, conversationID, res.ServerName, res.Resource.URI)
@@ -292,7 +292,7 @@ func main() {
     var db *gorm.DB
     
     // Create manager
-    mcpManager := manager.NewManager(db, 1*time.Hour)
+    mcpManager := manager.NewMCPManager(db, 1*time.Hour)
     
     // Configure filesystem server
     serverConfig := config.MCPServerConfig{
@@ -303,17 +303,19 @@ func main() {
         Enabled: true,
     }
     
-    // Create session
-    ctx := context.Background()
-    conversationID := uuid.New()
-    
-    session, err := mcpManager.GetOrCreateSession(ctx, conversationID, serverConfig)
+	// Create session
+	ctx := context.Background()
+	conversationID := uuid.New()
+	userID := uuid.New()
+	bearerToken := ""
+
+	session, err := mcpManager.GetOrCreateSession(ctx, conversationID, serverConfig, bearerToken, userID)
     if err != nil {
         panic(err)
     }
     
-    // List tools
-    tools, err := mcpManager.GetAllTools(ctx, conversationID)
+	// List tools for the user (cached per server)
+	tools, err := mcpManager.ListAllToolsForUser(ctx, userID, bearerToken)
     if err != nil {
         panic(err)
     }
@@ -391,4 +393,3 @@ See `TODO.md` for detailed task breakdown.
 - [MCP Specification](https://modelcontextprotocol.io/docs/specification)
 - [mark3labs/mcphost](https://github.com/mark3labs/mcphost) - Reference implementation
 - [Official MCP Servers](https://github.com/modelcontextprotocol/servers)
-

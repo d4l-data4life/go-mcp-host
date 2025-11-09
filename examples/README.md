@@ -180,9 +180,13 @@ You can customize behavior with environment variables:
 # Database
 export DATABASE_URL="host=localhost port=5432 user=myuser password=mypass dbname=mydb sslmode=disable"
 
-# LLM
-export OLLAMA_URL="http://localhost:11434"
-export LLM_MODEL="llama3.2"
+# LLM (OpenAI-compatible)
+export OPENAI_BASE_URL="https://api.openai.com/v1"
+export OPENAI_API_KEY="sk-your-key"
+export OPENAI_DEFAULT_MODEL="gpt-4o-mini"
+# When using Ollama locally, point the OpenAI base at it and drop the API key:
+# export OPENAI_BASE_URL="http://localhost:11434"
+# export OPENAI_API_KEY=""
 
 # Port
 export PORT="9090"
@@ -294,4 +298,3 @@ Found a bug or have an improvement? Please open an issue or PR on GitHub!
 - [Model Context Protocol Docs](https://modelcontextprotocol.io/)
 - [Ollama Documentation](https://github.com/ollama/ollama/blob/main/docs/api.md)
 - [Available MCP Servers](https://github.com/modelcontextprotocol)
-

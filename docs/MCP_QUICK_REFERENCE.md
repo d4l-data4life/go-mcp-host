@@ -289,11 +289,11 @@ User: "What files are in my project directory?"
 
 ```go
 // List all available tools from all connected MCP servers
-tools := mcpManager.ListAllTools(ctx, conversationID)
+tools := mcpManager.ListAllToolsForUser(ctx, userID, bearerToken)
 // Tools: [list_directory, read_file, write_file, ...]
 
 // Check for relevant resources
-resources := mcpManager.ListAllResources(ctx, conversationID)
+resources := mcpManager.ListAllResourcesForUser(ctx, userID, bearerToken)
 // Resources: [project_structure.md, README.md, ...]
 ```
 

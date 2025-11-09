@@ -55,8 +55,9 @@ func main() {
 				Description: "Sequential thinking server for complex reasoning",
 			},
 		},
-		LLMEndpoint: "http://localhost:11434",
-		DB:          db,
+		OpenAIBaseURL:      "http://localhost:11434",
+		OpenAIDefaultModel: "llama3.2",
+		DB:                 db,
 		// Optional: Customize agent behavior
 		AgentConfig: mcphost.Config{}.AgentConfig, // Uses defaults
 	})
@@ -75,7 +76,7 @@ func main() {
 	response, err := host.Chat(context.Background(), mcphost.ChatRequest{
 		ConversationID: conversationID,
 		UserID:         userID,
-		UserMessage:    "What's the weather in Tokyo?",
+		UserMessage:    "What's the weather in San Diego?",
 	})
 
 	if err != nil {
@@ -92,7 +93,7 @@ func main() {
 	streamChan, err := host.ChatStream(context.Background(), mcphost.ChatRequest{
 		ConversationID: conversationID,
 		UserID:         userID,
-		UserMessage:    "Compare the weather in Tokyo and New York",
+		UserMessage:    "Compare the weather in San Diego and New York",
 	})
 
 	if err != nil {
@@ -122,7 +123,7 @@ func main() {
 
 	// Example 3: List available tools
 	fmt.Println("=== Example 3: List Available Tools ===")
-	tools, err := host.GetAvailableTools(context.Background(), conversationID)
+	tools, err := host.GetAvailableTools(context.Background(), userID, "")
 	if err != nil {
 		log.Printf("Error getting tools: %v", err)
 	} else {

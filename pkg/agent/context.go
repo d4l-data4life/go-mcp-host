@@ -27,11 +27,12 @@ func NewContextManager(mcpManager *manager.Manager, maxContextTokens int) *Conte
 // SelectRelevantResources finds resources relevant to the user's query
 func (cm *ContextManager) SelectRelevantResources(
 	ctx context.Context,
-	conversationID uuid.UUID,
+	userID uuid.UUID,
+	bearerToken string,
 	query string,
 ) ([]ResourceWithRelevance, error) {
 	// Get all available resources
-	resourcesWithServer, err := cm.mcpManager.GetAllResources(ctx, conversationID)
+	resourcesWithServer, err := cm.mcpManager.ListAllResourcesForUser(ctx, userID, bearerToken)
 	if err != nil {
 		return nil, err
 	}
