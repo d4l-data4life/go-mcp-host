@@ -11,18 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- renamed `OLLAMA_BASE_URL` ->`OPENAI_BASE_URL`
-- renamed `OLLAMA_DEFAULT_MODEL` ->`OPENAI_DEFAULT_MODEL`
-
 ### Deprecated
 
 ### Removed
 
 ### Fixed
 
-- linter issue
-
 ### Security
+
+## [v1.4.1] - 2025-11-09
+
+### Changed
+
+- renamed `OLLAMA_BASE_URL` ->`OPENAI_BASE_URL`
+- renamed `OLLAMA_DEFAULT_MODEL` ->`OPENAI_DEFAULT_MODEL`
+
+### Fixed
+
+- linter issue
 
 ## [v1.4.0] - 2025-11-09
 
@@ -87,7 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public Go library API for embedding in applications
 - Example programs demonstrating various usage patterns
 
-[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.4.1...HEAD
+[v1.4.1]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.4.0...v1.4.1
 [v1.4.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.3.0...v1.4.0
 [v1.3.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.2.1...v1.3.0
 [v1.2.1]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.2.0...v1.2.1
