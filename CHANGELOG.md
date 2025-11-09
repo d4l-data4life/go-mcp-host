@@ -19,6 +19,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [v1.4.0] - 2025-11-09
+
+### Added
+
+- support for OpenAI API and Ollama via the same ENV variables
+
+### Changed
+
+- refactored MCP custom client to use the MCP SDK from https://github.com/modelcontextprotocol/go-sdk
+- refactored LLM client to use the OpenAI SDK from https://github.com/openai/openai-go
+
+### Fixed
+
+- default model usage wasn't working properly
+- chat summary wasn't working properly in stream mode
+- refactored tool and resource caching
+- fixed examples
+
 ## [v1.3.0] - 2025-11-06
 
 ### Fixed
@@ -64,7 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public Go library API for embedding in applications
 - Example programs demonstrating various usage patterns
 
-[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.4.0...HEAD
+[v1.4.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.3.0...v1.4.0
 [v1.3.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.2.1...v1.3.0
 [v1.2.1]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.2.0...v1.2.1
 [v1.2.0]: https://github.com/d4l-data4life/go-mcp-host/compare/v1.1.0...v1.2.0
