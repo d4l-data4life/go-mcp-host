@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
@@ -195,16 +195,19 @@ type ResourceContent struct {
 	Relevance float64
 }
 
-func resourceContentToString(contents []mcp.ResourceContents) string {
+func resourceContentToString(contents []*mcp.ResourceContents) string {
 	if len(contents) == 0 {
 		return ""
 	}
 
 	for _, c := range contents {
-		if text, ok := mcp.AsTextResourceContents(c); ok && text.Text != "" {
-			return text.Text
+		if c == nil {
+			continue
 		}
-		if blob, ok := mcp.AsBlobResourceContents(c); ok && blob.Blob != "" {
+		if c.Text != "" {
+			return c.Text
+		}
+		if len(c.Blob) > 0 {
 			return "[Binary content]"
 		}
 	}

@@ -1,9 +1,6 @@
 package manager
 
 import (
-	"errors"
-	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,8 +9,6 @@ import (
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
-
-const listenFailurePrefix = "failed to listen to server."
 
 type reconnectTracker struct {
 	manager      *Manager
@@ -133,23 +128,4 @@ func (t *reconnectTracker) applyDelay() {
 	case <-timer.C:
 	case <-t.done:
 	}
-}
-
-type transportLogger struct {
-	serverName string
-	tracker    *reconnectTracker
-}
-
-func (l *transportLogger) Infof(format string, v ...any) {
-	logging.LogInfof("[mcp:%s] %s", l.serverName, fmt.Sprintf(format, v...))
-}
-
-func (l *transportLogger) Errorf(format string, v ...any) {
-	msg := fmt.Sprintf(format, v...)
-	if l.tracker != nil && strings.HasPrefix(format, listenFailurePrefix) {
-		l.tracker.handleListenFailure(msg)
-		return
-	}
-
-	logging.LogErrorf(errors.New(msg), "[mcp:%s] %s", l.serverName, msg)
 }

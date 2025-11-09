@@ -308,7 +308,7 @@ go-mcp-host/
 │   ├── agent/            # Agent orchestration logic
 │   ├── mcp/              # MCP integration helpers
 │   │   ├── helpers/      # Shared utilities (schema conversions, etc.)
-│   │   └── manager/      # Session management built on mark3labs/mcp-go
+│   │   └── manager/      # Session management built on modelcontextprotocol/go-sdk
 │   ├── llm/              # LLM integration (Ollama)
 │   ├── handlers/         # HTTP handlers
 │   ├── models/           # Database models
@@ -325,7 +325,7 @@ go-mcp-host/
 └── swagger/              # API specification
 ```
 
-> **Note:** The low-level MCP protocol, client, and transport implementations are provided by [github.com/mark3labs/mcp-go](https://github.com/mark3labs/mcp-go). This repository focuses on orchestration, caching, and product-specific integrations on top of that client.
+> **Note:** The low-level MCP protocol, client, and transport implementations are provided by the official [github.com/modelcontextprotocol/go-sdk](https://github.com/modelcontextprotocol/go-sdk). This repository focuses on orchestration, caching, and product-specific integrations on top of that client.
 
 ## Testing
 

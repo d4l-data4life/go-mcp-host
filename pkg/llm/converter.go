@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	schemautil "github.com/d4l-data4life/go-mcp-host/pkg/mcp/schemautil"
 )
@@ -18,7 +18,17 @@ func QualifiedToolName(serverName, toolName string) string {
 }
 
 // ConvertMCPToolToLLMTool converts an MCP tool to LLM function format
-func ConvertMCPToolToLLMTool(mcpTool mcp.Tool, serverName string) Tool {
+func ConvertMCPToolToLLMTool(mcpTool *mcp.Tool, serverName string) Tool {
+	if mcpTool == nil {
+		return Tool{
+			Type: ToolTypeFunction,
+			Function: ToolFunction{
+				Name:       QualifiedToolName(serverName, "unknown"),
+				Parameters: map[string]interface{}{},
+			},
+		}
+	}
+
 	// Clone schema (don't add "strict" as it confuses some models)
 	parameters := cloneMap(schemautil.ToolSchemaMap(mcpTool))
 
@@ -33,7 +43,7 @@ func ConvertMCPToolToLLMTool(mcpTool mcp.Tool, serverName string) Tool {
 }
 
 // ConvertMCPToolsToLLMTools converts multiple MCP tools to LLM format
-func ConvertMCPToolsToLLMTools(mcpTools []mcp.Tool, serverName string) []Tool {
+func ConvertMCPToolsToLLMTools(mcpTools []*mcp.Tool, serverName string) []Tool {
 	llmTools := make([]Tool, len(mcpTools))
 	for i, mcpTool := range mcpTools {
 		llmTools[i] = ConvertMCPToolToLLMTool(mcpTool, serverName)
@@ -60,19 +70,22 @@ func ConvertMCPContentToString(contents []mcp.Content) string {
 	}
 
 	for _, content := range contents {
-		if text, ok := mcp.AsTextContent(content); ok {
-			appendLine(text.Text)
-			continue
-		}
-
-		if embedded, ok := mcp.AsEmbeddedResource(content); ok {
-			if textResource, ok := mcp.AsTextResourceContents(embedded.Resource); ok {
-				appendLine(textResource.Text)
+		switch c := content.(type) {
+		case *mcp.TextContent:
+			appendLine(c.Text)
+		case *mcp.EmbeddedResource:
+			if c.Resource == nil {
 				continue
 			}
-			if blobResource, ok := mcp.AsBlobResourceContents(embedded.Resource); ok && blobResource.Blob != "" {
+			if c.Resource.Text != "" {
+				appendLine(c.Resource.Text)
+				continue
+			}
+			if len(c.Resource.Blob) > 0 {
 				appendLine("[Binary resource]")
 			}
+		case *mcp.ResourceLink:
+			appendLine(fmt.Sprintf("[Resource link] %s", c.URI))
 		}
 	}
 

@@ -5,16 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math"
+	"net/http"
+	"os"
+	"os/exec"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
-
-	mcpclient "github.com/mark3labs/mcp-go/client"
-	mcptransport "github.com/mark3labs/mcp-go/client/transport"
-	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/config"
 
@@ -43,10 +44,11 @@ func WithReconnectPolicy(attempts int, delay time.Duration) Option {
 type Manager struct {
 	serverConfigs      []config.MCPServerConfig
 	sessions           map[string]*SessionInfo // key: conversationID:serverName
+	sessionIndex       map[*mcp.ClientSession]*SessionInfo
 	mu                 sync.RWMutex
 	sessionTimeout     time.Duration
-	userToolsCache     *cache.Cache // key: userID:server -> []mcp.Tool
-	userResourcesCache *cache.Cache // key: userID:server -> []mcp.Resource
+	userToolsCache     *cache.Cache // key: userID:server -> []*mcp.Tool
+	userResourcesCache *cache.Cache // key: userID:server -> []*mcp.Resource
 	userCacheTTL       time.Duration
 	serverCapsCache    *cache.Cache // key: serverName -> *mcp.ServerCapabilities
 	serverLocks        map[string]*sync.Mutex
@@ -55,14 +57,13 @@ type Manager struct {
 
 	clientName           string
 	clientVersion        string
-	clientCapabilities   mcp.ClientCapabilities
 	maxReconnectAttempts int
 	reconnectDelay       time.Duration
 }
 
 // SessionInfo holds information about an active MCP session
 type SessionInfo struct {
-	Client           *mcpclient.Client
+	Client           *mcp.ClientSession
 	ConversationID   uuid.UUID
 	UserID           uuid.UUID
 	ServerName       string
@@ -76,18 +77,10 @@ type SessionInfo struct {
 
 // NewMCPManager creates a new MCP manager
 func NewMCPManager(serverConfigs []config.MCPServerConfig, opts ...Option) *Manager {
-	clientCaps := mcp.ClientCapabilities{
-		Roots: &struct {
-			ListChanged bool `json:"listChanged,omitempty"`
-		}{
-			ListChanged: true,
-		},
-		Sampling: &struct{}{},
-	}
-
 	m := &Manager{
 		serverConfigs:        serverConfigs,
 		sessions:             make(map[string]*SessionInfo),
+		sessionIndex:         make(map[*mcp.ClientSession]*SessionInfo),
 		sessionTimeout:       30 * time.Minute,
 		userToolsCache:       cache.New(30*time.Minute, 10*time.Minute),
 		userResourcesCache:   cache.New(30*time.Minute, 10*time.Minute),
@@ -97,7 +90,6 @@ func NewMCPManager(serverConfigs []config.MCPServerConfig, opts ...Option) *Mana
 		userServerLocks:      make(map[string]*sync.Mutex),
 		clientName:           "go-mcp-host",
 		clientVersion:        config.Version,
-		clientCapabilities:   clientCaps,
 		maxReconnectAttempts: 0,
 		reconnectDelay:       defaultListenRetryInterval,
 	}
@@ -137,10 +129,13 @@ func (m *Manager) ListAllToolsForUser(ctx context.Context, userID uuid.UUID, bea
 			key := m.getUserKey(userID, server.Name)
 
 			if tools, found := m.userToolsCache.Get(key); found {
-				if toolList, ok := tools.([]mcp.Tool); ok {
+				if toolList, ok := tools.([]*mcp.Tool); ok {
 					logging.LogDebugf("Using cached tools for user %s server %s: %d tools", userID, server.Name, len(toolList))
 					mu.Lock()
 					for _, t := range toolList {
+						if t == nil {
+							continue
+						}
 						results = append(results, ToolWithServer{Tool: t, ServerName: server.Name})
 					}
 					mu.Unlock()
@@ -160,6 +155,9 @@ func (m *Manager) ListAllToolsForUser(ctx context.Context, userID uuid.UUID, bea
 
 			mu.Lock()
 			for _, t := range fetched {
+				if t == nil {
+					continue
+				}
 				results = append(results, ToolWithServer{Tool: t, ServerName: server.Name})
 			}
 			mu.Unlock()
@@ -191,10 +189,13 @@ func (m *Manager) ListAllResourcesForUser(ctx context.Context, userID uuid.UUID,
 			key := m.getUserKey(userID, server.Name)
 
 			if resources, found := m.userResourcesCache.Get(key); found {
-				if resourceList, ok := resources.([]mcp.Resource); ok {
+				if resourceList, ok := resources.([]*mcp.Resource); ok {
 					logging.LogDebugf("Using cached resources for user %s server %s: %d resources", userID, server.Name, len(resourceList))
 					mu.Lock()
 					for _, r := range resourceList {
+						if r == nil {
+							continue
+						}
 						results = append(results, ResourceWithServer{Resource: r, ServerName: server.Name})
 					}
 					mu.Unlock()
@@ -214,6 +215,9 @@ func (m *Manager) ListAllResourcesForUser(ctx context.Context, userID uuid.UUID,
 
 			mu.Lock()
 			for _, r := range fetched {
+				if r == nil {
+					continue
+				}
 				results = append(results, ResourceWithServer{Resource: r, ServerName: server.Name})
 			}
 			mu.Unlock()
@@ -248,29 +252,33 @@ func (m *Manager) ProbeServer(
 		}
 	}
 
-	cli, initResult, err := m.newInitializedClient(ctx, serverCfg, bearerToken, nil)
+	session, initResult, err := m.newInitializedClient(ctx, serverCfg, bearerToken, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer cli.Close()
+	defer session.Close()
 
-	capsCopy := initResult.Capabilities
+	if initResult == nil || initResult.Capabilities == nil {
+		return nil, errors.New("server did not return capabilities")
+	}
+
+	capsCopy := *initResult.Capabilities
 	m.serverCapsCache.Set(serverCfg.Name, &capsCopy, cache.DefaultExpiration)
 	return &capsCopy, nil
 }
 
-func (m *Manager) fetchToolsForUser(ctx context.Context, userID uuid.UUID, serverCfg config.MCPServerConfig, bearerToken string) ([]mcp.Tool, error) {
+func (m *Manager) fetchToolsForUser(ctx context.Context, userID uuid.UUID, serverCfg config.MCPServerConfig, bearerToken string) ([]*mcp.Tool, error) {
 	lock := m.getUserServerLock(userID, serverCfg.Name)
 	lock.Lock()
 	defer lock.Unlock()
 
-	cli, _, err := m.newInitializedClient(ctx, serverCfg, bearerToken, nil)
+	session, _, err := m.newInitializedClient(ctx, serverCfg, bearerToken, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer cli.Close()
+	defer session.Close()
 
-	result, err := cli.ListTools(ctx, mcp.ListToolsRequest{})
+	result, err := session.ListTools(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -282,18 +290,18 @@ func (m *Manager) fetchResourcesForUser(
 	userID uuid.UUID,
 	serverCfg config.MCPServerConfig,
 	bearerToken string,
-) ([]mcp.Resource, error) {
+) ([]*mcp.Resource, error) {
 	lock := m.getUserServerLock(userID, serverCfg.Name)
 	lock.Lock()
 	defer lock.Unlock()
 
-	cli, _, err := m.newInitializedClient(ctx, serverCfg, bearerToken, nil)
+	session, _, err := m.newInitializedClient(ctx, serverCfg, bearerToken, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer cli.Close()
+	defer session.Close()
 
-	result, err := cli.ListResources(ctx, mcp.ListResourcesRequest{})
+	result, err := session.ListResources(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -305,24 +313,25 @@ func (m *Manager) newInitializedClient(
 	serverCfg config.MCPServerConfig,
 	bearerToken string,
 	tracker *reconnectTracker,
-) (*mcpclient.Client, *mcp.InitializeResult, error) {
+) (*mcp.ClientSession, *mcp.InitializeResult, error) {
 	trans, err := m.createTransport(serverCfg, bearerToken, tracker)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	client := mcpclient.NewClient(trans, mcpclient.WithClientCapabilities(m.clientCapabilities))
-	if err := client.Start(ctx); err != nil {
-		return nil, nil, err
-	}
-
-	initResult, err := client.Initialize(ctx, m.buildInitializeRequest())
+	client := m.newClient()
+	session, err := client.Connect(ctx, trans, nil)
 	if err != nil {
-		client.Close()
 		return nil, nil, err
 	}
 
-	return client, initResult, nil
+	initResult := session.InitializeResult()
+	if initResult == nil {
+		_ = session.Close()
+		return nil, nil, errors.New("missing initialize result from server")
+	}
+
+	return session, initResult, nil
 }
 
 // GetOrCreateSession gets or creates an MCP session for a conversation and server
@@ -408,14 +417,14 @@ func (m *Manager) GetOrCreateSession(
 		tracker = newReconnectTracker(m, conversationID, serverConfig.Name)
 	}
 
-	mcpClient, initResult, err := m.newInitializedClient(ctx, serverConfig, bearerToken, tracker)
+	clientSession, initResult, err := m.newInitializedClient(ctx, serverConfig, bearerToken, tracker)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create MCP client for server %s", serverConfig.Name)
 	}
 
 	tokenHash := hashToken(bearerToken)
 	session := &SessionInfo{
-		Client:           mcpClient,
+		Client:           clientSession,
 		ConversationID:   conversationID,
 		UserID:           userID,
 		ServerName:       serverConfig.Name,
@@ -426,8 +435,6 @@ func (m *Manager) GetOrCreateSession(
 		reconnectTracker: tracker,
 	}
 
-	m.registerNotificationHandlers(session)
-
 	caps := initResult.Capabilities
 	if caps.Tools != nil {
 		go m.refreshTools(context.Background(), session)
@@ -437,6 +444,7 @@ func (m *Manager) GetOrCreateSession(
 	}
 
 	m.sessions[sessionKey] = session
+	m.sessionIndex[session.Client] = session
 
 	logging.LogDebugf("Created MCP session: id=%s server=%s", session.SessionID, serverConfig.Name)
 
@@ -471,6 +479,7 @@ func (m *Manager) CloseSession(conversationID uuid.UUID, serverName string) erro
 		return nil
 	}
 	delete(m.sessions, sessionKey)
+	delete(m.sessionIndex, session.Client)
 	m.mu.Unlock()
 
 	if session.reconnectTracker != nil {
@@ -495,6 +504,7 @@ func (m *Manager) CloseAllSessionsForConversation(conversationID uuid.UUID) erro
 	for key, session := range m.sessions {
 		if session.ConversationID == conversationID {
 			delete(m.sessions, key)
+			delete(m.sessionIndex, session.Client)
 
 			if session.reconnectTracker != nil {
 				session.reconnectTracker.markClosed()
@@ -530,11 +540,9 @@ func (m *Manager) CallTool(
 	session.LastAccessed = time.Now()
 	session.mu.Unlock()
 
-	result, err := session.Client.CallTool(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name:      toolName,
-			Arguments: arguments,
-		},
+	result, err := session.Client.CallTool(ctx, &mcp.CallToolParams{
+		Name:      toolName,
+		Arguments: arguments,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to call tool %s on server %s", toolName, serverName)
@@ -562,10 +570,8 @@ func (m *Manager) ReadResource(
 	session.LastAccessed = time.Now()
 	session.mu.Unlock()
 
-	result, err := session.Client.ReadResource(ctx, mcp.ReadResourceRequest{
-		Params: mcp.ReadResourceParams{
-			URI: resourceURI,
-		},
+	result, err := session.Client.ReadResource(ctx, &mcp.ReadResourceParams{
+		URI: resourceURI,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read resource %s from server %s", resourceURI, serverName)
@@ -584,7 +590,7 @@ func (m *Manager) refreshTools(ctx context.Context, session *SessionInfo) {
 	}
 
 	logging.LogDebugf("Refreshing tools for server %s", session.ServerName)
-	result, err := session.Client.ListTools(ctx, mcp.ListToolsRequest{})
+	result, err := session.Client.ListTools(ctx, nil)
 	if err != nil {
 		logging.LogErrorf(err, "Failed to refresh tools for server %s", session.ServerName)
 		return
@@ -592,7 +598,7 @@ func (m *Manager) refreshTools(ctx context.Context, session *SessionInfo) {
 
 	if session.UserID != uuid.Nil {
 		cacheKey := m.getUserKey(session.UserID, session.ServerName)
-		var tools []mcp.Tool
+		var tools []*mcp.Tool
 		if result != nil {
 			tools = result.Tools
 		}
@@ -618,7 +624,7 @@ func (m *Manager) refreshResources(ctx context.Context, session *SessionInfo) {
 	}
 
 	logging.LogDebugf("Refreshing resources for server %s", session.ServerName)
-	result, err := session.Client.ListResources(ctx, mcp.ListResourcesRequest{})
+	result, err := session.Client.ListResources(ctx, nil)
 	if err != nil {
 		logging.LogErrorf(err, "Failed to refresh resources for server %s", session.ServerName)
 		return
@@ -626,7 +632,7 @@ func (m *Manager) refreshResources(ctx context.Context, session *SessionInfo) {
 
 	if session.UserID != uuid.Nil {
 		cacheKey := m.getUserKey(session.UserID, session.ServerName)
-		var resources []mcp.Resource
+		var resources []*mcp.Resource
 		if result != nil {
 			resources = result.Resources
 		}
@@ -646,14 +652,60 @@ func (m *Manager) refreshResources(ctx context.Context, session *SessionInfo) {
 	logging.LogDebugf("Refreshed resources for server %s: %d resources", session.ServerName, resourceCount)
 }
 
-func (m *Manager) registerNotificationHandlers(session *SessionInfo) {
-	session.Client.OnNotification(func(notification mcp.JSONRPCNotification) {
-		switch notification.Notification.Method {
-		case string(mcp.MethodNotificationToolsListChanged):
-			go m.refreshTools(context.Background(), session)
-		case string(mcp.MethodNotificationResourcesListChanged), string(mcp.MethodNotificationResourceUpdated):
-			go m.refreshResources(context.Background(), session)
-		}
+func (m *Manager) handleToolListChanged(ctx context.Context, req *mcp.ToolListChangedRequest) {
+	if req == nil {
+		return
+	}
+	session := m.findSessionByClientSession(req.GetSession())
+	if session == nil {
+		return
+	}
+	go m.refreshTools(context.Background(), session)
+}
+
+func (m *Manager) handleResourceListChanged(ctx context.Context, req *mcp.ResourceListChangedRequest) {
+	if req == nil {
+		return
+	}
+	session := m.findSessionByClientSession(req.GetSession())
+	if session == nil {
+		return
+	}
+	go m.refreshResources(context.Background(), session)
+}
+
+func (m *Manager) handleResourceUpdated(ctx context.Context, req *mcp.ResourceUpdatedNotificationRequest) {
+	if req == nil {
+		return
+	}
+	session := m.findSessionByClientSession(req.GetSession())
+	if session == nil {
+		return
+	}
+	go m.refreshResources(context.Background(), session)
+}
+
+func (m *Manager) findSessionByClientSession(session mcp.Session) *SessionInfo {
+	clientSession, ok := session.(*mcp.ClientSession)
+	if !ok || clientSession == nil {
+		return nil
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.sessionIndex[clientSession]
+}
+
+func (m *Manager) newClient() *mcp.Client {
+	impl := &mcp.Implementation{
+		Name:    m.clientName,
+		Version: m.clientVersion,
+	}
+
+	return mcp.NewClient(impl, &mcp.ClientOptions{
+		ToolListChangedHandler:     m.handleToolListChanged,
+		ResourceListChangedHandler: m.handleResourceListChanged,
+		ResourceUpdatedHandler:     m.handleResourceUpdated,
 	})
 }
 
@@ -678,6 +730,7 @@ func (m *Manager) cleanupInactiveSessions() {
 
 		if now.Sub(lastAccessed) > m.sessionTimeout {
 			delete(m.sessions, key)
+			delete(m.sessionIndex, session.Client)
 			if session.reconnectTracker != nil {
 				session.reconnectTracker.markClosed()
 			}
@@ -738,42 +791,31 @@ func (m *Manager) GetCacheStats() map[string]interface{} {
 
 // ToolWithServer associates a tool with its server
 type ToolWithServer struct {
-	Tool       mcp.Tool
+	Tool       *mcp.Tool
 	ServerName string
 }
 
 // ResourceWithServer associates a resource with its server
 type ResourceWithServer struct {
-	Resource   mcp.Resource
+	Resource   *mcp.Resource
 	ServerName string
-}
-
-func (m *Manager) buildInitializeRequest() mcp.InitializeRequest {
-	return mcp.InitializeRequest{
-		Params: mcp.InitializeParams{
-			ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
-			ClientInfo: mcp.Implementation{
-				Name:    m.clientName,
-				Version: m.clientVersion,
-			},
-			Capabilities: m.clientCapabilities,
-		},
-	}
 }
 
 func (m *Manager) createTransport(
 	serverCfg config.MCPServerConfig,
 	bearerToken string,
 	tracker *reconnectTracker,
-) (mcptransport.Interface, error) {
+) (mcp.Transport, error) {
 	switch serverCfg.Type {
 	case "stdio":
 		if serverCfg.Command == "" {
 			return nil, errors.New("stdio transport requires command")
 		}
-		envSlice := envMapToSlice(serverCfg.Env)
-		args := append([]string(nil), serverCfg.Args...)
-		return mcptransport.NewStdioWithOptions(serverCfg.Command, envSlice, args), nil
+		cmd := exec.Command(serverCfg.Command, append([]string{}, serverCfg.Args...)...) // #nosec G204
+		if len(serverCfg.Env) > 0 {
+			cmd.Env = append(os.Environ(), envMapToSlice(serverCfg.Env)...)
+		}
+		return &mcp.CommandTransport{Command: cmd}, nil
 	case "http":
 		if serverCfg.URL == "" {
 			return nil, errors.New("http transport requires URL")
@@ -786,27 +828,25 @@ func (m *Manager) createTransport(
 		if serverCfg.ForwardBearer && bearerToken != "" {
 			headers["Authorization"] = "Bearer " + bearerToken
 		}
-		logger := m.newTransportLogger(serverCfg.Name, tracker)
+		httpClient := m.newHTTPClient(headers, tracker)
 
 		switch mode {
 		case config.HTTPServerModeBatch:
-			opts := []mcptransport.StreamableHTTPCOption{
-				mcptransport.WithHTTPHeaders(headers),
-				mcptransport.WithContinuousListening(),
+			transport := &mcp.StreamableClientTransport{
+				Endpoint:   serverCfg.URL,
+				HTTPClient: httpClient,
 			}
-			if logger != nil {
-				opts = append(opts, mcptransport.WithHTTPLogger(logger))
+			if m.maxReconnectAttempts > 0 {
+				transport.MaxRetries = m.maxReconnectAttempts
+			} else {
+				transport.MaxRetries = math.MaxInt32
 			}
-			return mcptransport.NewStreamableHTTP(serverCfg.URL, opts...)
+			return transport, nil
 		case config.HTTPServerModeStream:
-			var opts []mcptransport.ClientOption
-			if len(headers) > 0 {
-				opts = append(opts, mcptransport.WithHeaders(headers))
-			}
-			if logger != nil {
-				opts = append(opts, mcptransport.WithSSELogger(logger))
-			}
-			return mcptransport.NewSSE(serverCfg.URL, opts...)
+			return &mcp.SSEClientTransport{
+				Endpoint:   serverCfg.URL,
+				HTTPClient: httpClient,
+			}, nil
 		default:
 			return nil, errors.Errorf("unsupported http mode %q for server %s", serverCfg.Mode, serverCfg.Name)
 		}
@@ -837,17 +877,71 @@ func cloneHeaders(headers map[string]string) map[string]string {
 	return cloned
 }
 
+func (m *Manager) newHTTPClient(headers map[string]string, tracker *reconnectTracker) *http.Client {
+	needsInstrumentation := len(headers) > 0 || tracker != nil
+	if !needsInstrumentation {
+		return http.DefaultClient
+	}
+
+	var headerValues http.Header
+	for k, v := range headers {
+		if v == "" {
+			continue
+		}
+		if headerValues == nil {
+			headerValues = make(http.Header)
+		}
+		headerValues.Add(k, v)
+	}
+
+	base := http.DefaultTransport
+	if base == nil {
+		base = http.DefaultTransport
+	}
+
+	return &http.Client{
+		Transport: &instrumentedRoundTripper{
+			base:    base,
+			headers: headerValues,
+			tracker: tracker,
+		},
+	}
+}
+
+type instrumentedRoundTripper struct {
+	base    http.RoundTripper
+	headers http.Header
+	tracker *reconnectTracker
+}
+
+func (rt *instrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	r := req
+	if len(rt.headers) > 0 {
+		r = req.Clone(req.Context())
+		if r.Header == nil {
+			r.Header = make(http.Header)
+		}
+		for k, values := range rt.headers {
+			if r.Header.Get(k) != "" {
+				continue
+			}
+			for _, v := range values {
+				r.Header.Add(k, v)
+			}
+		}
+	}
+
+	resp, err := rt.base.RoundTrip(r)
+	if err != nil && rt.tracker != nil && r.Method == http.MethodGet {
+		go rt.tracker.handleListenFailure(err.Error())
+	}
+	return resp, err
+}
+
 func hashToken(token string) string {
 	if token == "" {
 		return ""
 	}
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
-}
-
-func (m *Manager) newTransportLogger(serverName string, tracker *reconnectTracker) *transportLogger {
-	return &transportLogger{
-		serverName: serverName,
-		tracker:    tracker,
-	}
 }

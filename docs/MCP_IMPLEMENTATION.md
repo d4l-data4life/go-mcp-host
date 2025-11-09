@@ -19,9 +19,8 @@ The MCP implementation is organized into three main layers:
          │                   │
 ┌────────▼────────┐  ┌───────▼────────┐
 │  Client Layer   │  │  Client Layer  │
-│ (mark3labs/     │  │ (per server)   │
-│  mcp-go/client) │  │ - Resource read│
-│ - Tool calls    │  │ - Prompts      │
+│ (go-sdk/mcp)    │  │ (per server)   │
+│ - Tool calls    │  │ - Resource read│
 │ - Notifications │  │ - Streaming    │
 └────────┬────────┘  └───────┬────────┘
          │                   │
@@ -33,66 +32,54 @@ The MCP implementation is organized into three main layers:
 
 ## Components
 
-### 1. Protocol Layer (`github.com/mark3labs/mcp-go/mcp`)
+### 1. Protocol Layer (`github.com/modelcontextprotocol/go-sdk/mcp`)
 
-Instead of maintaining our own protocol definitions, we now import the `mcp` package from [mark3labs/mcp-go](https://github.com/mark3labs/mcp-go). It contains the JSON-RPC primitives, typed MCP messages, and helpers (e.g., `mcp.Tool`, `mcp.Resource`, `mcp.InitializeRequest`, `mcp.ClientCapabilities`). This guarantees we stay aligned with the latest MCP specification without duplicating work.
+Instead of maintaining our own protocol definitions, we now import the `mcp` package from [modelcontextprotocol/go-sdk](https://github.com/modelcontextprotocol/go-sdk). It contains the JSON-RPC primitives, typed MCP messages, and helpers (e.g., `mcp.Tool`, `mcp.Resource`, `mcp.InitializeRequest`, `mcp.ClientSession`). This guarantees we stay aligned with the latest MCP specification without duplicating work.
 
-### 2. Transport Layer (`github.com/mark3labs/mcp-go/client/transport`)
+### 2. Transport Layer (core transports in `go-sdk/mcp`)
 
-The upstream module also provides production-ready transports. We rely on:
+The official SDK bundles production-ready transports that map directly to our supported server types:
 
-- `transport.NewStdioWithOptions` for local processes launched via stdio.
-- `transport.NewStreamableHTTP` for HTTP/SSE servers (including bearer/OAuth helpers).
+- `mcp.CommandTransport` for local processes launched via stdio.
+- `mcp.StreamableClientTransport` for HTTP batch endpoints with streaming follow-up requests.
+- `mcp.SSEClientTransport` for long-lived Server-Sent Event listeners.
 
 ```go
 // Stdio example
-trans := transport.NewStdioWithOptions(
-    "npx",
-    []string{"DEBUG=true"},
-    []string{"-y", "@modelcontextprotocol/server-filesystem", "/tmp"},
-)
+cmd := exec.Command("npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp")
+transport := &mcp.CommandTransport{Command: cmd}
 
-// HTTP example
-trans, err := transport.NewStreamableHTTP(
-    "https://api.example.com/mcp",
-    transport.WithHTTPHeaders(map[string]string{"Authorization": "Bearer token"}),
-    transport.WithContinuousListening(),
-)
+// HTTP example with bearer forwarding
+transport := &mcp.StreamableClientTransport{
+    Endpoint:   "https://api.example.com/mcp",
+    HTTPClient: &http.Client{Timeout: 30 * time.Second},
+}
 ```
 
-### 3. Client Layer (`github.com/mark3labs/mcp-go/client`)
+### 3. Client Layer (`github.com/modelcontextprotocol/go-sdk/mcp`)
 
-`mcp-go/client` replaces our previous in-repo client. It handles initialization, paging, notifications, sampling callbacks, etc. Example:
+The `mcp` client type replaces our previous in-repo implementation. It handles initialization, paging, notifications, sampling callbacks, etc. Example:
 
 ```go
-trans := transport.NewStdioWithOptions("npx", nil, []string{"-y", "@modelcontextprotocol/server-filesystem"})
-cli := mcpclient.NewClient(trans, mcpclient.WithClientCapabilities(mcp.ClientCapabilities{
-    Roots:    &struct{ ListChanged bool }{ListChanged: true},
-    Sampling: &struct{}{},
-}))
+client := mcp.NewClient(&mcp.Implementation{
+    Name:    "go-mcp-host",
+    Version: "1.0.0",
+}, nil)
 
-if err := cli.Start(ctx); err != nil {
+session, err := client.Connect(ctx, transport, nil)
+if err != nil {
     log.Fatal(err)
 }
+defer session.Close()
 
-if _, err := cli.Initialize(ctx, mcp.InitializeRequest{
-    Params: mcp.InitializeParams{
-        ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
-        ClientInfo:      mcp.Implementation{Name: "go-mcp-host", Version: "1.0.0"},
-        Capabilities:    cli.GetClientCapabilities(),
-    },
-}); err != nil {
-    log.Fatal(err)
+if session.InitializeResult() == nil {
+    log.Fatal("missing initialize result")
 }
 
-tools, _ := cli.ListTools(ctx, mcp.ListToolsRequest{})
-result, _ := cli.CallTool(ctx, mcp.CallToolRequest{
-    Params: mcp.CallToolParams{
-        Name: "read_file",
-        Arguments: map[string]any{
-            "path": "/tmp/test.txt",
-        },
-    },
+tools, _ := session.ListTools(ctx, nil)
+result, _ := session.CallTool(ctx, &mcp.CallToolParams{
+    Name: "read_file",
+    Arguments: map[string]any{"path": "/tmp/test.txt"},
 })
 ```
 
