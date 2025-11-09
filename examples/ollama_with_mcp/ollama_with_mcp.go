@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	openai "github.com/openai/openai-go"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/config"
+	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
+	llmopenai "github.com/d4l-data4life/go-mcp-host/pkg/llm/openai"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
-	"github.com/d4l-data4life/go-mcp-host/pkg/openaiutil"
 )
 
 // This example demonstrates how to use an OpenAI-compatible endpoint (like Ollama)
@@ -47,8 +47,9 @@ func main() {
 	mcpManager := manager.NewMCPManager(mcpServers)
 
 	// Create OpenAI-compatible client pointed at the local Ollama endpoint
-	ollamaClient := openaiutil.NewClient(openaiutil.ClientConfig{
+	ollamaClient := llmopenai.NewClient(llmopenai.Config{
 		BaseURL: "http://localhost:11434", // Ollama's default
+		Model:   "llama3.2",
 		Timeout: 5 * time.Minute,
 	})
 
@@ -97,50 +98,51 @@ func main() {
 
 	// Convert MCP tools to LLM format
 	var (
-		llmTools   []openai.ChatCompletionToolParam
+		llmTools   []llm.Tool
 		toolLookup = make(map[string]manager.ToolWithServer, len(toolsWithServer))
 	)
 	for _, t := range toolsWithServer {
-		llmTool := openaiutil.ConvertMCPToolToOpenAITool(t.Tool, t.ServerName)
+		llmTool := llm.ConvertMCPToolToLLMTool(t.Tool, t.ServerName)
 		llmTools = append(llmTools, llmTool)
 		toolLookup[llmTool.Function.Name] = t
 	}
 
 	// Create a chat request with tools
 	fmt.Println("\nSending request to LLM...")
-	messages := []openai.ChatCompletionMessageParamUnion{
-		openai.SystemMessage("You are a helpful assistant with access to weather information. When asked about weather, use the available tools to get current data."),
-		openai.UserMessage("What's the weather like in San Francisco?"),
+	messages := []llm.Message{
+		{
+			Role:    llm.RoleSystem,
+			Content: "You are a helpful assistant with access to weather information. When asked about weather, use the available tools to get current data.",
+		},
+		{
+			Role:    llm.RoleUser,
+			Content: "What's the weather like in San Francisco?",
+		},
+	}
+
+	chatRequest := llm.ChatRequest{
+		Model:    "llama3.2",
+		Messages: messages,
+		Tools:    llmTools,
 	}
 
 	// Send to LLM
-	response, err := ollamaClient.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Model:    openai.ChatModel("llama3.2"),
-		Messages: messages,
-		Tools:    llmTools,
-	})
+	response, err := ollamaClient.Chat(ctx, chatRequest)
 	if err != nil {
 		fmt.Printf("Failed to get LLM response: %v\n", err)
 		os.Exit(1)
 	}
-	if len(response.Choices) == 0 {
-		fmt.Println("LLM returned no choices")
-		os.Exit(1)
-	}
 
 	fmt.Printf("\nLLM Response:\n")
-	first := response.Choices[0].Message
-	fmt.Printf("  Role: %s\n", first.Role)
-	fmt.Printf("  Content: %s\n", first.Content)
-	fmt.Printf("  Tool Calls: %d\n", len(first.ToolCalls))
+	fmt.Printf("  Role: %s\n", response.Message.Role)
+	fmt.Printf("  Content: %s\n", response.Message.Content)
+	fmt.Printf("  Tool Calls: %d\n", len(response.Message.ToolCalls))
 
 	// Execute tool calls if any
-	if len(first.ToolCalls) > 0 {
+	if len(response.Message.ToolCalls) > 0 {
 		fmt.Println("\nExecuting tool calls...")
 
-		messages = append(messages, first.ToParam())
-
-		for _, toolCall := range first.ToolCalls {
+		for _, toolCall := range response.Message.ToolCalls {
 			fmt.Printf("\n  Tool: %s\n", toolCall.Function.Name)
 
 			// Resolve server/tool names from lookup map
@@ -170,25 +172,29 @@ func main() {
 			}
 
 			// Convert result to string
-			resultText := openaiutil.ConvertMCPContentToString(result.Content)
+			resultText := llm.ConvertMCPContentToString(result.Content)
 			fmt.Printf("  Result: %s\n", resultText)
 
-			messages = append(messages, openai.ToolMessage(resultText, toolCall.ID))
+			// Add tool result to messages for next LLM call
+			messages = append(messages, llm.Message{
+				Role:      llm.RoleAssistant,
+				ToolCalls: []llm.ToolCall{toolCall},
+			})
+			messages = append(messages, llm.Message{
+				Role:       llm.RoleTool,
+				ToolCallID: toolCall.ID,
+				Content:    resultText,
+			})
 		}
 
 		// Send tool results back to LLM for final response
 		fmt.Println("\nSending tool results back to LLM...")
-		finalResponse, err := ollamaClient.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-			Model:    openai.ChatModel("llama3.2"),
-			Messages: messages,
-			Tools:    llmTools,
-		})
+		chatRequest.Messages = messages
+		finalResponse, err := ollamaClient.Chat(ctx, chatRequest)
 		if err != nil {
 			fmt.Printf("Failed to get final response: %v\n", err)
 		} else {
-			if len(finalResponse.Choices) > 0 {
-				fmt.Printf("\nFinal Response:\n%s\n", finalResponse.Choices[0].Message.Content)
-			}
+			fmt.Printf("\nFinal Response:\n%s\n", finalResponse.Message.Content)
 		}
 	}
 
