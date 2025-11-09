@@ -69,6 +69,7 @@ mcp_servers:
   # - name: sentry
   #   type: http
   #   url: "https://mcp.sentry.io"
+  #   mode: batch  # HTTP mode: batch (JSON) or stream (SSE-style streaming)
   #   headers:
   #     Authorization: "Bearer YOUR_SENTRY_TOKEN"
   #   enabled: false

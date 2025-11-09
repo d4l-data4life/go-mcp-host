@@ -222,6 +222,7 @@ mcp_servers:
   - name: my-api
     type: http
     url: "https://api.example.com/mcp"
+    mode: batch  # HTTP mode: batch (JSON) or stream (SSE)
     headers:
       X-API-Key: "your-api-key"
     forwardBearer: true  # Forward user's bearer token
@@ -305,11 +306,9 @@ go-mcp-host/
 │   └── api/              # Main application entry point
 ├── pkg/
 │   ├── agent/            # Agent orchestration logic
-│   ├── mcp/              # MCP protocol implementation
-│   │   ├── client/       # MCP client core
-│   │   ├── manager/      # Session management
-│   │   ├── protocol/     # Protocol types
-│   │   └── transport/    # Stdio/HTTP transports
+│   ├── mcp/              # MCP integration helpers
+│   │   ├── helpers/      # Shared utilities (schema conversions, etc.)
+│   │   └── manager/      # Session management built on modelcontextprotocol/go-sdk
 │   ├── llm/              # LLM integration (Ollama)
 │   ├── handlers/         # HTTP handlers
 │   ├── models/           # Database models
@@ -325,6 +324,8 @@ go-mcp-host/
 ├── sql/                  # Database migrations
 └── swagger/              # API specification
 ```
+
+> **Note:** The low-level MCP protocol, client, and transport implementations are provided by the official [github.com/modelcontextprotocol/go-sdk](https://github.com/modelcontextprotocol/go-sdk). This repository focuses on orchestration, caching, and product-specific integrations on top of that client.
 
 ## Testing
 

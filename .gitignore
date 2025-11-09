@@ -69,3 +69,4 @@ coverage.html
 # Go workspace file
 go.work
 go.work.sum
+.gocache

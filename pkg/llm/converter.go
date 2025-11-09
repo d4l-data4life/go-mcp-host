@@ -3,8 +3,11 @@ package llm
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
-	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/protocol"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	schemautil "github.com/d4l-data4life/go-mcp-host/pkg/mcp/schemautil"
 )
 
 const toolNameSeparator = "__"
@@ -15,9 +18,19 @@ func QualifiedToolName(serverName, toolName string) string {
 }
 
 // ConvertMCPToolToLLMTool converts an MCP tool to LLM function format
-func ConvertMCPToolToLLMTool(mcpTool protocol.Tool, serverName string) Tool {
+func ConvertMCPToolToLLMTool(mcpTool *mcp.Tool, serverName string) Tool {
+	if mcpTool == nil {
+		return Tool{
+			Type: ToolTypeFunction,
+			Function: ToolFunction{
+				Name:       QualifiedToolName(serverName, "unknown"),
+				Parameters: map[string]interface{}{},
+			},
+		}
+	}
+
 	// Clone schema (don't add "strict" as it confuses some models)
-	parameters := cloneMap(mcpTool.InputSchema)
+	parameters := cloneMap(schemautil.ToolSchemaMap(mcpTool))
 
 	return Tool{
 		Type: ToolTypeFunction,
@@ -30,7 +43,7 @@ func ConvertMCPToolToLLMTool(mcpTool protocol.Tool, serverName string) Tool {
 }
 
 // ConvertMCPToolsToLLMTools converts multiple MCP tools to LLM format
-func ConvertMCPToolsToLLMTools(mcpTools []protocol.Tool, serverName string) []Tool {
+func ConvertMCPToolsToLLMTools(mcpTools []*mcp.Tool, serverName string) []Tool {
 	llmTools := make([]Tool, len(mcpTools))
 	for i, mcpTool := range mcpTools {
 		llmTools[i] = ConvertMCPToolToLLMTool(mcpTool, serverName)
@@ -39,20 +52,44 @@ func ConvertMCPToolsToLLMTools(mcpTools []protocol.Tool, serverName string) []To
 }
 
 // ConvertMCPContentToString converts MCP content array to a single string
-func ConvertMCPContentToString(contents []protocol.Content) string {
+func ConvertMCPContentToString(contents []mcp.Content) string {
 	if len(contents) == 0 {
 		return ""
 	}
 
-	// For now, just concatenate text content
-	result := ""
-	for i, content := range contents {
-		if i > 0 {
-			result += "\n"
+	var builder strings.Builder
+
+	appendLine := func(text string) {
+		if text == "" {
+			return
 		}
-		result += content.Text
+		if builder.Len() > 0 {
+			builder.WriteString("\n")
+		}
+		builder.WriteString(text)
 	}
-	return result
+
+	for _, content := range contents {
+		switch c := content.(type) {
+		case *mcp.TextContent:
+			appendLine(c.Text)
+		case *mcp.EmbeddedResource:
+			if c.Resource == nil {
+				continue
+			}
+			if c.Resource.Text != "" {
+				appendLine(c.Resource.Text)
+				continue
+			}
+			if len(c.Resource.Blob) > 0 {
+				appendLine("[Binary resource]")
+			}
+		case *mcp.ResourceLink:
+			appendLine(fmt.Sprintf("[Resource link] %s", c.URI))
+		}
+	}
+
+	return builder.String()
 }
 
 // cloneMap performs a deep copy of a generic map to avoid mutating original schemas

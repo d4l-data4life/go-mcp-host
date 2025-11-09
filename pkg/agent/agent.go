@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
+	schemautil "github.com/d4l-data4life/go-mcp-host/pkg/mcp/schemautil"
 )
 
 // Agent represents an AI agent that can use MCP tools via LLM
@@ -111,7 +113,7 @@ func (a *Agent) GetAvailableTools(ctx context.Context, userID uuid.UUID, bearerT
 			ServerName:  t.ServerName,
 			ToolName:    t.Tool.Name,
 			Description: t.Tool.Description,
-			InputSchema: t.Tool.InputSchema,
+			InputSchema: schemautil.ToolSchemaJSON(t.Tool),
 		}
 	}
 
@@ -132,7 +134,7 @@ func (a *Agent) GetAvailableResources(ctx context.Context, userID uuid.UUID, bea
 			URI:         r.Resource.URI,
 			Name:        r.Resource.Name,
 			Description: r.Resource.Description,
-			MimeType:    r.Resource.MimeType,
+			MimeType:    r.Resource.MIMEType,
 		}
 	}
 
@@ -194,7 +196,7 @@ type ToolInfo struct {
 	ServerName  string
 	ToolName    string
 	Description string
-	InputSchema map[string]interface{}
+	InputSchema json.RawMessage
 }
 
 // ResourceInfo represents information about an available resource

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/agent"
 	"github.com/d4l-data4life/go-mcp-host/pkg/auth"
@@ -30,13 +31,18 @@ func SetupRoutes(ctx context.Context, mux *chi.Mux, tokenValidator auth.TokenVal
 	if err != nil {
 		logging.LogErrorf(err, "Failed to load MCP config, using defaults")
 		mcpConfig = &config.FullMCPConfig{
-			Servers: []config.MCPServerConfig{},
-			OpenAI:  config.GetOpenAIConfig(),
-			Agent:   config.GetAgentConfig(),
+			Servers:           []config.MCPServerConfig{},
+			OpenAI:            config.GetOpenAIConfig(),
+			Agent:             config.GetAgentConfig(),
+			ReconnectAttempts: 3,
+			ReconnectDelay:    5 * time.Second,
 		}
 	}
 
-	mcpManager := manager.NewMCPManager(mcpConfig.Servers)
+	mcpManager := manager.NewMCPManager(
+		mcpConfig.Servers,
+		manager.WithReconnectPolicy(mcpConfig.ReconnectAttempts, mcpConfig.ReconnectDelay),
+	)
 
 	// Initialize LLM client (OpenAI-compatible for both OpenAI and Ollama endpoints)
 	var llmClient llm.Client = llmopenai.NewClient(llmopenai.Config{

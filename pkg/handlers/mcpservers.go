@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -8,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
+	schemautil "github.com/d4l-data4life/go-mcp-host/pkg/mcp/schemautil"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
@@ -49,10 +51,10 @@ type ServerInfo struct {
 
 // ToolInfo represents information about an MCP tool
 type ToolInfo struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Server      string                 `json:"server"`
-	InputSchema map[string]interface{} `json:"inputSchema"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Server      string          `json:"server"`
+	InputSchema json.RawMessage `json:"inputSchema"`
 }
 
 // ResourceInfo represents information about an MCP resource
@@ -125,7 +127,7 @@ func (h *MCPServersHandler) ListTools(w http.ResponseWriter, r *http.Request) {
 			Name:        tool.Tool.Name,
 			Description: tool.Tool.Description,
 			Server:      tool.ServerName,
-			InputSchema: tool.Tool.InputSchema,
+			InputSchema: schemautil.ToolSchemaJSON(tool.Tool),
 		})
 	}
 
@@ -152,7 +154,7 @@ func (h *MCPServersHandler) ListResources(w http.ResponseWriter, r *http.Request
 			URI:         resource.Resource.URI,
 			Name:        resource.Resource.Name,
 			Description: resource.Resource.Description,
-			MimeType:    resource.Resource.MimeType,
+			MimeType:    resource.Resource.MIMEType,
 			Server:      resource.ServerName,
 		})
 	}

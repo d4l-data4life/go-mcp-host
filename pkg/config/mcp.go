@@ -2,16 +2,23 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/viper"
 
 	"github.com/d4l-data4life/go-svc/pkg/logging"
 )
 
+const (
+	HTTPServerModeBatch  = "batch"
+	HTTPServerModeStream = "stream"
+)
+
 // MCPServerConfig represents configuration for an MCP server connection
 type MCPServerConfig struct {
 	Name          string            `yaml:"name"                  json:"name"`
-	Type          string            `yaml:"type"                  json:"type"` // "stdio" or "http"
+	Type          string            `yaml:"type"                  json:"type"`           // "stdio" or "http"
+	Mode          string            `yaml:"mode,omitempty"        json:"mode,omitempty"` // "batch" (default) or "stream"
 	Command       string            `yaml:"command,omitempty"     json:"command,omitempty"`
 	Args          []string          `yaml:"args,omitempty"        json:"args,omitempty"`
 	Env           map[string]string `yaml:"env,omitempty"         json:"env,omitempty"`
@@ -135,9 +142,11 @@ func SetupMCPEnv() {
 
 // FullMCPConfig combines all MCP-related configurations
 type FullMCPConfig struct {
-	Servers []MCPServerConfig
-	OpenAI  OpenAIConfig
-	Agent   AgentConfig
+	Servers           []MCPServerConfig
+	OpenAI            OpenAIConfig
+	Agent             AgentConfig
+	ReconnectAttempts int
+	ReconnectDelay    time.Duration
 }
 
 // LoadMCPConfig loads all MCP-related configuration
@@ -148,11 +157,27 @@ func LoadMCPConfig() (*FullMCPConfig, error) {
 		logging.LogDebugf("No config.yaml found, using environment variables and defaults")
 	}
 
+	reconnectDelay := defaultReconnectDelay()
+	delayString := viper.GetString("MCP_RECONNECT_DELAY")
+	if delayString != "" {
+		if parsed, err := time.ParseDuration(delayString); err == nil {
+			reconnectDelay = parsed
+		} else {
+			logging.LogWarningf(err, "Invalid MCP_RECONNECT_DELAY value %q, falling back to %s", delayString, reconnectDelay)
+		}
+	}
+
 	cfg := &FullMCPConfig{
-		Servers: GetMCPServers(),
-		OpenAI:  GetOpenAIConfig(),
-		Agent:   GetAgentConfig(),
+		Servers:           GetMCPServers(),
+		OpenAI:            GetOpenAIConfig(),
+		Agent:             GetAgentConfig(),
+		ReconnectAttempts: viper.GetInt("MCP_RECONNECT_ATTEMPTS"),
+		ReconnectDelay:    reconnectDelay,
 	}
 
 	return cfg, nil
+}
+
+func defaultReconnectDelay() time.Duration {
+	return 5 * time.Second
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/d4l-data4life/go-mcp-host/pkg/llm"
 	"github.com/d4l-data4life/go-mcp-host/pkg/mcp/manager"
@@ -79,14 +80,7 @@ func (cm *ContextManager) ReadRelevantResources(
 			continue
 		}
 
-		// Convert to string (ReadResourceResult has Contents []ResourceContents)
-		content := ""
-		if len(result.Contents) > 0 {
-			content = result.Contents[0].Text
-			if content == "" && result.Contents[0].Blob != "" {
-				content = "[Binary content]"
-			}
-		}
+		content := resourceContentToString(result.Contents)
 
 		contents = append(contents, ResourceContent{
 			URI:       r.Resource.Resource.URI,
@@ -199,4 +193,24 @@ type ResourceContent struct {
 	Name      string
 	Content   string
 	Relevance float64
+}
+
+func resourceContentToString(contents []*mcp.ResourceContents) string {
+	if len(contents) == 0 {
+		return ""
+	}
+
+	for _, c := range contents {
+		if c == nil {
+			continue
+		}
+		if c.Text != "" {
+			return c.Text
+		}
+		if len(c.Blob) > 0 {
+			return "[Binary content]"
+		}
+	}
+
+	return ""
 }
