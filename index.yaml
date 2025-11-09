@@ -2,7 +2,27 @@ apiVersion: v1
 entries:
   go-mcp-host:
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.220057257Z"
+    created: "2025-11-09T19:11:34.554644585Z"
+    description: MCP Host - A Go-based Model Context Protocol host service with AI
+      agent capabilities
+    digest: 8482a469a8ca015111d3cc2d2278002d405fd0ba260bcb09394a25871b3fa8df
+    home: https://github.com/d4l-data4life/go-mcp-host/
+    icon: https://avatars2.githubusercontent.com/u/25636481?v=3&s=200
+    keywords:
+    - mcp
+    - model-context-protocol
+    - ai
+    - llm
+    - openai
+    maintainers:
+    - name: Data4Life
+      url: https://github.com/d4l-data4life
+    name: go-mcp-host
+    urls:
+    - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.4.1.tgz
+    version: v1.4.1
+  - apiVersion: v2
+    created: "2025-11-09T19:11:34.554343531Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: e6410bcd02740fad625b64ba7d0755fe9341838c0ea93e9ca516f8c2e757139a
@@ -22,7 +42,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.4.1-2-g49b2130.tgz
     version: v1.4.1-2-g49b2130
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.219752289Z"
+    created: "2025-11-09T19:11:34.554076021Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: d43469dfdcfda528d5949a63b3638e82f6cf7c202c8f9481b73b13ae3450b1b5
@@ -42,7 +62,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.3.0.tgz
     version: v1.3.0
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.219459925Z"
+    created: "2025-11-09T19:11:34.553807568Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 87a1dd152bc8d27652fff8b18c42f27798ab99adfe2332874f53020ee5b91dac
@@ -62,7 +82,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.3.0-5-g6587b75.tgz
     version: v1.3.0-5-g6587b75
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.219159696Z"
+    created: "2025-11-09T19:11:34.553518638Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: b4eeedae970ea8d51d63ca13706975f54791b02519b82cf66932729a7e37a1eb
@@ -82,7 +102,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.2.1.tgz
     version: v1.2.1
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.218889983Z"
+    created: "2025-11-09T19:11:34.55325298Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 11ceac4e8fd5200fcba60c1465513587af0f7e94efd1c48c2674e113b3c7e924
@@ -102,7 +122,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.2.1-5-ga4de091.tgz
     version: v1.2.1-5-ga4de091
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.218605914Z"
+    created: "2025-11-09T19:11:34.552973357Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: f43042c025285b62228d06a1c4c79518c0dbe5b80da3309457890f5b6086f1db
@@ -122,7 +142,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.2.1-3-gd41df87.tgz
     version: v1.2.1-3-gd41df87
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.218287392Z"
+    created: "2025-11-09T19:11:34.552693553Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 5dbda7636ea100ea945e1f30d6005c372b1c981e66991caee5de548b357fdc56
@@ -142,7 +162,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.2.1-2-ga14368e.tgz
     version: v1.2.1-2-ga14368e
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.217999536Z"
+    created: "2025-11-09T19:11:34.552378213Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 1db6e91686d0c86689d1833cf627f4efcdd3d0619885eba9a516851c3b6abb7f
@@ -162,7 +182,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.2.1-1-g780cd1d.tgz
     version: v1.2.1-1-g780cd1d
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.217730495Z"
+    created: "2025-11-09T19:11:34.551755563Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 4265b38f7b87a07e729da674a8fd36eb12a3c3afc243c6c0262f60d048ad822f
@@ -182,7 +202,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.2.0-2-g58e15b8.tgz
     version: v1.2.0-2-g58e15b8
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.217462776Z"
+    created: "2025-11-09T19:11:34.551064249Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 7ea40ec85de373dbbc31bdccd87e71ffafed9eb05619bc9116ed614ffd3ad314
@@ -202,7 +222,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.2.0-1-g2271246.tgz
     version: v1.2.0-1-g2271246
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.217168929Z"
+    created: "2025-11-09T19:11:34.550786429Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 03d4e2ed0af490303e6917273b8fa270475c301917a91e6aa48de1278d7dcea1
@@ -222,7 +242,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0.tgz
     version: v1.1.0
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.216916148Z"
+    created: "2025-11-09T19:11:34.550518448Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 2b84f622bb87fac35aaf591812bc2a6cc5dc94d02334547384725a3d51faf0d0
@@ -242,7 +262,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-9-gdad51f8.tgz
     version: v1.1.0-9-gdad51f8
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.216647017Z"
+    created: "2025-11-09T19:11:34.550237171Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: fe5ea3f5146dfe6f6870fc5e246cf8183fdce18c4e53221afa195fec44b56099
@@ -262,7 +282,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-8-g2842ac7.tgz
     version: v1.1.0-8-g2842ac7
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.216355574Z"
+    created: "2025-11-09T19:11:34.549959812Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: e913f6e2e4dc1189c7497cc7353c01683b7941a78ba0b16b9e6efb843f975f4e
@@ -282,7 +302,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-7-g90f4331.tgz
     version: v1.1.0-7-g90f4331
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.216080332Z"
+    created: "2025-11-09T19:11:34.549710736Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 1f919cb323eaae75ac59ba268de807035b49247c40201460421ca979b7c84250
@@ -302,7 +322,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-6-g2201924.tgz
     version: v1.1.0-6-g2201924
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.215803847Z"
+    created: "2025-11-09T19:11:34.549439348Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 25c8fa4e8d9f5f0f6ff4e6b0dd3c177eb7737b176cb422168e74cd9bee72e4f0
@@ -322,7 +342,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-4-g9878fa4.tgz
     version: v1.1.0-4-g9878fa4
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.215120264Z"
+    created: "2025-11-09T19:11:34.549158152Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 26135cf607730992e7928f06c48dba06013edff6ad1551a50d3030ed2a81c627
@@ -342,7 +362,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-3-g2e1818e.tgz
     version: v1.1.0-3-g2e1818e
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.2144144Z"
+    created: "2025-11-09T19:11:34.54889562Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: e40769610438c9697f704af4c19345f21875c001ec86986d5b364d13f43dd0f8
@@ -362,7 +382,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-20-gc7e61f2.tgz
     version: v1.1.0-20-gc7e61f2
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.214102128Z"
+    created: "2025-11-09T19:11:34.54860129Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 7ac66590be24240a08f050f8b10b3fa498d276f223f22699be233c54c5c14912
@@ -382,7 +402,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-2-g8b46454.tgz
     version: v1.1.0-2-g8b46454
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.21383977Z"
+    created: "2025-11-09T19:11:34.548317268Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 9246ea82d8b72a977737ff785c768a74f7aa564db4990e8c2f489da113b02986
@@ -402,7 +422,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-19-gb44c5de.tgz
     version: v1.1.0-19-gb44c5de
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.213563425Z"
+    created: "2025-11-09T19:11:34.548036502Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: a3505c2ae1054026f303532af2de1f9aaa0561b8a2b2712f75be3264f0cd2281
@@ -422,7 +442,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-18-g724fbf2.tgz
     version: v1.1.0-18-g724fbf2
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.213247156Z"
+    created: "2025-11-09T19:11:34.547757731Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: cdecf4d1b1f0dfbe161b639b9e3eff5a1e119b108e830f17fd69c2291ef08cc2
@@ -442,7 +462,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-17-gea8be81.tgz
     version: v1.1.0-17-gea8be81
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.212965762Z"
+    created: "2025-11-09T19:11:34.54743692Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: b3b90e6b74b7fa12b8eb000793150e3df78469640178729df5ebdd264ce38bb9
@@ -462,7 +482,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-16-g9e53fa2.tgz
     version: v1.1.0-16-g9e53fa2
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.212705237Z"
+    created: "2025-11-09T19:11:34.54716447Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: dc6b7b675489eb862f831ad91b2468deac9b0822e80e5f8ab6610893d29995d5
@@ -482,7 +502,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-15-g9f29e4b.tgz
     version: v1.1.0-15-g9f29e4b
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.212435985Z"
+    created: "2025-11-09T19:11:34.546887131Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 78993c0480ff8aba59f7f9b45288fdf6c96a912933365ebcf3b038c47102ff64
@@ -502,7 +522,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-14-g316f923.tgz
     version: v1.1.0-14-g316f923
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.212143651Z"
+    created: "2025-11-09T19:11:34.546595285Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 8ad7bf179f0f4f0940e7f78d2eca84c52830e6894afeccb23ee99a0385a0ffd0
@@ -522,7 +542,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-13-g642bb3b.tgz
     version: v1.1.0-13-g642bb3b
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.211877986Z"
+    created: "2025-11-09T19:11:34.546289703Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 816fa5e71290983a78e2dac8148f02f12c1dedd1d0efa7f6f7a952ee8147e4ca
@@ -542,7 +562,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-12-gc970250.tgz
     version: v1.1.0-12-gc970250
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.21153632Z"
+    created: "2025-11-09T19:11:34.54598895Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: ff0dca87b8c50cce23a122e7cb665218dc7198261b2b2e9e4b1fbfc9c4e1cf22
@@ -562,7 +582,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-11-g2b563bf.tgz
     version: v1.1.0-11-g2b563bf
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.211204412Z"
+    created: "2025-11-09T19:11:34.545654183Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 287bcf0fae42ea5e220bb41bb8e6c816b2c2fb7a7916af51db0f1f0e01b81a6e
@@ -582,7 +602,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-10-g051df1d.tgz
     version: v1.1.0-10-g051df1d
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.210908942Z"
+    created: "2025-11-09T19:11:34.545043645Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 6afc780fbe7c351f90d6dcec4b68e185963305c7e932546626319bf4453cbc01
@@ -602,7 +622,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.1.0-1-g5371810.tgz
     version: v1.1.0-1-g5371810
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.2106342Z"
+    created: "2025-11-09T19:11:34.544392256Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 2ba7ffcca08dfc5f56c85f334dc35d97bedf3e808badf5135eeaaaba8b5c8935
@@ -622,7 +642,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.0.0.tgz
     version: v1.0.0
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.210323933Z"
+    created: "2025-11-09T19:11:34.543703857Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: b47a93f81a214fa05dbd6f1255f500285a1ecd0aa9102fdb88fc7eef6e48a8d4
@@ -642,7 +662,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.0.0-7-g89ca5c9.tgz
     version: v1.0.0-7-g89ca5c9
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.210012122Z"
+    created: "2025-11-09T19:11:34.543415558Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: a854397a85e0ef672f8594e6358339b3e692c422294a19fd4b94ac78227c0122
@@ -662,7 +682,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.0.0-5-g58a2256.tgz
     version: v1.0.0-5-g58a2256
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.209704229Z"
+    created: "2025-11-09T19:11:34.543132679Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: da9b767a97fac22880813bd789119b062c38da00a1dfa3fe52c01f9f036e115b
@@ -682,7 +702,7 @@ entries:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.0.0-4-g46d6c08.tgz
     version: v1.0.0-4-g46d6c08
   - apiVersion: v2
-    created: "2025-11-09T19:03:40.209410932Z"
+    created: "2025-11-09T19:11:34.542854578Z"
     description: MCP Host - A Go-based Model Context Protocol host service with AI
       agent capabilities
     digest: 8d1ad50336d4c0c13974a7aa6e1cdcb6f13f6a42a53cfab99cf9dcccba754c60
@@ -701,4 +721,4 @@ entries:
     urls:
     - https://d4l-data4life.github.io/go-mcp-host/go-mcp-host-v1.0.0-1-gf77dc20.tgz
     version: v1.0.0-1-gf77dc20
-generated: "2025-11-09T19:03:40.208945736Z"
+generated: "2025-11-09T19:11:34.54239101Z"
