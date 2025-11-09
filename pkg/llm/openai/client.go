@@ -144,7 +144,7 @@ func (c *Client) ChatStream(ctx context.Context, request llm.ChatRequest) (<-cha
 			for _, choice := range chunk.Choices {
 				var message *llm.Message
 				if choice.FinishReason != "" {
-					if int(choice.Index) < len(accumulator.ChatCompletion.Choices) {
+					if int(choice.Index) < len(accumulator.Choices) {
 						msg := convertFromAPIMessage(accumulator.ChatCompletion.Choices[choice.Index].Message)
 						message = &msg
 					} else {
@@ -204,7 +204,7 @@ func (c *Client) buildChatParams(req llm.ChatRequest) (openai.ChatCompletionNewP
 	}
 
 	params := openai.ChatCompletionNewParams{
-		Model:    openai.ChatModel(req.Model),
+		Model:    req.Model,
 		Messages: messages,
 	}
 

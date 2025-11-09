@@ -39,8 +39,7 @@ func SetupRoutes(ctx context.Context, mux *chi.Mux, tokenValidator auth.TokenVal
 	mcpManager := manager.NewMCPManager(mcpConfig.Servers)
 
 	// Initialize LLM client (OpenAI-compatible for both OpenAI and Ollama endpoints)
-	var llmClient llm.Client
-	llmClient = llmopenai.NewClient(llmopenai.Config{
+	var llmClient llm.Client = llmopenai.NewClient(llmopenai.Config{
 		APIKey:  mcpConfig.OpenAI.APIKey,
 		BaseURL: mcpConfig.OpenAI.BaseURL,
 		Model:   mcpConfig.OpenAI.DefaultModel,

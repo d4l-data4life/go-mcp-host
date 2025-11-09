@@ -547,7 +547,12 @@ func (m *Manager) refreshResources(ctx context.Context, session *SessionInfo) {
 	if session.UserID != uuid.Nil {
 		cacheKey := m.getUserKey(session.UserID, session.ServerName)
 		m.userResourcesCache.Set(cacheKey, resources, m.userCacheTTL)
-		logging.LogDebugf("Updated cached resources for user %s server %s: %d resources", session.UserID, session.ServerName, len(resources))
+		logging.LogDebugf(
+			"Updated cached resources for user %s server %s: %d resources",
+			session.UserID,
+			session.ServerName,
+			len(resources),
+		)
 	}
 
 	logging.LogDebugf("Refreshed resources for server %s: %d resources", session.ServerName, len(resources))
