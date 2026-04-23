@@ -6,7 +6,7 @@
 # Providing local IMG_BASE allows to save on API calls to Dockerhub (these are limited)
 # Set empty to use the upstream
 ARG IMG_BASE=
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 
 ########################
 ### Base container

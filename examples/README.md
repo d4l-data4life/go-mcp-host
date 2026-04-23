@@ -6,7 +6,7 @@ This directory contains examples demonstrating how to use go-mcp-host both as a 
 
 Before running these examples, ensure you have:
 
-1. **Go 1.24+** installed
+1. **Go 1.25+** installed
 2. **PostgreSQL** running (or use the provided Docker command)
 3. **Ollama** running locally with a model installed
 4. **Node.js** (for MCP servers via npx)

@@ -19,7 +19,7 @@ go get github.com/d4l-data4life/go-mcp-host
 ```
 
 **Requirements:**
-- Go 1.24+
+- Go 1.25+
 - PostgreSQL database
 - Ollama (or OpenAI-compatible LLM endpoint)
 
